@@ -2234,6 +2234,10 @@ app.delete('/api/account/delete', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Simly Core Engine running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Simly Core Engine running on port ${PORT}`);
+  });
+}
+
+module.exports = app;

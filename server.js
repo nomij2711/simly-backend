@@ -12,6 +12,18 @@ app.use(express.json());
 // Helper to normalize phone numbers received from query params or bodies
 const normalizePhone = (num) => (num ? num.toString().trim().replace(/^ /, '+') : num);
 
+// Root Health Check Route
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    service: 'SimlyTel Telecom Engine',
+    status: 'ONLINE 🟢',
+    uptime: '24/7 Cloud',
+    version: '1.0.0',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // ============================================================================
 // 🔐 AUTHENTICATION ENGINE (Apple App Store Guideline 4.8 & Play Store Compliant)
 // ============================================================================

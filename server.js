@@ -549,15 +549,18 @@ app.get('/api/numbers/search', async (req, res) => {
 // 2. Endpoint: Virtual Number Assignment (1.5x pricing + real-time wallet deduction)
 const handleBuyTest = async (req, res) => {
   try {
-    const phoneNumber = (req.method === 'POST' ? req.body?.phoneNumber : req.query.phoneNumber) || "+12025550123";
-    const userId = (req.method === 'POST' ? req.body?.userId : req.query.userId) || "user_test_123";
-    const countryCode = (req.method === 'POST' ? req.body?.countryCode : req.query.countryCode) || "US";
+    const rawPhoneNumber = (req.method === 'POST' ? req.body?.phoneNumber : req.query.phoneNumber) || "+12025550123";
+    const rawUserId = (req.method === 'POST' ? req.body?.userId : req.query.userId) || "user_demo_1";
+    const rawCountryCode = (req.method === 'POST' ? req.body?.countryCode : req.query.countryCode) || "US";
     const planType = (req.method === 'POST' ? req.body?.planType : req.query.planType) || "30_days";
     const durationDays = parseInt((req.method === 'POST' ? req.body?.durationDays : req.query.durationDays) || (planType === "7_days" ? 7 : planType === "365_days" ? 365 : 30), 10);
 
-    const price = calculateNumberPrice(countryCode, planType, durationDays, phoneNumber);
+    const cleanPhoneNumber = rawPhoneNumber.toString().trim().replace(/\s+/g, '').replace(/-/g, '');
+    const cleanCountryCode = rawCountryCode.toString().trim().toUpperCase().substring(0, 2) || "US";
+    const cleanUserId = rawUserId.toString().trim();
 
-    const cleanUserId = userId.toString().trim();
+    const price = calculateNumberPrice(cleanCountryCode, planType, durationDays, cleanPhoneNumber);
+
     let user = await prisma.user.findFirst({
       where: {
         OR: [
@@ -568,12 +571,16 @@ const handleBuyTest = async (req, res) => {
     });
 
     if (!user) {
+      const emailCandidate = cleanUserId.includes('@') ? cleanUserId.toLowerCase() : `user_${cleanUserId.replace(/[^a-zA-Z0-9]/g, '') || Date.now()}@simlytel.com`;
+      const existingEmail = await prisma.user.findUnique({ where: { email: emailCandidate } });
+      const finalEmail = existingEmail ? `user_${Date.now()}_${Math.floor(Math.random()*1000)}@simlytel.com` : emailCandidate;
+
       user = await prisma.user.create({
         data: {
           id: cleanUserId,
           name: cleanUserId.includes('@') ? cleanUserId.split('@')[0] : 'SimlyTel User',
-          email: cleanUserId.includes('@') ? cleanUserId.toLowerCase() : `${cleanUserId}@simlytel.com`,
-          walletBalance: 10.0
+          email: finalEmail,
+          walletBalance: 15.0
         }
       });
     }
@@ -587,10 +594,6 @@ const handleBuyTest = async (req, res) => {
         currentBalance: user.walletBalance
       });
     }
-
-    const finalPhoneNumber = phoneNumber.includes('-')
-      ? phoneNumber.replace(/-/g, () => Math.floor(Math.random() * 10).toString())
-      : phoneNumber;
 
     const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
 
@@ -608,21 +611,38 @@ const handleBuyTest = async (req, res) => {
         userId: user.id,
         type: 'number_purchase',
         amount: -price,
-        description: `Line Purchase (${durationDays} Days): ${finalPhoneNumber}`
+        description: `Line Purchase (${durationDays} Days): ${cleanPhoneNumber}`
       }
     });
 
-    // Save Purchased Number
-    const purchasedNumber = await prisma.purchasedNumber.create({
-      data: {
-        phoneNumber: finalPhoneNumber,
-        userId: user.id,
-        countryCode,
-        status: "active",
-        planType,
-        expiresAt
-      }
+    // Safe Assign / Upsert Purchased Number
+    let purchasedNumber = await prisma.purchasedNumber.findFirst({
+      where: { phoneNumber: cleanPhoneNumber }
     });
+
+    if (purchasedNumber) {
+      purchasedNumber = await prisma.purchasedNumber.update({
+        where: { id: purchasedNumber.id },
+        data: {
+          userId: user.id,
+          countryCode: cleanCountryCode,
+          status: "active",
+          planType,
+          expiresAt
+        }
+      });
+    } else {
+      purchasedNumber = await prisma.purchasedNumber.create({
+        data: {
+          phoneNumber: cleanPhoneNumber,
+          userId: user.id,
+          countryCode: cleanCountryCode,
+          status: "active",
+          planType,
+          expiresAt
+        }
+      });
+    }
 
     console.log(`💳 [BILLING - NUMBER PURCHASE] Deducted $${price.toFixed(2)} from ${user.email} (New Balance: $${updatedUser.walletBalance.toFixed(2)})`);
 

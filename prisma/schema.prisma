@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String?   @default("SimlyTel User")
+  email         String    @unique
+  phone         String?
+  password      String?
+  avatarUrl     String?
+  authProvider  String    @default("email") // "email", "google", "apple", "phone", "guest"
+  walletBalance Float     @default(10.0)
+  isVerified    Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  target    String   // phone number or email address
+  code      String
+  type      String   @default("login") // "login", "signup", "forgot_password"
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model PurchasedNumber {
+  id                   String    @id @default(uuid())
+  phoneNumber          String
+  userId               String
+  countryCode          String    @default("US")
+  status               String    @default("active") // "active", "expiring_soon", "expired"
+  planType             String    @default("30_days") // "7_days", "30_days", "365_days"
+  profileName          String?   @default("My Line")
+  dndEnabled           Boolean   @default(false)
+  callForwardingNumber String?
+  autoReplyText        String?
+  voicemailEnabled     Boolean   @default(true)
+  voicemailGreeting    String?   @default("Please leave your message after the tone.")
+  expiresAt            DateTime?
+  createdAt            DateTime  @default(now())
+}
+
+model Message {
+  id              String   @id @default(uuid())
+  fromNumber      String
+  toNumber        String
+  text            String
+  direction       String   // "inbound" or "outbound"
+  status          String   @default("delivered") // "sent", "delivered", "received", "failed"
+  telnyxMessageId String?
+  createdAt       DateTime @default(now())
+}
+
+model CallLog {
+  id              String   @id @default(uuid())
+  myNumber        String
+  contactNumber   String
+  direction       String   // "outbound" or "inbound"
+  status          String   @default("completed") // "completed", "missed", "declined", "busy"
+  durationSeconds Int      @default(0)
+  hasRecording    Boolean  @default(false)
+  recordingUrl    String?
+  createdAt       DateTime @default(now())
+}
+
+model Voicemail {
+  id              String   @id @default(uuid())
+  myNumber        String
+  contactNumber   String
+  audioUrl        String
+  durationSeconds Int      @default(0)
+  isRead          Boolean  @default(false)
+  transcription   String?
+  createdAt       DateTime @default(now())
+}
+
+model DevicePushToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  platform  String   @default("android") // "ios" or "android"
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  userId      String   @default("user_demo_1")
+  type        String   // "topup", "number_purchase", "call_charge", "sms_charge"
+  amount      Float
+  description String
+  createdAt   DateTime @default(now())
+}
+
+model SupportMessage {
+  id         String   @id @default(uuid())
+  userId     String   @default("user_demo_1")
+  sender     String   // "user" or "agent"
+  senderName String?  @default("Sarah (Support Agent)")
+  text       String
+  createdAt  DateTime @default(now())
+}

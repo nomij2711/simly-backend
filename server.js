@@ -2235,88 +2235,66 @@ app.get('/api/numbers/check-expiry', async (req, res) => {
   }
 });
 
-// 20. Endpoint: Delete Account & Wipe Associated Data (Apple App Store Guideline 5.1.1 & Google Play Compliance)
+// 20. Endpoint: User Account Self-Erasure & Telecom Deactivation (Preserves Auditing Records for Admin)
 app.delete('/api/account/delete', async (req, res) => {
   try {
     const { userId = 'user_demo_1' } = req.body;
-    console.log(`⚠️ [ACCOUNT DELETION REQUEST] Purging all data for User: ${userId}`);
+    console.log(`⚠️ [ACCOUNT SELF-ERASURE REQUEST] Processing self-erasure for User: ${userId}`);
 
-    // Clean up all user's virtual numbers
-    const userNumbers = await prisma.purchasedNumber.findMany({
-      where: { userId }
-    });
-
-    const numbersList = userNumbers.map(n => n.phoneNumber);
-
-    if (numbersList.length > 0) {
-      // Delete SMS messages for these numbers
-      await prisma.message.deleteMany({
-        where: {
-          OR: [
-            { fromNumber: { in: numbersList } },
-            { toNumber: { in: numbersList } }
-          ]
-        }
-      });
-      // Delete call logs for these numbers
-      await prisma.callLog.deleteMany({
-        where: { myNumber: { in: numbersList } }
-      });
-      // Delete voicemails for these numbers
-      await prisma.voicemail.deleteMany({
-        where: { myNumber: { in: numbersList } }
-      });
-      // Delete virtual numbers
-      await prisma.purchasedNumber.deleteMany({
-        where: { userId }
-      });
-    }
-
-    // Delete push tokens
-    await prisma.devicePushToken.deleteMany({
-      where: { userId }
-    });
-
-    // Delete support messages
-    await prisma.supportMessage.deleteMany({
-      where: { userId }
-    });
-
-    // Delete transactions & reset user
-    await prisma.transaction.deleteMany({
-      where: { userId }
-    });
-
-    // Delete OTP codes for this user's email or phone
-    await prisma.otpCode.deleteMany({
-      where: {
-        OR: [
-          { target: userId },
-          { target: `${userId}@simlytel.com` }
-        ]
-      }
-    });
-
-    await prisma.user.deleteMany({
+    const user = await prisma.user.findFirst({
       where: {
         OR: [
           { id: userId },
-          { email: userId },
-          { email: `${userId}@simlytel.com` },
-          { email: `${userId}@simly.app` },
-          { email: `${userId}@example.com` }
+          { email: (userId || '').toLowerCase() },
+          { email: `${userId}@simlytel.com` }
         ]
       }
     });
 
-    console.log(`✅ [ACCOUNT DELETION COMPLETE] All records wiped for User ${userId}`);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    // 1. Expire all active virtual lines so telecom traffic ceases
+    await prisma.purchasedNumber.updateMany({
+      where: { userId: user.id, status: 'active' },
+      data: { status: 'expired', expiresAt: new Date() }
+    });
+
+    // 2. Remove push tokens so no further notifications arrive on devices
+    await prisma.devicePushToken.deleteMany({
+      where: { userId: user.id }
+    });
+
+    // 3. Mark user account as SELF-ERASED (soft delete) - preserve CDR, calls, ledger & tickets for Admin
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedReason: 'user_self_erase',
+        isVerified: false
+      }
+    });
+
+    // 4. Record Audit Transaction
+    await prisma.transaction.create({
+      data: {
+        userId: user.id,
+        type: 'account_erased',
+        amount: 0,
+        description: `⚠️ User Self-Erased Account from SimlyTel App on ${new Date().toLocaleString()}`
+      }
+    });
+
+    console.log(`✅ [ACCOUNT SELF-ERASED] Marked User ${user.email} as erased. Historical records preserved.`);
 
     res.json({
       success: true,
-      message: 'Your account and all associated telecom data have been permanently erased.'
+      message: 'Your account has been deactivated and erased.'
     });
   } catch (error) {
-    console.error('[SIMLY ERROR] Failed to delete account:', error);
+    console.error('[SIMLY ERROR] Failed to erase account:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -2433,26 +2411,48 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   }
 });
 
-// 3. Users CRM List & Search
+// 3. Users CRM List, Search & Filter (with Erased & Soft-Deleted Support)
 app.get('/api/admin/users', requireAdmin, async (req, res) => {
   try {
     const query = req.query.search ? req.query.search.trim().toLowerCase() : '';
+    const filter = (req.query.filter || 'all').toLowerCase(); // 'all', 'active', 'blocked', 'erased'
     const page = parseInt(req.query.page || '1', 10);
-    const limit = parseInt(req.query.limit || '50', 10);
+    const limit = parseInt(req.query.limit || '100', 10);
     const skip = (page - 1) * limit;
 
-    const where = query
-      ? {
-          OR: [
-            { email: { contains: query } },
-            { name: { contains: query } },
-            { id: { contains: query } },
-            { phone: { contains: query } }
-          ]
-        }
-      : {};
+    // Build filter conditions
+    const andConditions = [];
 
-    const [total, users] = await Promise.all([
+    if (query) {
+      andConditions.push({
+        OR: [
+          { email: { contains: query } },
+          { name: { contains: query } },
+          { id: { contains: query } },
+          { phone: { contains: query } }
+        ]
+      });
+    }
+
+    if (filter === 'active') {
+      andConditions.push({ isDeleted: false, isVerified: true });
+    } else if (filter === 'blocked') {
+      andConditions.push({ isDeleted: false, isVerified: false });
+    } else if (filter === 'erased' || filter === 'deleted') {
+      andConditions.push({ isDeleted: true });
+    }
+
+    const where = andConditions.length > 0 ? { AND: andConditions } : {};
+
+    // Get global counts for tabs
+    const [totalUsers, activeCount, blockedCount, erasedCount] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { isDeleted: false, isVerified: true } }),
+      prisma.user.count({ where: { isDeleted: false, isVerified: false } }),
+      prisma.user.count({ where: { isDeleted: true } })
+    ]);
+
+    const [filteredTotal, users] = await Promise.all([
       prisma.user.count({ where }),
       prisma.user.findMany({
         where,
@@ -2462,22 +2462,56 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
       })
     ]);
 
-    // Attach number counts for each user
+    // Attach number counts & display status for each user
     const usersWithMeta = await Promise.all(
       users.map(async (u) => {
-        const numbersCount = await prisma.purchasedNumber.count({ where: { userId: u.id, status: 'active' } });
+        const [activeNumbersCount, totalNumbersCount] = await Promise.all([
+          prisma.purchasedNumber.count({ where: { userId: u.id, status: 'active' } }),
+          prisma.purchasedNumber.count({ where: { userId: u.id } })
+        ]);
+
+        let displayStatus = 'active';
+        let statusLabel = 'ACTIVE 🟢';
+        let statusColor = 'emerald';
+
+        if (u.isDeleted) {
+          if (u.deletedReason === 'user_self_erase') {
+            displayStatus = 'self_erased';
+            statusLabel = 'SELF-ERASED ⚠️';
+            statusColor = 'amber';
+          } else {
+            displayStatus = 'admin_deleted';
+            statusLabel = 'DELETED (ADMIN) 🗑️';
+            statusColor = 'rose';
+          }
+        } else if (!u.isVerified) {
+          displayStatus = 'blocked';
+          statusLabel = 'BLOCKED 🔴';
+          statusColor = 'rose';
+        }
+
         return {
           ...u,
-          numbersCount
+          displayStatus,
+          statusLabel,
+          statusColor,
+          numbersCount: activeNumbersCount,
+          totalNumbersCount
         };
       })
     );
 
     res.json({
       success: true,
-      total,
+      total: filteredTotal,
       page,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(filteredTotal / limit),
+      counts: {
+        total: totalUsers,
+        active: activeCount,
+        blocked: blockedCount,
+        erased: erasedCount
+      },
       users: usersWithMeta
     });
   } catch (error) {
@@ -2694,8 +2728,205 @@ app.post('/api/admin/users/:id/toggle-block', requireAdmin, async (req, res) => 
   }
 });
 
-// 6. Delete User Account Completely
+// 5.5 Bulk Action on Multiple Users (Block, Unblock, Soft-Delete, Restore, Adjust Balance)
+app.post('/api/admin/users/bulk-action', requireAdmin, async (req, res) => {
+  try {
+    const { userIds, action, balanceAmount, reason } = req.body;
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'No user IDs provided for bulk action.' });
+    }
+
+    if (!['block', 'unblock', 'delete', 'restore', 'adjust_balance'].includes(action)) {
+      return res.status(400).json({ success: false, error: 'Invalid bulk action specified.' });
+    }
+
+    console.log(`⚡ [ADMIN BULK ACTION] Executing '${action}' on ${userIds.length} users`);
+
+    if (action === 'block') {
+      await prisma.user.updateMany({
+        where: { id: { in: userIds } },
+        data: { isVerified: false }
+      });
+      return res.json({
+        success: true,
+        message: `Successfully BLOCKED ${userIds.length} user accounts.`
+      });
+    }
+
+    if (action === 'unblock') {
+      await prisma.user.updateMany({
+        where: { id: { in: userIds } },
+        data: { isVerified: true, isDeleted: false, deletedReason: null, deletedAt: null }
+      });
+      return res.json({
+        success: true,
+        message: `Successfully UNBLOCKED & ACTIVATED ${userIds.length} user accounts.`
+      });
+    }
+
+    if (action === 'delete') {
+      // Soft Delete / Archive (Never lose historical telecom or financial records)
+      await prisma.user.updateMany({
+        where: { id: { in: userIds } },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedReason: 'admin_deleted',
+          isVerified: false
+        }
+      });
+      // Expire their active numbers
+      await prisma.purchasedNumber.updateMany({
+        where: { userId: { in: userIds }, status: 'active' },
+        data: { status: 'expired', expiresAt: new Date() }
+      });
+      // Remove push tokens
+      await prisma.devicePushToken.deleteMany({
+        where: { userId: { in: userIds } }
+      });
+
+      // Record audit transactions
+      for (const uId of userIds) {
+        await prisma.transaction.create({
+          data: {
+            userId: uId,
+            type: 'admin_action',
+            amount: 0,
+            description: `🗑️ Account Archived / Soft-Deleted by Admin in Bulk Operation on ${new Date().toLocaleString()}`
+          }
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: `Successfully Archived/Soft-Deleted ${userIds.length} user accounts. All historical records preserved.`
+      });
+    }
+
+    if (action === 'restore') {
+      await prisma.user.updateMany({
+        where: { id: { in: userIds } },
+        data: {
+          isDeleted: false,
+          deletedAt: null,
+          deletedReason: null,
+          isVerified: true
+        }
+      });
+      for (const uId of userIds) {
+        await prisma.transaction.create({
+          data: {
+            userId: uId,
+            type: 'admin_action',
+            amount: 0,
+            description: `♻️ Account Restored to Active by Admin on ${new Date().toLocaleString()}`
+          }
+        });
+      }
+      return res.json({
+        success: true,
+        message: `Successfully Restored ${userIds.length} user accounts to Active status.`
+      });
+    }
+
+    if (action === 'adjust_balance') {
+      const numAmount = parseFloat(balanceAmount || '0');
+      if (isNaN(numAmount) || numAmount === 0) {
+        return res.status(400).json({ success: false, error: 'Valid non-zero balance amount required.' });
+      }
+
+      const users = await prisma.user.findMany({ where: { id: { in: userIds } } });
+      for (const u of users) {
+        const newBal = Math.max(0, parseFloat(((u.walletBalance || 0) + numAmount).toFixed(2)));
+        await prisma.user.update({
+          where: { id: u.id },
+          data: { walletBalance: newBal }
+        });
+        await prisma.transaction.create({
+          data: {
+            userId: u.id,
+            type: numAmount > 0 ? 'topup' : 'admin_deduction',
+            amount: numAmount,
+            description: `Bulk Adjustment: ${reason || (numAmount > 0 ? 'Bulk Credit Gift' : 'Bulk Debit')} ($${Math.abs(numAmount).toFixed(2)})`
+          }
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: `Successfully adjusted balance by $${numAmount.toFixed(2)} for ${users.length} users.`
+      });
+    }
+  } catch (error) {
+    console.error('[ADMIN BULK ACTION ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6. Delete / Archive User Account (Soft-Delete by default, Hard Wipe if permanent=true)
 app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
+
+    const user = await prisma.user.findFirst({
+      where: { OR: [{ id: userId }, { email: userId.toLowerCase() }] }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    if (isPermanent) {
+      // Hard wipe only when admin explicitly specifies permanent
+      await prisma.purchasedNumber.deleteMany({ where: { userId: user.id } });
+      await prisma.transaction.deleteMany({ where: { userId: user.id } });
+      await prisma.supportMessage.deleteMany({ where: { userId: user.id } });
+      await prisma.devicePushToken.deleteMany({ where: { userId: user.id } });
+      await prisma.user.delete({ where: { id: user.id } });
+      return res.json({ success: true, message: `User ${user.email} and all records permanently purged from database.` });
+    }
+
+    // Default: Soft Delete / Archive (Never lose audit trail or financial history)
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedReason: 'admin_deleted',
+        isVerified: false
+      }
+    });
+
+    await prisma.purchasedNumber.updateMany({
+      where: { userId: user.id, status: 'active' },
+      data: { status: 'expired', expiresAt: new Date() }
+    });
+
+    await prisma.devicePushToken.deleteMany({
+      where: { userId: user.id }
+    });
+
+    await prisma.transaction.create({
+      data: {
+        userId: user.id,
+        type: 'admin_action',
+        amount: 0,
+        description: `🗑️ Account Soft-Deleted / Archived by Admin on ${new Date().toLocaleString()}`
+      }
+    });
+
+    res.json({
+      success: true,
+      message: `User ${user.email} has been Archived/Soft-Deleted. All historical call and ledger records remain preserved in Admin.`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6.5 Restore User Account
+app.post('/api/admin/users/:id/restore', requireAdmin, async (req, res) => {
   try {
     const userId = req.params.id;
     const user = await prisma.user.findFirst({
@@ -2706,12 +2937,30 @@ app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
       return res.status(404).json({ success: false, error: 'User not found.' });
     }
 
-    await prisma.purchasedNumber.deleteMany({ where: { userId: user.id } });
-    await prisma.transaction.deleteMany({ where: { userId: user.id } });
-    await prisma.supportMessage.deleteMany({ where: { userId: user.id } });
-    await prisma.user.delete({ where: { id: user.id } });
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isDeleted: false,
+        deletedAt: null,
+        deletedReason: null,
+        isVerified: true
+      }
+    });
 
-    res.json({ success: true, message: `User ${user.email} and all records permanently removed.` });
+    await prisma.transaction.create({
+      data: {
+        userId: user.id,
+        type: 'admin_action',
+        amount: 0,
+        description: `♻️ Account Restored to Active by Admin on ${new Date().toLocaleString()}`
+      }
+    });
+
+    res.json({
+      success: true,
+      message: `User ${user.email} has been restored to ACTIVE status.`,
+      user: updated
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

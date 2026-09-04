@@ -340,7 +340,7 @@
                   <tr>
                     <th class="py-3 px-4">User Name & Email</th>
                     <th class="py-3 px-4">Wallet Balance</th>
-                    <th class="py-3 px-4">Active Lines</th>
+                    <th class="py-3 px-4">Assigned Lines</th>
                     <th class="py-3 px-4">Status</th>
                     <th class="py-3 px-4">Joined Date</th>
                     <th class="py-3 px-4 text-right">Inspect & Actions</th>
@@ -417,18 +417,18 @@
 
             </div>
 
-            <!-- Metrics Summary Ribbon -->
+            <!-- Metrics Summary Ribbon (With Financial Explanation) -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-slate-800/80 text-xs">
               <div>
                 <div class="text-[11px] text-slate-400">Total Deposited</div>
                 <div id="udTotalDeposited" class="text-sm font-bold text-emerald-400">$0.00</div>
               </div>
               <div>
-                <div class="text-[11px] text-slate-400">Total Spent</div>
+                <div class="text-[11px] text-slate-400">Total Spent / Debited</div>
                 <div id="udTotalSpent" class="text-sm font-bold text-rose-400">$0.00</div>
               </div>
               <div>
-                <div class="text-[11px] text-slate-400">Active Lines</div>
+                <div class="text-[11px] text-slate-400">Assigned Numbers</div>
                 <div id="udActiveLinesCount" class="text-sm font-bold text-cyan-400">0 Lines</div>
               </div>
               <div>
@@ -441,12 +441,12 @@
           <!-- Multi-Section Content Grids -->
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            <!-- Section 1: Assigned Virtual Phone Numbers -->
+            <!-- Section 1: Assigned Virtual Phone Numbers (Active & Expired) -->
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col">
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">
                   <i class="fa-solid fa-phone text-cyan-400 text-sm"></i>
-                  <h3 class="text-sm font-bold text-white">Assigned Virtual Phone Numbers</h3>
+                  <h3 class="text-sm font-bold text-white">Assigned Phone Numbers (Active & Expired)</h3>
                 </div>
                 <span id="udNumbersBadge" class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 font-semibold">0</span>
               </div>
@@ -456,13 +456,13 @@
                     <tr class="text-slate-400 border-b border-slate-800 pb-2 text-[10px] uppercase">
                       <th class="py-2">Number</th>
                       <th class="py-2">Country</th>
-                      <th class="py-2">Expiry</th>
+                      <th class="py-2">Expiry Date</th>
                       <th class="py-2">Status</th>
-                      <th class="py-2 text-right">Actions</th>
+                      <th class="py-2 text-right">Renew / Control</th>
                     </tr>
                   </thead>
                   <tbody id="udNumbersTableBody" class="divide-y divide-slate-800/60">
-                    <tr><td colspan="5" class="py-4 text-center text-slate-500">No active numbers assigned to this user.</td></tr>
+                    <tr><td colspan="5" class="py-4 text-center text-slate-500">No numbers assigned to this user.</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -822,7 +822,6 @@
     let selectedSupportUserId = null;
     let currentInspectedUserId = null;
 
-    // Check login state on load
     document.addEventListener('DOMContentLoaded', () => {
       updateLiveClock();
       setInterval(updateLiveClock, 1000);
@@ -838,7 +837,6 @@
       if (el) el.innerText = new Date().toUTCString();
     }
 
-    // Login Handler
     async function handleAdminLogin(e) {
       e.preventDefault();
       const email = document.getElementById('loginEmail').value;
@@ -887,7 +885,6 @@
       document.getElementById('loginModal').classList.remove('hidden');
     }
 
-    // Tab Switcher
     function switchTab(tabName) {
       currentActiveTab = tabName;
       document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
@@ -918,7 +915,6 @@
       else if (currentActiveTab === 'pricing') loadPricing();
     }
 
-    // Helper fetch with Auth Header
     async function adminFetch(endpoint, options = {}) {
       const headers = options.headers || {};
       headers['x-admin-token'] = ADMIN_TOKEN;
@@ -932,7 +928,6 @@
       return res.json();
     }
 
-    // 1. OVERVIEW DATA
     async function loadOverview() {
       try {
         const data = await adminFetch('/api/admin/stats');
@@ -944,7 +939,6 @@
         document.getElementById('kpiTotalRevenue').innerText = `$${(stats.totalRevenue || 0).toFixed(2)}`;
         document.getElementById('kpiTotalCalls').innerText = stats.totalCalls || 0;
 
-        // Populate Preview Users
         const usersTbody = document.getElementById('previewUsersTable');
         usersTbody.innerHTML = (stats.recentUsers || []).map(u => `
           <tr onclick="inspectUserDossier('${u.id}')" class="hover:bg-slate-800/40 cursor-pointer transition-all">
@@ -960,7 +954,6 @@
           </tr>
         `).join('') || '<tr><td colspan="3" class="py-4 text-center text-slate-500">No users yet.</td></tr>';
 
-        // Populate Preview Transactions
         const txTbody = document.getElementById('previewTxTable');
         txTbody.innerHTML = (stats.recentTransactions || []).map(t => `
           <tr class="hover:bg-slate-800/30">
@@ -1046,7 +1039,6 @@
       });
     }
 
-    // 2. USERS CRM (Clickable Rows -> Opens 360-degree Dossier)
     async function loadUsers() {
       const search = document.getElementById('userSearchInput')?.value || '';
       try {
@@ -1096,12 +1088,11 @@
     }
 
     // ============================================================
-    // 🔍 360-DEGREE USER DOSSIER INSPECTOR
+    // 🔍 360-DEGREE USER DOSSIER INSPECTOR (WITH EXPIRED NUMBERS & RENEW)
     // ============================================================
     async function inspectUserDossier(userId) {
       currentInspectedUserId = userId;
       
-      // Switch view to user detail
       document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
       document.getElementById('tab-view-user-detail').classList.remove('hidden');
 
@@ -1111,7 +1102,6 @@
 
         const { user, metrics, numbers, transactions, calls, messages, supportMessages } = res;
 
-        // Set User Hero Card Details
         document.getElementById('udAvatar').innerText = (user.name || 'U')[0].toUpperCase();
         document.getElementById('udName').innerText = user.name || 'SimlyTel User';
         document.getElementById('udEmail').innerText = user.email;
@@ -1119,7 +1109,6 @@
         document.getElementById('udJoinedDate').innerText = new Date(user.createdAt).toLocaleString();
         document.getElementById('udWalletBalance').innerText = `$${(user.walletBalance || 0).toFixed(2)}`;
 
-        // Status Badge
         const statusBadge = document.getElementById('udStatusBadge');
         if (user.isVerified !== false) {
           statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
@@ -1131,28 +1120,44 @@
           document.getElementById('udBtnBlock').innerHTML = '<i class="fa-solid fa-user-check mr-1"></i> Unblock Account';
         }
 
-        // Metrics Ribbon
         document.getElementById('udTotalDeposited').innerText = `$${metrics.totalDeposited.toFixed(2)}`;
         document.getElementById('udTotalSpent').innerText = `$${metrics.totalSpent.toFixed(2)}`;
-        document.getElementById('udActiveLinesCount').innerText = `${metrics.activeNumbersCount} Lines`;
+        document.getElementById('udActiveLinesCount').innerText = `${numbers.length} Lines (${metrics.activeNumbersCount} Active)`;
         document.getElementById('udTotalCallMins').innerText = `${metrics.totalCallMinutes} mins (${metrics.totalCallsCount} calls)`;
 
-        // Populate Numbers
+        // Render Numbers (Active & Expired with Distinct Badges and Renewal Controller)
         document.getElementById('udNumbersBadge').innerText = numbers.length;
-        document.getElementById('udNumbersTableBody').innerHTML = numbers.map(n => `
-          <tr class="hover:bg-slate-800/40">
-            <td class="py-2 font-mono font-bold text-white text-xs">${n.phoneNumber}</td>
-            <td class="py-2 text-slate-300">${n.countryCode}</td>
-            <td class="py-2 text-slate-400">${n.expiresAt ? new Date(n.expiresAt).toLocaleDateString() : 'Never'}</td>
-            <td class="py-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400">${n.status}</span></td>
-            <td class="py-2 text-right space-x-1">
-              <button onclick="extendNumberExpiry('${n.id}')" class="px-1.5 py-0.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded text-[10px] font-bold">+30d</button>
-              <button onclick="reclaimNumberLine('${n.id}', '${n.phoneNumber}')" class="p-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded text-[10px]"><i class="fa-solid fa-trash"></i></button>
-            </td>
-          </tr>
-        `).join('') || '<tr><td colspan="5" class="py-4 text-center text-slate-500">No active numbers assigned.</td></tr>';
+        document.getElementById('udNumbersTableBody').innerHTML = numbers.map(n => {
+          const isExp = n.isExpired || n.status === 'expired';
+          return `
+            <tr class="hover:bg-slate-800/40 transition-all">
+              <td class="py-2.5 font-mono font-bold text-white text-xs">${n.phoneNumber}</td>
+              <td class="py-2.5 text-slate-300 font-semibold">${n.countryCode}</td>
+              <td class="py-2.5 text-slate-400 text-[11px]">${n.expiresAt ? new Date(n.expiresAt).toLocaleDateString() : 'Never'}</td>
+              <td class="py-2.5">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${!isExp ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">
+                  ${!isExp ? 'ACTIVE 🟢' : 'EXPIRED 🔴'}
+                </span>
+              </td>
+              <td class="py-2.5 text-right space-x-1 whitespace-nowrap">
+                <button onclick="renewNumberWithWallet('${n.id}', '${n.phoneNumber}')" title="Renew & Deduct from User Balance" class="px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-bold transition-all">
+                  <i class="fa-solid fa-rotate mr-1"></i> Renew ($ Balance)
+                </button>
+                <button onclick="extendNumberExpiryFree('${n.id}')" title="Admin Free +30 Days" class="px-2 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-lg text-[10px] font-bold transition-all">
+                  +30d Free
+                </button>
+                <button onclick="toggleNumberStatus('${n.id}')" title="Toggle Status" class="p-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px]">
+                  <i class="fa-solid fa-power-off"></i>
+                </button>
+                <button onclick="reclaimNumberLine('${n.id}', '${n.phoneNumber}')" title="Delete Line" class="p-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-[10px]">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('') || '<tr><td colspan="5" class="py-4 text-center text-slate-500">No numbers assigned.</td></tr>';
 
-        // Populate Transactions
+        // Transactions
         document.getElementById('udTxBadge').innerText = transactions.length;
         document.getElementById('udTxTableBody').innerHTML = transactions.map(t => `
           <tr class="hover:bg-slate-800/40">
@@ -1163,7 +1168,7 @@
           </tr>
         `).join('') || '<tr><td colspan="4" class="py-4 text-center text-slate-500">No transactions recorded.</td></tr>';
 
-        // Populate Calls
+        // Calls
         document.getElementById('udCallsBadge').innerText = calls.length;
         document.getElementById('udCallsTableBody').innerHTML = calls.map(c => `
           <tr class="hover:bg-slate-800/40">
@@ -1175,7 +1180,7 @@
           </tr>
         `).join('') || '<tr><td colspan="5" class="py-4 text-center text-slate-500">No calls recorded.</td></tr>';
 
-        // Populate Support Chat
+        // Support Chat
         const chatBox = document.getElementById('udChatMessagesBody');
         chatBox.innerHTML = supportMessages.map(m => `
           <div class="flex ${m.sender === 'agent' ? 'justify-end' : 'justify-start'}">
@@ -1190,6 +1195,57 @@
 
       } catch (err) {
         console.error(err);
+      }
+    }
+
+    // Number Renewal with User Balance
+    async function renewNumberWithWallet(numberId, phoneNumber) {
+      if (!confirm(`Renew line ${phoneNumber} for 30 days and deduct retail cost from user wallet?`)) return;
+      try {
+        const res = await adminFetch(`/api/admin/numbers/${numberId}/extend`, {
+          method: 'POST',
+          body: JSON.stringify({ days: 30, useUserBalance: true })
+        });
+        if (res.success) {
+          alert(res.message);
+          if (currentActiveTab === 'user-detail') inspectUserDossier(currentInspectedUserId);
+          else loadNumbers();
+        } else {
+          alert('Renewal Failed: ' + res.error);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // Admin Free Extension
+    async function extendNumberExpiryFree(numberId) {
+      try {
+        const res = await adminFetch(`/api/admin/numbers/${numberId}/extend`, {
+          method: 'POST',
+          body: JSON.stringify({ days: 30, useUserBalance: false })
+        });
+        if (res.success) {
+          alert(res.message);
+          if (currentActiveTab === 'user-detail') inspectUserDossier(currentInspectedUserId);
+          else loadNumbers();
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // Toggle Status
+    async function toggleNumberStatus(numberId) {
+      try {
+        const res = await adminFetch(`/api/admin/numbers/${numberId}/toggle-status`, { method: 'POST' });
+        if (res.success) {
+          alert(res.message);
+          if (currentActiveTab === 'user-detail') inspectUserDossier(currentInspectedUserId);
+          else loadNumbers();
+        }
+      } catch (err) {
+        alert(err.message);
       }
     }
 
@@ -1301,7 +1357,6 @@
       inspectUserDossier(userId);
     }
 
-    // Hide search dropdown on click outside
     document.addEventListener('click', (e) => {
       const searchBox = document.getElementById('universalSearch');
       const dropdown = document.getElementById('searchResultsDropdown');
@@ -1393,13 +1448,16 @@
             <td class="py-3 px-4 text-slate-400">${n.planType}</td>
             <td class="py-3 px-4 text-slate-400">${n.expiresAt ? new Date(n.expiresAt).toLocaleDateString() : 'Never'}</td>
             <td class="py-3 px-4">
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                ${n.status}
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${n.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">
+                ${n.status.toUpperCase()}
               </span>
             </td>
             <td class="py-3 px-4 text-right space-x-1">
-              <button onclick="extendNumberExpiry('${n.id}')" title="Extend 30 Days" class="px-2 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-xs font-semibold">
-                +30 Days
+              <button onclick="renewNumberWithWallet('${n.id}', '${n.phoneNumber}')" title="Renew via User Balance" class="px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-semibold">
+                Renew ($)
+              </button>
+              <button onclick="extendNumberExpiryFree('${n.id}')" title="Admin Free +30 Days" class="px-2 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-xs font-semibold">
+                +30d
               </button>
               <button onclick="reclaimNumberLine('${n.id}', '${n.phoneNumber}')" title="Revoke Number" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs">
                 <i class="fa-solid fa-ban"></i>
@@ -1409,22 +1467,6 @@
         `).join('') || '<tr><td colspan="7" class="py-8 text-center text-slate-500">No purchased numbers in fleet.</td></tr>';
       } catch (err) {
         console.error(err);
-      }
-    }
-
-    async function extendNumberExpiry(id) {
-      try {
-        const res = await adminFetch(`/api/admin/numbers/${id}/extend`, {
-          method: 'POST',
-          body: JSON.stringify({ days: 30 })
-        });
-        if (res.success) {
-          alert(res.message);
-          if (currentActiveTab === 'user-detail') inspectUserDossier(currentInspectedUserId);
-          else loadNumbers();
-        }
-      } catch (err) {
-        alert(err.message);
       }
     }
 
@@ -1593,7 +1635,6 @@
         document.getElementById('pricingNumMult').value = cfg.numberRateMultiplier || 1.5;
         document.getElementById('pricingBonus').value = cfg.defaultWelcomeBonus || 10.0;
 
-        // Render Promos
         const tbody = document.getElementById('promosTableBody');
         tbody.innerHTML = (cfg.promos || []).map(p => `
           <tr class="hover:bg-slate-800/40">

@@ -109,3 +109,20 @@ model SupportMessage {
   text       String
   createdAt  DateTime @default(now())
 }
+
+model Announcement {
+  id               String    @id @default(uuid())
+  title            String
+  message          String
+  imageUrl         String?
+  buttonText       String?   @default("Claim Offer Now")
+  actionType       String    @default("navigate_numbers") // "none", "open_url", "navigate_numbers", "navigate_wallet"
+  actionUrl        String?
+  bannerType       String    @default("modal_popup") // "modal_popup", "top_strip"
+  displayFrequency String    @default("once_per_session") // "once_ever", "once_per_session", "always"
+  isActive         Boolean   @default(true)
+  targetAudience   String    @default("all") // "all", "active_only"
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+

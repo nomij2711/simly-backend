@@ -2485,6 +2485,110 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
   }
 });
 
+// 3.5 360-Degree Deep User Profile Dossier (Numbers, Calls, SMS, Balance, Audit)
+app.get('/api/admin/users/:id/full-profile', requireAdmin, async (req, res) => {
+  try {
+    const rawId = req.params.id;
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: rawId },
+          { email: rawId.toLowerCase() }
+        ]
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    // 1. Fetch User's Virtual Numbers
+    const numbers = await prisma.purchasedNumber.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const userPhoneNumbers = numbers.map(n => n.phoneNumber);
+
+    // 2. Fetch User's Transactions
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        OR: [
+          { userId: user.id },
+          { userId: user.email }
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // 3. Fetch User's Call Logs
+    const calls = await prisma.callLog.findMany({
+      where: {
+        OR: [
+          { myNumber: { in: userPhoneNumbers } },
+          { contactNumber: { in: userPhoneNumbers } }
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // 4. Fetch User's Messages (SMS)
+    const messages = await prisma.message.findMany({
+      where: {
+        OR: [
+          { fromNumber: { in: userPhoneNumbers } },
+          { toNumber: { in: userPhoneNumbers } }
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // 5. Fetch User's Support Chat History
+    const supportMessages = await prisma.supportMessage.findMany({
+      where: {
+        OR: [
+          { userId: user.id },
+          { userId: user.email }
+        ]
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    // Compute summary metrics
+    const totalSpent = transactions
+      .filter(t => t.amount < 0)
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+    const totalDeposited = transactions
+      .filter(t => t.amount > 0)
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalCallDurationSeconds = calls.reduce((sum, c) => sum + (c.durationSeconds || 0), 0);
+
+    res.json({
+      success: true,
+      user,
+      metrics: {
+        totalSpent: parseFloat(totalSpent.toFixed(2)),
+        totalDeposited: parseFloat(totalDeposited.toFixed(2)),
+        totalCallMinutes: (totalCallDurationSeconds / 60).toFixed(1),
+        activeNumbersCount: numbers.filter(n => n.status === 'active').length,
+        totalCallsCount: calls.length,
+        totalMessagesCount: messages.length,
+        totalTransactionsCount: transactions.length
+      },
+      numbers,
+      transactions,
+      calls,
+      messages,
+      supportMessages
+    });
+  } catch (error) {
+    console.error('[ADMIN USER PROFILE ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 4. User Balance Modifier (Gift / Topup / Deduction)
 app.post('/api/admin/users/:id/adjust-balance', requireAdmin, async (req, res) => {
   try {

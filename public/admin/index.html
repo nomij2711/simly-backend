@@ -47,7 +47,7 @@
           <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Master Password</label>
           <div class="relative">
             <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-slate-500 text-sm"></i>
-            <input type="password" id="loginPassword" value="SimlyTel@2026!#" required class="w-full bg-slate-950/60 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+            <input type="password" id="loginPassword" value="SimlyTel@2026!#" required class="w-full bg-slate-950/60 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-all">
           </div>
         </div>
 
@@ -129,10 +129,11 @@
       
       <!-- Top Bar -->
       <header class="h-16 bg-slate-900/60 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 z-10">
-        <!-- Search bar -->
+        <!-- Search bar with Quick Dropdown -->
         <div class="relative w-full max-w-md hidden sm:block">
           <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-500 text-xs"></i>
-          <input type="text" id="universalSearch" oninput="handleUniversalSearch(this.value)" placeholder="Universal Search (Email, Name, Number, ID)..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all">
+          <input type="text" id="universalSearch" oninput="handleUniversalSearch(this.value)" placeholder="Search any User (Name, Email, Number, ID)..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all">
+          <div id="searchResultsDropdown" class="hidden absolute top-11 left-0 right-0 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-30 max-h-60 overflow-y-auto custom-scrollbar divide-y divide-slate-800"></div>
         </div>
 
         <!-- Right Header Items -->
@@ -275,7 +276,7 @@
                 <table class="w-full text-left text-xs">
                   <thead>
                     <tr class="text-slate-400 border-b border-slate-800 pb-2">
-                      <th class="py-2">User</th>
+                      <th class="py-2">User (Click to Inspect)</th>
                       <th class="py-2">Balance</th>
                       <th class="py-2">Date</th>
                     </tr>
@@ -312,18 +313,18 @@
         </div>
 
         <!-- ============================================================ -->
-        <!-- 👥 TAB 2: USERS CRM -->
+        <!-- 👥 TAB 2: USERS CRM (WITH 1-CLICK DEEP INSPECT) -->
         <!-- ============================================================ -->
         <div id="tab-view-users" class="tab-view hidden space-y-4">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 class="text-xl font-bold text-white tracking-tight">Users CRM Management</h2>
-              <p class="text-xs text-slate-400">Inspect user accounts, gift balances, block fraud, or remove records.</p>
+              <p class="text-xs text-slate-400">Click on any user row to open their <b>360° Complete Dossier</b> (Calls, Numbers, SMS, Ledger & Support).</p>
             </div>
             <div class="flex items-center gap-2">
               <div class="relative">
                 <i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-500 text-xs"></i>
-                <input type="text" id="userSearchInput" oninput="loadUsers()" placeholder="Search users..." class="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                <input type="text" id="userSearchInput" oninput="loadUsers()" placeholder="Filter users..." class="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
               </div>
               <button onclick="loadUsers()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition-all">
                 <i class="fa-solid fa-rotate-right mr-1"></i> Refresh
@@ -342,7 +343,7 @@
                     <th class="py-3 px-4">Active Lines</th>
                     <th class="py-3 px-4">Status</th>
                     <th class="py-3 px-4">Joined Date</th>
-                    <th class="py-3 px-4 text-right">Actions</th>
+                    <th class="py-3 px-4 text-right">Inspect & Actions</th>
                   </tr>
                 </thead>
                 <tbody id="usersTableBody" class="divide-y divide-slate-800/60">
@@ -351,6 +352,195 @@
               </table>
             </div>
           </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- 🔍 TAB 2.5: USER 360-DEGREE DOSSIER & PROFILE INSPECTOR -->
+        <!-- ============================================================ -->
+        <div id="tab-view-user-detail" class="tab-view hidden space-y-6">
+          
+          <!-- Navigation Back Bar -->
+          <div class="flex items-center justify-between">
+            <button onclick="switchTab('users')" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white transition-all">
+              <i class="fa-solid fa-arrow-left"></i>
+              <span>Back to All Users</span>
+            </button>
+            <div class="flex items-center gap-2">
+              <button id="udBtnBlock" onclick="handleToggleBlockFromDetail()" class="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-xs font-semibold transition-all">
+                <i class="fa-solid fa-user-slash mr-1"></i> <span>Block Account</span>
+              </button>
+              <button id="udBtnDelete" onclick="handleDeleteUserFromDetail()" class="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-semibold transition-all">
+                <i class="fa-solid fa-trash mr-1"></i> Delete Account
+              </button>
+            </div>
+          </div>
+
+          <!-- User Hero Bio Card -->
+          <div class="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 rounded-3xl p-6 relative overflow-hidden shadow-2xl">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              
+              <!-- User Left Details -->
+              <div class="flex items-center gap-4">
+                <div id="udAvatar" class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-indigo-600/30">
+                  U
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h1 id="udName" class="text-xl font-bold text-white tracking-tight">SimlyTel User</h1>
+                    <span id="udStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ACTIVE</span>
+                  </div>
+                  <div id="udEmail" class="text-xs text-indigo-300 font-mono mt-0.5">user@example.com</div>
+                  <div class="flex items-center gap-3 text-[11px] text-slate-400 mt-2">
+                    <span><i class="fa-solid fa-id-badge text-slate-500 mr-1"></i> ID: <span id="udId" class="font-mono text-slate-300 select-all"></span></span>
+                    <span>•</span>
+                    <span><i class="fa-regular fa-calendar text-slate-500 mr-1"></i> Joined: <span id="udJoinedDate" class="text-slate-300"></span></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Fast Wallet Controller Card -->
+              <div class="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-4 flex flex-col md:items-end gap-3 min-w-[280px]">
+                <div class="flex items-center justify-between w-full">
+                  <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Live Wallet Balance</span>
+                  <span id="udWalletBalance" class="text-2xl font-black text-emerald-400">$0.00</span>
+                </div>
+                
+                <!-- Quick Amount Modifier Buttons -->
+                <div class="flex items-center gap-1.5 w-full">
+                  <button onclick="quickAdjustBalance(5)" class="flex-1 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-bold transition-all">+ $5</button>
+                  <button onclick="quickAdjustBalance(10)" class="flex-1 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-bold transition-all">+ $10</button>
+                  <button onclick="quickAdjustBalance(25)" class="flex-1 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 rounded-lg text-xs font-bold transition-all">+ $25</button>
+                  <button onclick="quickAdjustBalance(-5)" class="flex-1 py-1.5 bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-bold transition-all">- $5</button>
+                  <button onclick="openCustomBalanceFromDetail()" class="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold" title="Custom Amount"><i class="fa-solid fa-pen"></i></button>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Metrics Summary Ribbon -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-slate-800/80 text-xs">
+              <div>
+                <div class="text-[11px] text-slate-400">Total Deposited</div>
+                <div id="udTotalDeposited" class="text-sm font-bold text-emerald-400">$0.00</div>
+              </div>
+              <div>
+                <div class="text-[11px] text-slate-400">Total Spent</div>
+                <div id="udTotalSpent" class="text-sm font-bold text-rose-400">$0.00</div>
+              </div>
+              <div>
+                <div class="text-[11px] text-slate-400">Active Lines</div>
+                <div id="udActiveLinesCount" class="text-sm font-bold text-cyan-400">0 Lines</div>
+              </div>
+              <div>
+                <div class="text-[11px] text-slate-400">Total Call Minutes</div>
+                <div id="udTotalCallMins" class="text-sm font-bold text-amber-400">0.0 mins</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Multi-Section Content Grids -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- Section 1: Assigned Virtual Phone Numbers -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-phone text-cyan-400 text-sm"></i>
+                  <h3 class="text-sm font-bold text-white">Assigned Virtual Phone Numbers</h3>
+                </div>
+                <span id="udNumbersBadge" class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 font-semibold">0</span>
+              </div>
+              <div class="overflow-x-auto flex-1">
+                <table class="w-full text-left text-xs">
+                  <thead>
+                    <tr class="text-slate-400 border-b border-slate-800 pb-2 text-[10px] uppercase">
+                      <th class="py-2">Number</th>
+                      <th class="py-2">Country</th>
+                      <th class="py-2">Expiry</th>
+                      <th class="py-2">Status</th>
+                      <th class="py-2 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="udNumbersTableBody" class="divide-y divide-slate-800/60">
+                    <tr><td colspan="5" class="py-4 text-center text-slate-500">No active numbers assigned to this user.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Section 2: Financial Transactions Ledger -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-wallet text-rose-400 text-sm"></i>
+                  <h3 class="text-sm font-bold text-white">Transaction History</h3>
+                </div>
+                <span id="udTxBadge" class="text-xs px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 font-semibold">0</span>
+              </div>
+              <div class="overflow-x-auto flex-1 max-h-64 custom-scrollbar">
+                <table class="w-full text-left text-xs">
+                  <thead>
+                    <tr class="text-slate-400 border-b border-slate-800 pb-2 text-[10px] uppercase">
+                      <th class="py-2">Type</th>
+                      <th class="py-2">Amount</th>
+                      <th class="py-2">Description</th>
+                      <th class="py-2">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody id="udTxTableBody" class="divide-y divide-slate-800/60">
+                    <tr><td colspan="4" class="py-4 text-center text-slate-500">No transactions recorded.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Section 3: Call History (CDR) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-headset text-amber-400 text-sm"></i>
+                  <h3 class="text-sm font-bold text-white">Call Logs & CDR</h3>
+                </div>
+                <span id="udCallsBadge" class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-semibold">0</span>
+              </div>
+              <div class="overflow-x-auto flex-1 max-h-64 custom-scrollbar">
+                <table class="w-full text-left text-xs">
+                  <thead>
+                    <tr class="text-slate-400 border-b border-slate-800 pb-2 text-[10px] uppercase">
+                      <th class="py-2">Destination</th>
+                      <th class="py-2">Direction</th>
+                      <th class="py-2">Duration</th>
+                      <th class="py-2">Status</th>
+                      <th class="py-2">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody id="udCallsTableBody" class="divide-y divide-slate-800/60">
+                    <tr><td colspan="5" class="py-4 text-center text-slate-500">No calls recorded.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Section 4: Direct Support Chat with this User -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-comments text-violet-400 text-sm"></i>
+                  <h3 class="text-sm font-bold text-white">Customer Support Thread</h3>
+                </div>
+                <span class="text-[10px] text-emerald-400 font-semibold">Live Real-time</span>
+              </div>
+              <div id="udChatMessagesBody" class="flex-1 overflow-y-auto custom-scrollbar min-h-[160px] max-h-56 py-3 space-y-2.5">
+                <div class="text-center text-slate-500 text-xs py-8">No support messages from this user.</div>
+              </div>
+              <form onsubmit="handleSendUserDetailSupportReply(event)" class="pt-3 border-t border-slate-800 flex gap-2">
+                <input type="text" id="udReplyInput" placeholder="Message this customer's app directly..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                <button type="submit" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold">Send</button>
+              </form>
+            </div>
+
+          </div>
+
         </div>
 
         <!-- ============================================================ -->
@@ -630,6 +820,7 @@
     let activityChartInstance = null;
     let countryChartInstance = null;
     let selectedSupportUserId = null;
+    let currentInspectedUserId = null;
 
     // Check login state on load
     document.addEventListener('DOMContentLoaded', () => {
@@ -719,6 +910,7 @@
     function refreshActiveTab() {
       if (currentActiveTab === 'overview') loadOverview();
       else if (currentActiveTab === 'users') loadUsers();
+      else if (currentActiveTab === 'user-detail' && currentInspectedUserId) inspectUserDossier(currentInspectedUserId);
       else if (currentActiveTab === 'numbers') loadNumbers();
       else if (currentActiveTab === 'cdr') loadCalls();
       else if (currentActiveTab === 'transactions') loadTransactions();
@@ -755,11 +947,11 @@
         // Populate Preview Users
         const usersTbody = document.getElementById('previewUsersTable');
         usersTbody.innerHTML = (stats.recentUsers || []).map(u => `
-          <tr class="hover:bg-slate-800/30">
+          <tr onclick="inspectUserDossier('${u.id}')" class="hover:bg-slate-800/40 cursor-pointer transition-all">
             <td class="py-2.5 flex items-center gap-2">
               <div class="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] text-indigo-400 font-bold">${(u.name || 'U')[0]}</div>
               <div>
-                <div class="text-white font-medium">${u.name || 'User'}</div>
+                <div class="text-white font-medium hover:text-indigo-300">${u.name || 'User'}</div>
                 <div class="text-[10px] text-slate-500">${u.email}</div>
               </div>
             </td>
@@ -781,7 +973,6 @@
           </tr>
         `).join('') || '<tr><td colspan="3" class="py-4 text-center text-slate-500">No transactions yet.</td></tr>';
 
-        // Render Charts
         renderActivityChart();
         renderCountryChart(stats.countryDistribution || {});
       } catch (err) {
@@ -855,7 +1046,7 @@
       });
     }
 
-    // 2. USERS CRM
+    // 2. USERS CRM (Clickable Rows -> Opens 360-degree Dossier)
     async function loadUsers() {
       const search = document.getElementById('userSearchInput')?.value || '';
       try {
@@ -864,37 +1055,37 @@
 
         const tbody = document.getElementById('usersTableBody');
         tbody.innerHTML = (data.users || []).map(u => `
-          <tr class="hover:bg-slate-800/40 transition-all">
-            <td class="py-3 px-4 flex items-center gap-3">
-              <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs border border-indigo-500/30">
+          <tr class="hover:bg-slate-800/40 transition-all cursor-pointer group">
+            <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4 flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs border border-indigo-500/30 group-hover:scale-105 transition-all">
                 ${(u.name || 'U')[0]}
               </div>
               <div>
-                <div class="font-bold text-white text-xs">${u.name || 'SimlyTel User'}</div>
+                <div class="font-bold text-white text-xs group-hover:text-indigo-300 flex items-center gap-1.5">
+                  <span>${u.name || 'SimlyTel User'}</span>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-[9px] text-slate-500 group-hover:text-indigo-400"></i>
+                </div>
                 <div class="text-[11px] text-slate-400 font-mono">${u.email}</div>
               </div>
             </td>
-            <td class="py-3 px-4 font-bold text-emerald-400">$${(u.walletBalance || 0).toFixed(2)}</td>
-            <td class="py-3 px-4">
+            <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4 font-bold text-emerald-400">$${(u.walletBalance || 0).toFixed(2)}</td>
+            <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4">
               <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                 ${u.numbersCount || 0} Lines
               </span>
             </td>
-            <td class="py-3 px-4">
+            <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4">
               <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${u.isVerified !== false ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">
                 ${u.isVerified !== false ? 'Active' : 'Blocked'}
               </span>
             </td>
-            <td class="py-3 px-4 text-slate-400 text-[11px]">${new Date(u.createdAt).toLocaleDateString()}</td>
+            <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4 text-slate-400 text-[11px]">${new Date(u.createdAt).toLocaleDateString()}</td>
             <td class="py-3 px-4 text-right space-x-1.5">
-              <button onclick="openBalanceModal('${u.id}', '${u.email}')" title="Add/Deduct Balance" class="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-xs">
+              <button onclick="inspectUserDossier('${u.id}')" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30">
+                <i class="fa-solid fa-eye mr-1"></i> 360° Inspect
+              </button>
+              <button onclick="openBalanceModal('${u.id}', '${u.email}')" title="Modify Balance" class="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-xs">
                 <i class="fa-solid fa-hand-holding-dollar"></i>
-              </button>
-              <button onclick="toggleBlockUser('${u.id}')" title="Block / Unblock" class="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg text-xs">
-                <i class="fa-solid fa-user-slash"></i>
-              </button>
-              <button onclick="deleteUserAccount('${u.id}', '${u.email}')" title="Delete User" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs">
-                <i class="fa-solid fa-trash"></i>
               </button>
             </td>
           </tr>
@@ -903,6 +1094,221 @@
         console.error(err);
       }
     }
+
+    // ============================================================
+    // 🔍 360-DEGREE USER DOSSIER INSPECTOR
+    // ============================================================
+    async function inspectUserDossier(userId) {
+      currentInspectedUserId = userId;
+      
+      // Switch view to user detail
+      document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
+      document.getElementById('tab-view-user-detail').classList.remove('hidden');
+
+      try {
+        const res = await adminFetch(`/api/admin/users/${userId}/full-profile`);
+        if (!res.success) return alert(res.error || 'Failed to load user profile.');
+
+        const { user, metrics, numbers, transactions, calls, messages, supportMessages } = res;
+
+        // Set User Hero Card Details
+        document.getElementById('udAvatar').innerText = (user.name || 'U')[0].toUpperCase();
+        document.getElementById('udName').innerText = user.name || 'SimlyTel User';
+        document.getElementById('udEmail').innerText = user.email;
+        document.getElementById('udId').innerText = user.id;
+        document.getElementById('udJoinedDate').innerText = new Date(user.createdAt).toLocaleString();
+        document.getElementById('udWalletBalance').innerText = `$${(user.walletBalance || 0).toFixed(2)}`;
+
+        // Status Badge
+        const statusBadge = document.getElementById('udStatusBadge');
+        if (user.isVerified !== false) {
+          statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+          statusBadge.innerText = 'ACTIVE';
+          document.getElementById('udBtnBlock').innerHTML = '<i class="fa-solid fa-user-slash mr-1"></i> Block Account';
+        } else {
+          statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20';
+          statusBadge.innerText = 'BLOCKED / SUSPENDED';
+          document.getElementById('udBtnBlock').innerHTML = '<i class="fa-solid fa-user-check mr-1"></i> Unblock Account';
+        }
+
+        // Metrics Ribbon
+        document.getElementById('udTotalDeposited').innerText = `$${metrics.totalDeposited.toFixed(2)}`;
+        document.getElementById('udTotalSpent').innerText = `$${metrics.totalSpent.toFixed(2)}`;
+        document.getElementById('udActiveLinesCount').innerText = `${metrics.activeNumbersCount} Lines`;
+        document.getElementById('udTotalCallMins').innerText = `${metrics.totalCallMinutes} mins (${metrics.totalCallsCount} calls)`;
+
+        // Populate Numbers
+        document.getElementById('udNumbersBadge').innerText = numbers.length;
+        document.getElementById('udNumbersTableBody').innerHTML = numbers.map(n => `
+          <tr class="hover:bg-slate-800/40">
+            <td class="py-2 font-mono font-bold text-white text-xs">${n.phoneNumber}</td>
+            <td class="py-2 text-slate-300">${n.countryCode}</td>
+            <td class="py-2 text-slate-400">${n.expiresAt ? new Date(n.expiresAt).toLocaleDateString() : 'Never'}</td>
+            <td class="py-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400">${n.status}</span></td>
+            <td class="py-2 text-right space-x-1">
+              <button onclick="extendNumberExpiry('${n.id}')" class="px-1.5 py-0.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded text-[10px] font-bold">+30d</button>
+              <button onclick="reclaimNumberLine('${n.id}', '${n.phoneNumber}')" class="p-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded text-[10px]"><i class="fa-solid fa-trash"></i></button>
+            </td>
+          </tr>
+        `).join('') || '<tr><td colspan="5" class="py-4 text-center text-slate-500">No active numbers assigned.</td></tr>';
+
+        // Populate Transactions
+        document.getElementById('udTxBadge').innerText = transactions.length;
+        document.getElementById('udTxTableBody').innerHTML = transactions.map(t => `
+          <tr class="hover:bg-slate-800/40">
+            <td class="py-2"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${t.amount > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'}">${t.type}</span></td>
+            <td class="py-2 font-bold ${t.amount > 0 ? 'text-emerald-400' : 'text-slate-300'}">$${(t.amount || 0).toFixed(2)}</td>
+            <td class="py-2 text-slate-400 truncate max-w-[120px]">${t.description}</td>
+            <td class="py-2 text-slate-500 text-[10px]">${new Date(t.createdAt).toLocaleDateString()}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="4" class="py-4 text-center text-slate-500">No transactions recorded.</td></tr>';
+
+        // Populate Calls
+        document.getElementById('udCallsBadge').innerText = calls.length;
+        document.getElementById('udCallsTableBody').innerHTML = calls.map(c => `
+          <tr class="hover:bg-slate-800/40">
+            <td class="py-2 font-mono text-white text-xs">${c.contactNumber}</td>
+            <td class="py-2"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${c.direction === 'outbound' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-emerald-500/10 text-emerald-400'}">${c.direction}</span></td>
+            <td class="py-2 font-bold text-slate-300">${c.durationSeconds}s</td>
+            <td class="py-2"><span class="text-[10px] text-emerald-400">${c.status}</span></td>
+            <td class="py-2 text-slate-500 text-[10px]">${new Date(c.createdAt).toLocaleTimeString()}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="5" class="py-4 text-center text-slate-500">No calls recorded.</td></tr>';
+
+        // Populate Support Chat
+        const chatBox = document.getElementById('udChatMessagesBody');
+        chatBox.innerHTML = supportMessages.map(m => `
+          <div class="flex ${m.sender === 'agent' ? 'justify-end' : 'justify-start'}">
+            <div class="max-w-xs p-2.5 rounded-xl text-xs ${m.sender === 'agent' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-800 text-slate-200 rounded-bl-none'}">
+              <div class="text-[9px] opacity-70 mb-0.5 font-semibold">${m.senderName || (m.sender === 'agent' ? 'Admin' : 'User')}</div>
+              <div>${m.text}</div>
+              <div class="text-[8px] opacity-50 text-right mt-1">${new Date(m.createdAt).toLocaleTimeString()}</div>
+            </div>
+          </div>
+        `).join('') || '<div class="text-center text-slate-500 text-xs py-8">No support tickets opened yet.</div>';
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Quick Balance Adjustment in Dossier
+    async function quickAdjustBalance(amount) {
+      if (!currentInspectedUserId) return;
+      const reason = amount > 0 ? `Admin Quick Credit Gift (+$ ${amount})` : `Admin Quick Debit (-$ ${Math.abs(amount)})`;
+      try {
+        const res = await adminFetch(`/api/admin/users/${currentInspectedUserId}/adjust-balance`, {
+          method: 'POST',
+          body: JSON.stringify({ amount, reason })
+        });
+        if (res.success) {
+          inspectUserDossier(currentInspectedUserId);
+        } else {
+          alert('Error: ' + res.error);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function openCustomBalanceFromDetail() {
+      const email = document.getElementById('udEmail').innerText;
+      openBalanceModal(currentInspectedUserId, email);
+    }
+
+    async function handleToggleBlockFromDetail() {
+      if (!currentInspectedUserId) return;
+      await toggleBlockUser(currentInspectedUserId);
+      inspectUserDossier(currentInspectedUserId);
+    }
+
+    async function handleDeleteUserFromDetail() {
+      const email = document.getElementById('udEmail').innerText;
+      if (!confirm(`Are you sure you want to permanently wipe all data for ${email}?`)) return;
+      try {
+        const res = await adminFetch(`/api/admin/users/${currentInspectedUserId}`, { method: 'DELETE' });
+        if (res.success) {
+          alert(res.message);
+          switchTab('users');
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function handleSendUserDetailSupportReply(e) {
+      e.preventDefault();
+      if (!currentInspectedUserId) return;
+      const input = document.getElementById('udReplyInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      try {
+        const res = await adminFetch('/api/admin/support/reply', {
+          method: 'POST',
+          body: JSON.stringify({ userId: currentInspectedUserId, text })
+        });
+        if (res.success) {
+          input.value = '';
+          inspectUserDossier(currentInspectedUserId);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // Universal Search with Live Dropdown & Direct Profile Jump
+    async function handleUniversalSearch(query) {
+      const dropdown = document.getElementById('searchResultsDropdown');
+      if (!query || query.trim().length < 2) {
+        dropdown.classList.add('hidden');
+        return;
+      }
+
+      try {
+        const data = await adminFetch(`/api/admin/users?search=${encodeURIComponent(query.trim())}`);
+        if (!data.success || !data.users.length) {
+          dropdown.innerHTML = '<div class="p-3 text-xs text-slate-500 text-center">No matching users found</div>';
+          dropdown.classList.remove('hidden');
+          return;
+        }
+
+        dropdown.innerHTML = data.users.slice(0, 5).map(u => `
+          <div onclick="selectUserFromSearch('${u.id}')" class="p-3 hover:bg-slate-800/80 cursor-pointer flex items-center justify-between transition-all">
+            <div class="flex items-center gap-2.5">
+              <div class="w-7 h-7 rounded-lg bg-indigo-600/20 text-indigo-400 font-bold text-xs flex items-center justify-center">${(u.name || 'U')[0]}</div>
+              <div>
+                <div class="text-xs font-bold text-white">${u.name || 'User'}</div>
+                <div class="text-[10px] text-slate-400 font-mono">${u.email}</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-xs font-bold text-emerald-400">$${(u.walletBalance || 0).toFixed(2)}</div>
+              <div class="text-[9px] text-cyan-400">${u.numbersCount || 0} Lines</div>
+            </div>
+          </div>
+        `).join('');
+        dropdown.classList.remove('hidden');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function selectUserFromSearch(userId) {
+      document.getElementById('searchResultsDropdown').classList.add('hidden');
+      document.getElementById('universalSearch').value = '';
+      inspectUserDossier(userId);
+    }
+
+    // Hide search dropdown on click outside
+    document.addEventListener('click', (e) => {
+      const searchBox = document.getElementById('universalSearch');
+      const dropdown = document.getElementById('searchResultsDropdown');
+      if (searchBox && dropdown && !searchBox.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.classList.add('hidden');
+      }
+    });
 
     // User Balance Modal
     function openBalanceModal(userId, email) {
@@ -933,7 +1339,8 @@
         if (res.success) {
           alert(res.message);
           closeBalanceModal();
-          loadUsers();
+          if (currentActiveTab === 'user-detail') inspectUserDossier(userId);
+          else loadUsers();
         } else {
           alert('Error: ' + res.error);
         }
@@ -982,7 +1389,7 @@
             <td class="py-3 px-4">
               <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-300">${n.countryCode}</span>
             </td>
-            <td class="py-3 px-4 text-slate-300">${n.userEmail}</td>
+            <td onclick="inspectUserDossier('${n.userId}')" class="py-3 px-4 text-slate-300 cursor-pointer hover:text-indigo-300 underline underline-offset-2">${n.userEmail}</td>
             <td class="py-3 px-4 text-slate-400">${n.planType}</td>
             <td class="py-3 px-4 text-slate-400">${n.expiresAt ? new Date(n.expiresAt).toLocaleDateString() : 'Never'}</td>
             <td class="py-3 px-4">
@@ -1013,7 +1420,8 @@
         });
         if (res.success) {
           alert(res.message);
-          loadNumbers();
+          if (currentActiveTab === 'user-detail') inspectUserDossier(currentInspectedUserId);
+          else loadNumbers();
         }
       } catch (err) {
         alert(err.message);
@@ -1026,7 +1434,8 @@
         const res = await adminFetch(`/api/admin/numbers/${id}/reclaim`, { method: 'POST' });
         if (res.success) {
           alert(res.message);
-          loadNumbers();
+          if (currentActiveTab === 'user-detail') inspectUserDossier(currentInspectedUserId);
+          else loadNumbers();
         }
       } catch (err) {
         alert(err.message);
@@ -1069,7 +1478,7 @@
         tbody.innerHTML = (data.transactions || []).map(t => `
           <tr class="hover:bg-slate-800/40 transition-all">
             <td class="py-3 px-4 font-mono text-slate-400 text-[11px]">${t.id.substring(0, 8)}...</td>
-            <td class="py-3 px-4 text-white font-medium">${t.userEmail}</td>
+            <td onclick="inspectUserDossier('${t.userId}')" class="py-3 px-4 text-white font-medium cursor-pointer hover:text-indigo-300 underline underline-offset-2">${t.userEmail}</td>
             <td class="py-3 px-4">
               <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${t.amount > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${t.type}</span>
             </td>
@@ -1131,7 +1540,7 @@
       document.getElementById('chatHeader').innerHTML = `
         <div>
           <div class="text-sm font-bold text-white">${name}</div>
-          <div class="text-[11px] text-indigo-400">${email}</div>
+          <div class="text-[11px] text-indigo-400 cursor-pointer hover:underline" onclick="inspectUserDossier('${userId}')">${email} &rarr; View Full Dossier</div>
         </div>
       `;
 
@@ -1249,18 +1658,6 @@
         if (res.success) loadPricing();
       } catch (err) {
         alert(err.message);
-      }
-    }
-
-    // Universal Search Filter
-    function handleUniversalSearch(query) {
-      if (!query) return;
-      if (currentActiveTab === 'users') {
-        document.getElementById('userSearchInput').value = query;
-        loadUsers();
-      } else if (currentActiveTab === 'numbers') {
-        document.getElementById('numberSearchInput').value = query;
-        loadNumbers();
       }
     }
   </script>

@@ -3413,6 +3413,17 @@ app.delete('/api/admin/announcements/:id', requireAdmin, async (req, res) => {
   }
 });
 
+let latestBroadcastNotification = null;
+
+// 22.1 Public Mobile App Endpoint: Get Latest Broadcast Notification
+app.get('/api/notifications/latest-broadcast', (req, res) => {
+  res.json({
+    success: true,
+    hasNotification: latestBroadcastNotification !== null,
+    notification: latestBroadcastNotification
+  });
+});
+
 // 22. Admin: Broadcast Push Notification to All Devices
 app.post('/api/admin/broadcast-push', requireAdmin, async (req, res) => {
   try {
@@ -3425,7 +3436,15 @@ app.post('/api/admin/broadcast-push', requireAdmin, async (req, res) => {
     const totalDevices = tokens.length;
     const totalUsers = await prisma.user.count({ where: { isDeleted: false } });
 
-    console.log(`📲 [BROADCAST PUSH] Sending notification to ${totalDevices} registered device push tokens (Total active accounts: ${totalUsers}): "${title}"`);
+    latestBroadcastNotification = {
+      id: `push_${Date.now()}`,
+      title: title.trim(),
+      body: body.trim(),
+      audience,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log(`📲 [BROADCAST PUSH] Dispatched: "${title}" to ${totalDevices} devices (${totalUsers} accounts)`);
 
     res.json({
       success: true,

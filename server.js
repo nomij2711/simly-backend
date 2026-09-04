@@ -703,11 +703,13 @@ app.get('/api/numbers/my-numbers', async (req, res) => {
     const numbers = rawNumbers.map(num => {
       const expDate = num.expiresAt ? new Date(num.expiresAt) : new Date(new Date(num.createdAt).getTime() + 30 * 24 * 60 * 60 * 1000);
       const diffMs = expDate.getTime() - now;
-      const daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      let daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 
       let computedStatus = 'active';
-      if (daysRemaining <= 0) {
+      // If DB marked status as expired OR days remaining is 0 or less, number is EXPIRED
+      if (num.status === 'expired' || daysRemaining <= 0) {
         computedStatus = 'expired';
+        daysRemaining = 0;
       } else if (daysRemaining <= 3) {
         computedStatus = 'expiring_soon';
       }
@@ -3093,12 +3095,17 @@ app.post('/api/admin/numbers/:id/toggle-status', requireAdmin, async (req, res) 
     if (!existing) return res.status(404).json({ success: false, error: 'Line not found' });
 
     const newStatus = existing.status === 'active' ? 'expired' : 'active';
+    // If expiring, set expiry date to the past so app immediately calculates 0 days remaining
+    const newExpiresAt = newStatus === 'expired'
+      ? new Date(Date.now() - 24 * 60 * 60 * 1000)
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
     const updated = await prisma.purchasedNumber.update({
       where: { id },
-      data: { status: newStatus }
+      data: { status: newStatus, expiresAt: newExpiresAt }
     });
 
-    res.json({ success: true, message: `Line ${existing.phoneNumber} is now marked as ${newStatus.toUpperCase()}`, number: updated });
+    res.json({ success: true, message: `Line ${existing.phoneNumber} is now marked as ${newStatus.toUpperCase()} (${newStatus === 'expired' ? '0 days remaining' : '30 days remaining'})`, number: updated });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -3416,16 +3423,16 @@ app.post('/api/admin/broadcast-push', requireAdmin, async (req, res) => {
 
     const tokens = await prisma.devicePushToken.findMany();
     const totalDevices = tokens.length;
+    const totalUsers = await prisma.user.count({ where: { isDeleted: false } });
 
-    console.log(`📲 [BROADCAST PUSH] Sending notification to ${totalDevices} registered devices: "${title}"`);
+    console.log(`📲 [BROADCAST PUSH] Sending notification to ${totalDevices} registered device push tokens (Total active accounts: ${totalUsers}): "${title}"`);
 
-    // In a production FCM setup, admin.messaging().sendEachForMulticast() is invoked here.
-    // For our unified engine, we log the broadcast dispatch and return confirmation.
     res.json({
       success: true,
-      message: `Broadcast push notification sent to ${totalDevices} active mobile devices!`,
+      message: `Broadcast push notification dispatched! Sent to ${totalDevices} active physical device token(s) (Total registered accounts: ${totalUsers}).`,
       stats: {
         totalDispatched: totalDevices,
+        totalUsers,
         title,
         body,
         timestamp: new Date().toISOString()

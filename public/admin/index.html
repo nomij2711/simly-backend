@@ -872,21 +872,91 @@
       }
     }
 
+    window.addEventListener('hashchange', () => {
+      if (ADMIN_TOKEN) {
+        restoreStateFromHashOrStorage();
+      }
+    });
+
+    function restoreStateFromHashOrStorage() {
+      const hash = window.location.hash || '';
+      
+      // 1. Check if hash matches #user=... or #user/...
+      const userMatch = hash.match(/^#user[=/]([a-zA-Z0-9_-]+)/);
+      if (userMatch && userMatch[1]) {
+        inspectUserDossier(userMatch[1], true);
+        return;
+      }
+
+      // 2. Check if hash matches #support=...
+      const supportMatch = hash.match(/^#support[=/]([a-zA-Z0-9_-]+)/);
+      if (supportMatch && supportMatch[1]) {
+        switchTab('support', true);
+        openSupportThread(supportMatch[1], '', '', true);
+        return;
+      }
+
+      // 3. Check clean hash tab names
+      const cleanHash = hash.replace(/^#tab=/, '').replace(/^#/, '');
+      const validTabs = ['overview', 'users', 'numbers', 'cdr', 'transactions', 'support', 'pricing'];
+      if (validTabs.includes(cleanHash)) {
+        switchTab(cleanHash, true);
+        return;
+      }
+
+      // 4. Check localStorage fallback
+      const savedTab = localStorage.getItem('simly_active_tab');
+      const savedUser = localStorage.getItem('simly_inspected_user');
+      if (savedTab === 'user-detail' && savedUser) {
+        inspectUserDossier(savedUser, false);
+        return;
+      }
+      if (savedTab && validTabs.includes(savedTab)) {
+        switchTab(savedTab, false);
+        return;
+      }
+
+      // 5. Default tab
+      switchTab('overview', false);
+    }
+
     function showAdminApp() {
       document.getElementById('loginModal').classList.add('hidden');
       document.getElementById('adminApp').classList.remove('hidden');
-      switchTab('overview');
+      restoreStateFromHashOrStorage();
     }
 
     function handleAdminLogout() {
       ADMIN_TOKEN = '';
       localStorage.removeItem('simly_admin_token');
+      localStorage.removeItem('simly_active_tab');
+      localStorage.removeItem('simly_inspected_user');
+      localStorage.removeItem('simly_support_user');
+      window.location.hash = '';
       document.getElementById('adminApp').classList.add('hidden');
       document.getElementById('loginModal').classList.remove('hidden');
     }
 
-    function switchTab(tabName) {
+    function switchTab(tabName, skipHash = false) {
+      if (tabName === 'user-detail') {
+        if (currentInspectedUserId) {
+          inspectUserDossier(currentInspectedUserId, skipHash);
+        } else {
+          switchTab('users', skipHash);
+        }
+        return;
+      }
+
       currentActiveTab = tabName;
+      localStorage.setItem('simly_active_tab', tabName);
+      if (tabName !== 'user-detail') {
+        localStorage.removeItem('simly_inspected_user');
+      }
+
+      if (!skipHash) {
+        window.location.hash = '#' + tabName;
+      }
+
       document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
       document.querySelectorAll('.nav-tab-btn').forEach(el => {
         el.classList.remove('active', 'bg-slate-800', 'text-white');
@@ -1090,10 +1160,28 @@
     // ============================================================
     // 🔍 360-DEGREE USER DOSSIER INSPECTOR (WITH EXPIRED NUMBERS & RENEW)
     // ============================================================
-    async function inspectUserDossier(userId) {
+    async function inspectUserDossier(userId, skipHash = false) {
+      currentActiveTab = 'user-detail';
       currentInspectedUserId = userId;
-      
+      localStorage.setItem('simly_active_tab', 'user-detail');
+      localStorage.setItem('simly_inspected_user', userId);
+
+      if (!skipHash) {
+        window.location.hash = '#user=' + userId;
+      }
+
       document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-tab-btn').forEach(el => {
+        el.classList.remove('active', 'bg-slate-800', 'text-white');
+        el.classList.add('text-slate-400');
+      });
+
+      const usersBtn = document.getElementById('tab-btn-users');
+      if (usersBtn) {
+        usersBtn.classList.add('active', 'bg-slate-800', 'text-white');
+        usersBtn.classList.remove('text-slate-400');
+      }
+
       document.getElementById('tab-view-user-detail').classList.remove('hidden');
 
       try {
@@ -1577,8 +1665,13 @@
       }
     }
 
-    async function openSupportThread(userId, email, name) {
+    async function openSupportThread(userId, email = '', name = '', skipHash = false) {
       selectedSupportUserId = userId;
+      localStorage.setItem('simly_active_tab', 'support');
+      localStorage.setItem('simly_support_user', userId);
+      if (!skipHash) {
+        window.location.hash = '#support=' + userId;
+      }
       document.getElementById('chatHeader').innerHTML = `
         <div>
           <div class="text-sm font-bold text-white">${name}</div>

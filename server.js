@@ -3316,24 +3316,28 @@ app.get('/api/admin/announcements', requireAdmin, async (req, res) => {
   }
 });
 
-// 19. Admin: Create / Save Announcement
+// 19. Admin: Create / Save Announcement (Supports Picture-Only, Text-Only, or Graphic+Text)
 app.post('/api/admin/announcements', requireAdmin, async (req, res) => {
   try {
     const {
       id,
-      title,
-      message,
-      imageUrl,
-      buttonText,
-      actionType,
-      actionUrl,
-      bannerType,
-      displayFrequency,
+      title = '',
+      message = '',
+      imageUrl = null,
+      buttonText = '',
+      actionType = 'navigate_numbers',
+      actionUrl = null,
+      bannerType = 'modal_popup',
+      displayFrequency = 'once_per_session',
       isActive = true
     } = req.body;
 
-    if (!title || !message) {
-      return res.status(400).json({ success: false, error: 'Title and message are required.' });
+    const trimmedTitle = (title || '').trim();
+    const trimmedMsg = (message || '').trim();
+    const trimmedImg = imageUrl && imageUrl.trim() ? imageUrl.trim() : null;
+
+    if (!trimmedImg && !trimmedTitle && !trimmedMsg) {
+      return res.status(400).json({ success: false, error: 'Please provide at least a Banner Image or Title / Message.' });
     }
 
     let saved;
@@ -3341,12 +3345,12 @@ app.post('/api/admin/announcements', requireAdmin, async (req, res) => {
       saved = await prisma.announcement.update({
         where: { id },
         data: {
-          title: title.trim(),
-          message: message.trim(),
-          imageUrl: imageUrl ? imageUrl.trim() : null,
-          buttonText: (buttonText || 'Claim Offer Now').trim(),
+          title: trimmedTitle,
+          message: trimmedMsg,
+          imageUrl: trimmedImg,
+          buttonText: (buttonText || '').trim(),
           actionType: actionType || 'navigate_numbers',
-          actionUrl: actionUrl ? actionUrl.trim() : null,
+          actionUrl: actionUrl && actionUrl.trim() ? actionUrl.trim() : null,
           bannerType: bannerType || 'modal_popup',
           displayFrequency: displayFrequency || 'once_per_session',
           isActive: Boolean(isActive)
@@ -3355,12 +3359,12 @@ app.post('/api/admin/announcements', requireAdmin, async (req, res) => {
     } else {
       saved = await prisma.announcement.create({
         data: {
-          title: title.trim(),
-          message: message.trim(),
-          imageUrl: imageUrl ? imageUrl.trim() : null,
-          buttonText: (buttonText || 'Claim Offer Now').trim(),
+          title: trimmedTitle,
+          message: trimmedMsg,
+          imageUrl: trimmedImg,
+          buttonText: (buttonText || '').trim(),
           actionType: actionType || 'navigate_numbers',
-          actionUrl: actionUrl ? actionUrl.trim() : null,
+          actionUrl: actionUrl && actionUrl.trim() ? actionUrl.trim() : null,
           bannerType: bannerType || 'modal_popup',
           displayFrequency: displayFrequency || 'once_per_session',
           isActive: Boolean(isActive)

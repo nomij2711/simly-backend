@@ -925,7 +925,7 @@
                     <div>
                       <label class="block text-[11px] font-semibold text-slate-400 mb-1">Target Audience</label>
                       <select id="pushAudience" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-                        <option value="all">All Registered Mobile Devices (32 Users)</option>
+                        <option value="all">All Registered Physical App Devices (Broadcast to All)</option>
                         <option value="active_numbers">Users with Active Virtual Lines</option>
                       </select>
                     </div>
@@ -1872,8 +1872,8 @@
                 <button onclick="extendNumberExpiryFree('${n.id}')" title="Admin Free +30 Days" class="px-2 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-lg text-[10px] font-bold transition-all">
                   +30d Free
                 </button>
-                <button onclick="toggleNumberStatus('${n.id}')" title="Toggle Status" class="p-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px]">
-                  <i class="fa-solid fa-power-off"></i>
+                <button onclick="toggleNumberStatus('${n.id}')" title="${!isExp ? 'Expire Line Immediately (0 Days)' : 'Reactivate Line (+30 Days)'}" class="px-2 py-1 ${!isExp ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'} rounded-lg text-[10px] font-bold transition-all">
+                  ${!isExp ? '<i class="fa-solid fa-hourglass-end mr-1"></i> Expire' : '<i class="fa-solid fa-bolt mr-1"></i> Reactivate'}
                 </button>
                 <button onclick="reclaimNumberLine('${n.id}', '${n.phoneNumber}')" title="Delete Line" class="p-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-[10px]">
                   <i class="fa-solid fa-trash"></i>
@@ -2184,15 +2184,18 @@
                 ${n.status.toUpperCase()}
               </span>
             </td>
-            <td class="py-3 px-4 text-right space-x-1">
+            <td class="py-3 px-4 text-right space-x-1 whitespace-nowrap">
+              <button onclick="toggleNumberStatus('${n.id}')" title="${n.status === 'active' ? 'Expire Line Immediately (0 Days)' : 'Reactivate Line (+30 Days)'}" class="px-2 py-1 ${n.status === 'active' ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'} rounded-lg text-xs font-semibold transition-all">
+                ${n.status === 'active' ? '<i class="fa-solid fa-hourglass-end mr-1"></i> Expire' : '<i class="fa-solid fa-bolt mr-1"></i> Reactivate'}
+              </button>
               <button onclick="renewNumberWithWallet('${n.id}', '${n.phoneNumber}')" title="Renew via User Balance" class="px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-semibold">
                 Renew ($)
               </button>
               <button onclick="extendNumberExpiryFree('${n.id}')" title="Admin Free +30 Days" class="px-2 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-xs font-semibold">
                 +30d
               </button>
-              <button onclick="reclaimNumberLine('${n.id}', '${n.phoneNumber}')" title="Revoke Number" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs">
-                <i class="fa-solid fa-ban"></i>
+              <button onclick="reclaimNumberLine('${n.id}', '${n.phoneNumber}')" title="Delete & Purge Line" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs">
+                <i class="fa-solid fa-trash"></i>
               </button>
             </td>
           </tr>

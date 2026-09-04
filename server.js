@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 const telnyx = require('telnyx')(process.env.TELNYX_API_KEY);
@@ -8,15 +9,25 @@ const prisma = new PrismaClient();
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Helper to normalize phone numbers received from query params or bodies
 const normalizePhone = (num) => (num ? num.toString().trim().replace(/^ /, '+') : num);
+
+// Admin Web Dashboard SPA Route
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
+});
+app.get('/admin/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
+});
 
 // Root Health Check Route
 app.get('/', (req, res) => {
   res.json({
     success: true,
     service: 'SimlyTel Telecom Engine',
+    adminDashboard: '/admin',
     status: 'ONLINE 🟢',
     uptime: '24/7 Cloud',
     version: '1.0.0',
@@ -2308,6 +2319,503 @@ app.delete('/api/account/delete', async (req, res) => {
     console.error('[SIMLY ERROR] Failed to delete account:', error);
     res.status(500).json({ success: false, error: error.message });
   }
+});
+
+// ============================================================================
+// 👑 MASTER ADMIN PANEL ENGINE (CRM, Financials, Numbers, CDR, Rates & Support)
+// ============================================================================
+
+const ADMIN_SECRET_TOKEN = process.env.ADMIN_SECRET_TOKEN || 'simly_master_admin_token_2026_sec_v1';
+const ADMIN_MASTER_EMAIL = process.env.ADMIN_EMAIL || 'admin@simlytel.com';
+const ADMIN_MASTER_PASSWORD = process.env.ADMIN_PASSWORD || 'SimlyTel@2026!#';
+
+// Runtime Dynamic Configuration (Admin Controlled)
+let adminRuntimeConfig = {
+  callRateMultiplier: 2.5,
+  numberRateMultiplier: 1.5,
+  defaultWelcomeBonus: 10.0,
+  promos: [
+    { id: 'p1', code: 'WELCOME10', bonus: 10.0, maxUses: 500, used: 2, active: true, createdAt: new Date() },
+    { id: 'p2', code: 'SIMLY50', bonus: 2.5, maxUses: 1000, used: 8, active: true, createdAt: new Date() },
+    { id: 'p3', code: 'VIP2026', bonus: 25.0, maxUses: 50, used: 1, active: true, createdAt: new Date() }
+  ]
+};
+
+// Admin Auth Middleware
+const requireAdmin = (req, res, next) => {
+  const token = req.headers['x-admin-token'] || req.headers['authorization']?.replace('Bearer ', '');
+  if (!token || token !== ADMIN_SECRET_TOKEN) {
+    return res.status(401).json({ success: false, error: 'Unauthorized: Master Admin Token required.' });
+  }
+  next();
+};
+
+// 1. Admin Login API
+app.post('/api/admin/login', (req, res) => {
+  const { email, password } = req.body || {};
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (
+    (cleanEmail === ADMIN_MASTER_EMAIL.toLowerCase() || cleanEmail === 'admin' || cleanEmail === 'nomi') &&
+    password === ADMIN_MASTER_PASSWORD
+  ) {
+    return res.json({
+      success: true,
+      message: 'Admin authentication successful!',
+      token: ADMIN_SECRET_TOKEN,
+      user: {
+        name: 'Master Admin (Nomi)',
+        email: ADMIN_MASTER_EMAIL,
+        role: 'SUPER_ADMIN'
+      }
+    });
+  }
+  return res.status(401).json({ success: false, error: 'Invalid admin credentials.' });
+});
+
+// 2. Master Dashboard KPI Stats
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
+  try {
+    const totalUsers = await prisma.user.count();
+    const activeNumbers = await prisma.purchasedNumber.count({ where: { status: 'active' } });
+    const totalCalls = await prisma.callLog.count();
+    const totalMessages = await prisma.message.count();
+    
+    // Sum balances
+    const allUsers = await prisma.user.findMany({ select: { walletBalance: true } });
+    const totalUserBalance = allUsers.reduce((sum, u) => sum + (u.walletBalance || 0), 0);
+
+    // Sum topup revenue
+    const topupTransactions = await prisma.transaction.findMany({
+      where: { type: { in: ['topup', 'deposit', 'crypto_deposit', 'stripe_deposit'] } },
+      select: { amount: true }
+    });
+    const totalRevenue = topupTransactions.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+
+    // Recent 5 users
+    const recentUsers = await prisma.user.findMany({
+      take: 5,
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Recent 5 transactions
+    const recentTransactions = await prisma.transaction.findMany({
+      take: 5,
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Active numbers country distribution
+    const allNumbers = await prisma.purchasedNumber.findMany({ select: { countryCode: true } });
+    const countryDistribution = {};
+    allNumbers.forEach(n => {
+      const cc = (n.countryCode || 'US').toUpperCase();
+      countryDistribution[cc] = (countryDistribution[cc] || 0) + 1;
+    });
+
+    res.json({
+      success: true,
+      data: {
+        totalUsers,
+        activeNumbers,
+        totalCalls,
+        totalMessages,
+        totalUserBalance: parseFloat(totalUserBalance.toFixed(2)),
+        totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+        countryDistribution,
+        recentUsers,
+        recentTransactions,
+        serverStatus: 'ONLINE 🟢',
+        uptime: process.uptime()
+      }
+    });
+  } catch (error) {
+    console.error('[ADMIN STATS ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3. Users CRM List & Search
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  try {
+    const query = req.query.search ? req.query.search.trim().toLowerCase() : '';
+    const page = parseInt(req.query.page || '1', 10);
+    const limit = parseInt(req.query.limit || '50', 10);
+    const skip = (page - 1) * limit;
+
+    const where = query
+      ? {
+          OR: [
+            { email: { contains: query } },
+            { name: { contains: query } },
+            { id: { contains: query } },
+            { phone: { contains: query } }
+          ]
+        }
+      : {};
+
+    const [total, users] = await Promise.all([
+      prisma.user.count({ where }),
+      prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' }
+      })
+    ]);
+
+    // Attach number counts for each user
+    const usersWithMeta = await Promise.all(
+      users.map(async (u) => {
+        const numbersCount = await prisma.purchasedNumber.count({ where: { userId: u.id, status: 'active' } });
+        return {
+          ...u,
+          numbersCount
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      users: usersWithMeta
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4. User Balance Modifier (Gift / Topup / Deduction)
+app.post('/api/admin/users/:id/adjust-balance', requireAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { amount, reason } = req.body;
+    const numAmount = parseFloat(amount);
+
+    if (isNaN(numAmount) || numAmount === 0) {
+      return res.status(400).json({ success: false, error: 'Valid non-zero amount required.' });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { OR: [{ id: userId }, { email: userId.toLowerCase() }] }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    const newBalance = Math.max(0, user.walletBalance + numAmount);
+
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: { walletBalance: newBalance }
+    });
+
+    // Record Transaction Audit
+    await prisma.transaction.create({
+      data: {
+        userId: user.id,
+        type: numAmount > 0 ? 'topup' : 'admin_deduction',
+        amount: numAmount,
+        description: `Admin Adjustment: ${reason || (numAmount > 0 ? 'Manual Credit Gift' : 'Manual Debit')} ($${Math.abs(numAmount).toFixed(2)})`
+      }
+    });
+
+    res.json({
+      success: true,
+      message: `Balance updated for ${user.email}. New Balance: $${newBalance.toFixed(2)}`,
+      user: updated
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. User Account Status Toggle (Block / Unblock)
+app.post('/api/admin/users/:id/toggle-block', requireAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await prisma.user.findFirst({
+      where: { OR: [{ id: userId }, { email: userId.toLowerCase() }] }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: { isVerified: !user.isVerified }
+    });
+
+    res.json({
+      success: true,
+      message: `User ${user.email} is now ${updated.isVerified ? 'ACTIVE (Unblocked)' : 'BLOCKED'}`,
+      user: updated
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6. Delete User Account Completely
+app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await prisma.user.findFirst({
+      where: { OR: [{ id: userId }, { email: userId.toLowerCase() }] }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    await prisma.purchasedNumber.deleteMany({ where: { userId: user.id } });
+    await prisma.transaction.deleteMany({ where: { userId: user.id } });
+    await prisma.supportMessage.deleteMany({ where: { userId: user.id } });
+    await prisma.user.delete({ where: { id: user.id } });
+
+    res.json({ success: true, message: `User ${user.email} and all records permanently removed.` });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 7. Virtual Numbers Fleet List & Management
+app.get('/api/admin/numbers', requireAdmin, async (req, res) => {
+  try {
+    const query = req.query.search ? req.query.search.trim().replace(/\s+/g, '') : '';
+    const where = query
+      ? {
+          OR: [
+            { phoneNumber: { contains: query } },
+            { userId: { contains: query } },
+            { countryCode: { contains: query.toUpperCase() } }
+          ]
+        }
+      : {};
+
+    const numbers = await prisma.purchasedNumber.findMany({
+      where,
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Attach user emails
+    const enrichedNumbers = await Promise.all(
+      numbers.map(async (n) => {
+        const u = await prisma.user.findFirst({
+          where: { OR: [{ id: n.userId }, { email: n.userId }] },
+          select: { email: true, name: true }
+        });
+        return {
+          ...n,
+          userEmail: u?.email || n.userId,
+          userName: u?.name || 'User'
+        };
+      })
+    );
+
+    res.json({ success: true, count: enrichedNumbers.length, numbers: enrichedNumbers });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 8. Reclaim / Cancel Number
+app.post('/api/admin/numbers/:id/reclaim', requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const existing = await prisma.purchasedNumber.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Virtual line not found.' });
+    }
+
+    await prisma.purchasedNumber.delete({ where: { id } });
+    res.json({ success: true, message: `Virtual line ${existing.phoneNumber} successfully reclaimed.` });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 9. Extend Number Expiry
+app.post('/api/admin/numbers/:id/extend', requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const days = parseInt(req.body.days || '30', 10);
+    const existing = await prisma.purchasedNumber.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Virtual line not found.' });
+    }
+
+    const currentExpiry = existing.expiresAt ? new Date(existing.expiresAt) : new Date();
+    const newExpiry = new Date(Math.max(Date.now(), currentExpiry.getTime()) + days * 24 * 60 * 60 * 1000);
+
+    const updated = await prisma.purchasedNumber.update({
+      where: { id },
+      data: { expiresAt: newExpiry, status: 'active' }
+    });
+
+    res.json({ success: true, message: `Extended line ${existing.phoneNumber} by ${days} days!`, number: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 10. Call Logs (CDR)
+app.get('/api/admin/calls', requireAdmin, async (req, res) => {
+  try {
+    const calls = await prisma.callLog.findMany({
+      take: 100,
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ success: true, count: calls.length, calls });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 11. SMS Logs
+app.get('/api/admin/messages', requireAdmin, async (req, res) => {
+  try {
+    const messages = await prisma.message.findMany({
+      take: 100,
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ success: true, count: messages.length, messages });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 12. Complete Transaction Financials Ledger
+app.get('/api/admin/transactions', requireAdmin, async (req, res) => {
+  try {
+    const type = req.query.type;
+    const where = type ? { type } : {};
+    const transactions = await prisma.transaction.findMany({
+      where,
+      take: 150,
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Attach user emails
+    const enriched = await Promise.all(
+      transactions.map(async (t) => {
+        const u = await prisma.user.findFirst({
+          where: { OR: [{ id: t.userId }, { email: t.userId }] },
+          select: { email: true, name: true }
+        });
+        return {
+          ...t,
+          userEmail: u?.email || t.userId,
+          userName: u?.name || 'User'
+        };
+      })
+    );
+
+    res.json({ success: true, count: enriched.length, transactions: enriched });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 13. Customer Support Helpdesk Messages
+app.get('/api/admin/support', requireAdmin, async (req, res) => {
+  try {
+    const messages = await prisma.supportMessage.findMany({
+      take: 150,
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Group by userId
+    const threads = {};
+    for (const m of messages) {
+      if (!threads[m.userId]) {
+        const u = await prisma.user.findFirst({
+          where: { OR: [{ id: m.userId }, { email: m.userId }] },
+          select: { email: true, name: true }
+        });
+        threads[m.userId] = {
+          userId: m.userId,
+          userEmail: u?.email || m.userId,
+          userName: u?.name || 'Customer',
+          messages: []
+        };
+      }
+      threads[m.userId].messages.push(m);
+    }
+
+    res.json({ success: true, threads: Object.values(threads) });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 14. Admin Reply to Customer Support
+app.post('/api/admin/support/reply', requireAdmin, async (req, res) => {
+  try {
+    const { userId, text } = req.body;
+    if (!userId || !text) {
+      return res.status(400).json({ success: false, error: 'User ID and message text are required.' });
+    }
+
+    const saved = await prisma.supportMessage.create({
+      data: {
+        userId,
+        sender: 'agent',
+        senderName: 'Master Admin (Nomi)',
+        text: text.trim()
+      }
+    });
+
+    res.json({ success: true, message: 'Reply sent successfully!', data: saved });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 15. Dynamic Pricing & Rates Config
+app.get('/api/admin/pricing', requireAdmin, (req, res) => {
+  res.json({ success: true, config: adminRuntimeConfig });
+});
+
+app.post('/api/admin/pricing', requireAdmin, (req, res) => {
+  const { callRateMultiplier, numberRateMultiplier, defaultWelcomeBonus } = req.body;
+  if (callRateMultiplier) adminRuntimeConfig.callRateMultiplier = parseFloat(callRateMultiplier);
+  if (numberRateMultiplier) adminRuntimeConfig.numberRateMultiplier = parseFloat(numberRateMultiplier);
+  if (defaultWelcomeBonus) adminRuntimeConfig.defaultWelcomeBonus = parseFloat(defaultWelcomeBonus);
+
+  res.json({ success: true, message: 'Runtime pricing updated live!', config: adminRuntimeConfig });
+});
+
+// 16. Promo Codes Management
+app.post('/api/admin/promos/create', requireAdmin, (req, res) => {
+  const { code, bonus, maxUses } = req.body;
+  if (!code || !bonus) {
+    return res.status(400).json({ success: false, error: 'Code and bonus amount required.' });
+  }
+
+  const newPromo = {
+    id: `p_${Date.now()}`,
+    code: code.trim().toUpperCase(),
+    bonus: parseFloat(bonus),
+    maxUses: parseInt(maxUses || '100', 10),
+    used: 0,
+    active: true,
+    createdAt: new Date()
+  };
+
+  adminRuntimeConfig.promos.unshift(newPromo);
+  res.json({ success: true, message: `Promo code ${newPromo.code} created!`, promo: newPromo });
+});
+
+app.post('/api/admin/promos/toggle', requireAdmin, (req, res) => {
+  const { id } = req.body;
+  const promo = adminRuntimeConfig.promos.find(p => p.id === id);
+  if (!promo) return res.status(404).json({ success: false, error: 'Promo not found.' });
+
+  promo.active = !promo.active;
+  res.json({ success: true, message: `Promo ${promo.code} is now ${promo.active ? 'ACTIVE' : 'DISABLED'}` });
 });
 
 const PORT = process.env.PORT || 5000;

@@ -2502,24 +2502,56 @@ app.get('/api/admin/users/:id/full-profile', requireAdmin, async (req, res) => {
       return res.status(404).json({ success: false, error: 'User not found.' });
     }
 
-    // 1. Fetch User's Virtual Numbers
-    const numbers = await prisma.purchasedNumber.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    const userPhoneNumbers = numbers.map(n => n.phoneNumber);
-
-    // 2. Fetch User's Transactions
+    // 1. Fetch User's Transactions
     const transactions = await prisma.transaction.findMany({
       where: {
         OR: [
           { userId: user.id },
-          { userId: user.email }
+          { userId: user.email },
+          { userId: user.email.toLowerCase() }
         ]
       },
       orderBy: { createdAt: 'desc' }
     });
+
+    // 2. Fetch User's Virtual Numbers (Active, Expired, and Historical)
+    let numbers = await prisma.purchasedNumber.findMany({
+      where: {
+        OR: [
+          { userId: user.id },
+          { userId: user.email },
+          { userId: user.email.toLowerCase() }
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Also include any numbers mentioned in transaction descriptions
+    const now = new Date();
+    for (const tx of transactions) {
+      if (tx.description && tx.description.includes('Line Purchase')) {
+        const match = tx.description.match(/(\+\d{8,16})/);
+        if (match && match[1]) {
+          const foundNum = match[1];
+          if (!numbers.some(n => n.phoneNumber === foundNum)) {
+            const dbNum = await prisma.purchasedNumber.findFirst({ where: { phoneNumber: foundNum } });
+            if (dbNum) numbers.push(dbNum);
+          }
+        }
+      }
+    }
+
+    // Mark displayStatus & isExpired
+    numbers = numbers.map(n => {
+      const isExpired = n.status === 'expired' || (n.expiresAt && new Date(n.expiresAt) < now);
+      return {
+        ...n,
+        isExpired,
+        displayStatus: isExpired ? 'expired' : (n.status || 'active')
+      };
+    });
+
+    const userPhoneNumbers = numbers.map(n => n.phoneNumber);
 
     // 3. Fetch User's Call Logs
     const calls = await prisma.callLog.findMany({
@@ -2741,25 +2773,83 @@ app.post('/api/admin/numbers/:id/reclaim', requireAdmin, async (req, res) => {
   }
 });
 
-// 9. Extend Number Expiry
+// 9. Extend Number Expiry / Renew with User Balance Option
 app.post('/api/admin/numbers/:id/extend', requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     const days = parseInt(req.body.days || '30', 10);
+    const useUserBalance = req.body.useUserBalance === true;
     const existing = await prisma.purchasedNumber.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ success: false, error: 'Virtual line not found.' });
     }
 
+    const price = calculateNumberPrice(existing.countryCode || 'US', days === 7 ? '7_days' : days === 365 ? '365_days' : '30_days', days, existing.phoneNumber);
+
+    if (useUserBalance) {
+      const user = await prisma.user.findFirst({
+        where: { OR: [{ id: existing.userId }, { email: existing.userId }] }
+      });
+
+      if (!user) {
+        return res.status(400).json({ success: false, error: 'User account not found.' });
+      }
+
+      if (user.walletBalance < price) {
+        return res.status(400).json({
+          success: false,
+          error: `User has only $${user.walletBalance.toFixed(2)}, but renewal requires $${price.toFixed(2)}. Please add balance or use Free Extension.`
+        });
+      }
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { walletBalance: { decrement: price } }
+      });
+
+      await prisma.transaction.create({
+        data: {
+          userId: user.id,
+          type: 'number_renewal',
+          amount: -price,
+          description: `Line Renewal (${days} Days): ${existing.phoneNumber}`
+        }
+      });
+    }
+
     const currentExpiry = existing.expiresAt ? new Date(existing.expiresAt) : new Date();
-    const newExpiry = new Date(Math.max(Date.now(), currentExpiry.getTime()) + days * 24 * 60 * 60 * 1000);
+    const baseTime = currentExpiry.getTime() > Date.now() ? currentExpiry.getTime() : Date.now();
+    const newExpiry = new Date(baseTime + days * 24 * 60 * 60 * 1000);
 
     const updated = await prisma.purchasedNumber.update({
       where: { id },
       data: { expiresAt: newExpiry, status: 'active' }
     });
 
-    res.json({ success: true, message: `Extended line ${existing.phoneNumber} by ${days} days!`, number: updated });
+    res.json({
+      success: true,
+      message: `Extended line ${existing.phoneNumber} by ${days} days! ${useUserBalance ? `($${price.toFixed(2)} deducted from user balance)` : '(Admin Free Override)'}`,
+      number: updated
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 9.5 Toggle Number Status (Active <-> Expired)
+app.post('/api/admin/numbers/:id/toggle-status', requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const existing = await prisma.purchasedNumber.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ success: false, error: 'Line not found' });
+
+    const newStatus = existing.status === 'active' ? 'expired' : 'active';
+    const updated = await prisma.purchasedNumber.update({
+      where: { id },
+      data: { status: newStatus }
+    });
+
+    res.json({ success: true, message: `Line ${existing.phoneNumber} is now marked as ${newStatus.toUpperCase()}`, number: updated });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

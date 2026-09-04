@@ -3424,6 +3424,62 @@ app.get('/api/notifications/latest-broadcast', (req, res) => {
   });
 });
 
+
+// ==========================================
+// 📲 ONESIGNAL PUSH NOTIFICATION DISPATCHER
+// ==========================================
+const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || 'd26a2672-6cc5-4ed2-ae81-d8879194ea95';
+const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY;
+
+async function sendOneSignalPush({ title, body, userId = null, audience = 'all', data = {}, bigPicture = null }) {
+  try {
+    const payload = {
+      app_id: ONESIGNAL_APP_ID,
+      headings: { en: title },
+      contents: { en: body },
+      priority: 10,
+      android_sound: 'notification',
+      data: {
+        ...data,
+        timestamp: Date.now(),
+        source: 'simlytel_core'
+      }
+    };
+
+    if (bigPicture) {
+      payload.big_picture = bigPicture;
+      payload.chrome_web_image = bigPicture;
+    }
+
+    if (userId && audience !== 'all') {
+      payload.include_aliases = {
+        external_id: [userId]
+      };
+      payload.target_channel = 'push';
+    } else {
+      payload.included_segments = ['Total Subscriptions'];
+    }
+
+    console.log('📲 [ONESIGNAL DISPATCHING] Sending push payload:', JSON.stringify(payload));
+
+    const response = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': 'Basic ' + ONESIGNAL_REST_API_KEY
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+    console.log('📲 [ONESIGNAL DISPATCH RESULT]:', result);
+    return { success: response.ok, result };
+  } catch (err) {
+    console.error('❌ [ONESIGNAL ERROR]:', err);
+    return { success: false, error: err.message };
+  }
+}
+
 // 22. Admin: Broadcast Push Notification to All Devices
 app.post('/api/admin/broadcast-push', requireAdmin, async (req, res) => {
   try {
@@ -3444,16 +3500,24 @@ app.post('/api/admin/broadcast-push', requireAdmin, async (req, res) => {
       timestamp: new Date().toISOString()
     };
 
-    console.log(`📲 [BROADCAST PUSH] Dispatched: "${title}" to ${totalDevices} devices (${totalUsers} accounts)`);
+    // Dispatch via OneSignal native push engine (rings phone in background)
+    const pushResult = await sendOneSignalPush({
+      title: title.trim(),
+      body: body.trim(),
+      audience
+    });
+
+    console.log(`📲 [BROADCAST PUSH] Dispatched: "${title}" to ${totalDevices} devices (${totalUsers} accounts). OneSignal:`, pushResult);
 
     res.json({
       success: true,
-      message: `Broadcast push notification dispatched! Sent to ${totalDevices} active physical device token(s) (Total registered accounts: ${totalUsers}).`,
+      message: `Broadcast push notification dispatched via OneSignal! (Total accounts: ${totalUsers}, Devices: ${totalDevices})`,
       stats: {
         totalDispatched: totalDevices,
         totalUsers,
         title,
         body,
+        oneSignal: pushResult,
         timestamp: new Date().toISOString()
       }
     });

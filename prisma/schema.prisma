@@ -17,6 +17,9 @@ model User {
   authProvider  String    @default("email") // "email", "google", "apple", "phone", "guest"
   walletBalance Float     @default(10.0)
   isVerified    Boolean   @default(true)
+  isDeleted     Boolean   @default(false)
+  deletedAt     DateTime?
+  deletedReason String?   // "user_self_erase", "admin_deleted", etc.
   createdAt     DateTime  @default(now())
 }
 

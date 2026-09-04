@@ -18,7 +18,7 @@ const normalizePhone = (num) => (num ? num.toString().trim().replace(/^ /, '+') 
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
 });
-app.get('/admin/*', (req, res) => {
+app.get('/admin/{*splat}', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
 });
 

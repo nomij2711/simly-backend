@@ -313,21 +313,77 @@
         </div>
 
         <!-- ============================================================ -->
-        <!-- 👥 TAB 2: USERS CRM (WITH 1-CLICK DEEP INSPECT) -->
+        <!-- 👥 TAB 2: USERS CRM (BULK ACTIONS & ERASED AUDITING) -->
         <!-- ============================================================ -->
         <div id="tab-view-users" class="tab-view hidden space-y-4">
+          
+          <!-- Top CRM Header & Search -->
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 class="text-xl font-bold text-white tracking-tight">Users CRM Management</h2>
-              <p class="text-xs text-slate-400">Click on any user row to open their <b>360° Complete Dossier</b> (Calls, Numbers, SMS, Ledger & Support).</p>
+              <h2 class="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                <span>Users CRM Management</span>
+                <span id="crmTotalUsersBadge" class="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-semibold">32</span>
+              </h2>
+              <p class="text-xs text-slate-400">Manage individual or multiple users in bulk. Erased accounts retain all telecom & ledger records permanently.</p>
             </div>
             <div class="flex items-center gap-2">
               <div class="relative">
                 <i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-500 text-xs"></i>
-                <input type="text" id="userSearchInput" oninput="loadUsers()" placeholder="Filter users..." class="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                <input type="text" id="userSearchInput" oninput="debounceLoadUsers()" placeholder="Search email, name, ID..." class="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-48 sm:w-64">
               </div>
               <button onclick="loadUsers()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition-all">
                 <i class="fa-solid fa-rotate-right mr-1"></i> Refresh
+              </button>
+            </div>
+          </div>
+
+          <!-- CRM Filter Tabs (All, Active, Blocked, Erased) -->
+          <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/60 p-2 rounded-2xl border border-slate-800/80">
+            <div class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
+              <button onclick="setUserFilter('all')" id="filter-btn-all" class="crm-filter-btn active px-3 py-1.5 rounded-xl text-xs font-semibold transition-all bg-slate-800 text-white">
+                All Users <span id="filterCountAll" class="ml-1 opacity-70">(32)</span>
+              </button>
+              <button onclick="setUserFilter('active')" id="filter-btn-active" class="crm-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800/40">
+                🟢 Active <span id="filterCountActive" class="ml-1 opacity-70">(30)</span>
+              </button>
+              <button onclick="setUserFilter('blocked')" id="filter-btn-blocked" class="crm-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800/40">
+                🔴 Blocked <span id="filterCountBlocked" class="ml-1 opacity-70">(1)</span>
+              </button>
+              <button onclick="setUserFilter('erased')" id="filter-btn-erased" class="crm-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800/40">
+                ⚠️ Self-Erased & Archived <span id="filterCountErased" class="ml-1 opacity-70">(1)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- ⚡ BULK ACTION FLOATING TOOLBAR (Reveals when users are selected) -->
+          <div id="bulkActionBar" class="hidden flex flex-wrap items-center justify-between gap-3 p-3.5 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 border border-indigo-500/40 rounded-2xl shadow-2xl transition-all">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-400 text-xs font-bold">
+                <i class="fa-solid fa-check-double"></i>
+              </div>
+              <span class="text-xs text-slate-200">
+                <b id="bulkSelectedCount" class="text-indigo-400 text-sm font-extrabold">0</b> users selected
+              </span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button onclick="executeBulkAction('block')" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-user-slash"></i> <span>Block Selected</span>
+              </button>
+              <button onclick="executeBulkAction('unblock')" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-user-check"></i> <span>Unblock Selected</span>
+              </button>
+              <button onclick="openBulkBalanceModal()" class="px-3 py-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-hand-holding-dollar"></i> <span>Add Bonus / Deduct</span>
+              </button>
+              <button onclick="executeBulkAction('delete')" class="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-box-archive"></i> <span>Archive / Soft-Delete</span>
+              </button>
+              <button onclick="executeBulkAction('restore')" class="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-rotate-left"></i> <span>Restore</span>
+              </button>
+              <button onclick="clearUserSelection()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-xs font-semibold transition-all" title="Clear selection">
+                <i class="fa-solid fa-xmark"></i>
               </button>
             </div>
           </div>
@@ -338,16 +394,19 @@
               <table class="w-full text-left text-xs">
                 <thead class="bg-slate-950/70 border-b border-slate-800 text-slate-400 uppercase font-semibold text-[10px] tracking-wider">
                   <tr>
+                    <th class="py-3 px-4 w-10 text-center">
+                      <input type="checkbox" id="selectAllUsersHeader" onchange="toggleSelectAllUsers(this.checked)" class="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4">
+                    </th>
                     <th class="py-3 px-4">User Name & Email</th>
                     <th class="py-3 px-4">Wallet Balance</th>
-                    <th class="py-3 px-4">Assigned Lines</th>
-                    <th class="py-3 px-4">Status</th>
+                    <th class="py-3 px-4">Lines Fleet</th>
+                    <th class="py-3 px-4">Lifecycle Status</th>
                     <th class="py-3 px-4">Joined Date</th>
                     <th class="py-3 px-4 text-right">Inspect & Actions</th>
                   </tr>
                 </thead>
                 <tbody id="usersTableBody" class="divide-y divide-slate-800/60">
-                  <tr><td colspan="6" class="py-8 text-center text-slate-500">Loading user database...</td></tr>
+                  <tr><td colspan="7" class="py-8 text-center text-slate-500">Loading user database...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -359,20 +418,44 @@
         <!-- ============================================================ -->
         <div id="tab-view-user-detail" class="tab-view hidden space-y-6">
           
-          <!-- Navigation Back Bar -->
+          <!-- Navigation Back Bar & Action Controls -->
           <div class="flex items-center justify-between">
             <button onclick="switchTab('users')" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white transition-all">
               <i class="fa-solid fa-arrow-left"></i>
               <span>Back to All Users</span>
             </button>
             <div class="flex items-center gap-2">
+              <button id="udBtnRestore" onclick="handleRestoreUserFromDetail()" class="hidden px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-all shadow-md">
+                <i class="fa-solid fa-rotate-left mr-1"></i> <span>Restore Account</span>
+              </button>
               <button id="udBtnBlock" onclick="handleToggleBlockFromDetail()" class="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-xs font-semibold transition-all">
                 <i class="fa-solid fa-user-slash mr-1"></i> <span>Block Account</span>
               </button>
               <button id="udBtnDelete" onclick="handleDeleteUserFromDetail()" class="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-semibold transition-all">
-                <i class="fa-solid fa-trash mr-1"></i> Delete Account
+                <i class="fa-solid fa-box-archive mr-1"></i> <span>Archive Account</span>
               </button>
             </div>
+          </div>
+
+          <!-- Self-Erased / Archived Warning Alert Banner (Shown when user is deleted) -->
+          <div id="udErasedBanner" class="hidden p-4 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xl">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-400 text-lg flex-shrink-0">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+              </div>
+              <div>
+                <div class="font-bold text-amber-200 text-sm flex items-center gap-2">
+                  <span>Account Self-Erased / Archived</span>
+                  <span id="udErasedTag" class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold">USER_SELF_ERASE</span>
+                </div>
+                <div id="udErasedNote" class="text-[11px] text-amber-300/80 mt-0.5">
+                  This user erased their account on [Date]. All historical telecom calls, virtual numbers, SMS, and wallet transactions are permanently archived below.
+                </div>
+              </div>
+            </div>
+            <button onclick="handleRestoreUserFromDetail()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all shadow-md shadow-emerald-600/30 flex items-center gap-2 whitespace-nowrap">
+              <i class="fa-solid fa-rotate-left"></i> Restore Account
+            </button>
           </div>
 
           <!-- User Hero Bio Card -->
@@ -812,6 +895,35 @@
     </div>
   </div>
 
+  <!-- 💰 BULK BALANCE ADJUSTMENT MODAL -->
+  <div id="bulkBalanceModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-hand-holding-dollar text-indigo-400"></i>
+          <span>Bulk Balance Adjustment</span>
+        </h3>
+        <button onclick="closeBulkBalanceModal()" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="text-xs text-slate-400">Adjust wallet balance for <b id="bulkModalCount" class="text-indigo-400">0</b> selected users simultaneously.</p>
+      
+      <form onsubmit="handleExecuteBulkBalance(event)" class="space-y-3">
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Adjustment Amount ($)</label>
+          <input type="number" step="0.01" id="bulkBalanceAmount" placeholder="e.g. 5.00 for credit or -2.50 for debit" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Audit Reason / Note</label>
+          <input type="text" id="bulkBalanceReason" placeholder="e.g. Promo bonus / System credit" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeBulkBalanceModal()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+          <button type="submit" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold">Apply to All Selected</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- 📜 JAVASCRIPT APP CONTROLLER -->
   <script>
     const API_BASE = window.location.origin;
@@ -1109,17 +1221,195 @@
       });
     }
 
+    let currentUserFilter = 'all';
+    let selectedUserIds = new Set();
+    let userSearchDebounceTimer = null;
+
+    function debounceLoadUsers() {
+      clearTimeout(userSearchDebounceTimer);
+      userSearchDebounceTimer = setTimeout(loadUsers, 300);
+    }
+
+    function setUserFilter(filter) {
+      currentUserFilter = filter;
+      document.querySelectorAll('.crm-filter-btn').forEach(b => {
+        b.classList.remove('active', 'bg-slate-800', 'text-white');
+        b.classList.add('text-slate-400');
+      });
+      const activeBtn = document.getElementById(`filter-btn-${filter}`);
+      if (activeBtn) {
+        activeBtn.classList.add('active', 'bg-slate-800', 'text-white');
+        activeBtn.classList.remove('text-slate-400');
+      }
+      loadUsers();
+    }
+
+    function toggleSelectAllUsers(checked) {
+      document.querySelectorAll('.user-row-checkbox').forEach(cb => {
+        cb.checked = checked;
+        if (checked) selectedUserIds.add(cb.value);
+        else selectedUserIds.delete(cb.value);
+      });
+      updateBulkActionBar();
+    }
+
+    function toggleUserSelection(userId, checked, e) {
+      if (e) e.stopPropagation();
+      if (checked) selectedUserIds.add(userId);
+      else selectedUserIds.delete(userId);
+      updateBulkActionBar();
+    }
+
+    function clearUserSelection() {
+      selectedUserIds.clear();
+      const headerCb = document.getElementById('selectAllUsersHeader');
+      if (headerCb) headerCb.checked = false;
+      document.querySelectorAll('.user-row-checkbox').forEach(cb => cb.checked = false);
+      updateBulkActionBar();
+    }
+
+    function updateBulkActionBar() {
+      const bar = document.getElementById('bulkActionBar');
+      const countEl = document.getElementById('bulkSelectedCount');
+      const count = selectedUserIds.size;
+
+      if (count > 0) {
+        if (bar) bar.classList.remove('hidden');
+        if (countEl) countEl.innerText = count;
+      } else {
+        if (bar) bar.classList.add('hidden');
+      }
+
+      // Sync header checkbox
+      const allCbs = document.querySelectorAll('.user-row-checkbox');
+      const headerCb = document.getElementById('selectAllUsersHeader');
+      if (headerCb && allCbs.length > 0) {
+        headerCb.checked = count === allCbs.length;
+      }
+    }
+
+    async function executeBulkAction(action) {
+      const userIds = Array.from(selectedUserIds);
+      if (userIds.length === 0) return alert('Select at least one user first.');
+
+      let confirmMsg = `Are you sure you want to ${action.toUpperCase()} ${userIds.length} selected users?`;
+      if (action === 'delete') confirmMsg = `Are you sure you want to Archive/Soft-Delete ${userIds.length} users? All historical telecom calls, numbers, and ledger data will remain preserved.`;
+      if (!confirm(confirmMsg)) return;
+
+      try {
+        const res = await adminFetch('/api/admin/users/bulk-action', {
+          method: 'POST',
+          body: JSON.stringify({ userIds, action })
+        });
+        if (res.success) {
+          alert(res.message);
+          clearUserSelection();
+          loadUsers();
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function openBulkBalanceModal() {
+      const count = selectedUserIds.size;
+      if (count === 0) return alert('Select at least one user first.');
+      document.getElementById('bulkModalCount').innerText = count;
+      document.getElementById('bulkBalanceAmount').value = '';
+      document.getElementById('bulkBalanceReason').value = '';
+      document.getElementById('bulkBalanceModal').classList.remove('hidden');
+    }
+
+    function closeBulkBalanceModal() {
+      document.getElementById('bulkBalanceModal').classList.add('hidden');
+    }
+
+    async function handleExecuteBulkBalance(e) {
+      e.preventDefault();
+      const userIds = Array.from(selectedUserIds);
+      const balanceAmount = document.getElementById('bulkBalanceAmount').value;
+      const reason = document.getElementById('bulkBalanceReason').value;
+
+      try {
+        const res = await adminFetch('/api/admin/users/bulk-action', {
+          method: 'POST',
+          body: JSON.stringify({ userIds, action: 'adjust_balance', balanceAmount, reason })
+        });
+        if (res.success) {
+          alert(res.message);
+          closeBulkBalanceModal();
+          clearUserSelection();
+          loadUsers();
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function restoreUser(userId) {
+      if (!confirm('Reactivate this account and restore to Active status?')) return;
+      try {
+        const res = await adminFetch(`/api/admin/users/${userId}/restore`, { method: 'POST' });
+        if (res.success) {
+          alert(res.message);
+          loadUsers();
+          if (currentActiveTab === 'user-detail') inspectUserDossier(userId);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function softDeleteUser(userId, email) {
+      if (!confirm(`Archive/Soft-Delete ${email}? All historical calls, SMS, and wallet transactions will be preserved for your records.`)) return;
+      try {
+        const res = await adminFetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+        if (res.success) {
+          alert(res.message);
+          loadUsers();
+          if (currentActiveTab === 'user-detail') inspectUserDossier(userId);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
     async function loadUsers() {
       const search = document.getElementById('userSearchInput')?.value || '';
       try {
-        const data = await adminFetch(`/api/admin/users?search=${encodeURIComponent(search)}`);
+        const data = await adminFetch(`/api/admin/users?search=${encodeURIComponent(search)}&filter=${currentUserFilter}`);
         if (!data.success) return;
 
+        // Update counts
+        const c = data.counts || {};
+        if (document.getElementById('crmTotalUsersBadge')) document.getElementById('crmTotalUsersBadge').innerText = c.total || data.total || 0;
+        if (document.getElementById('filterCountAll')) document.getElementById('filterCountAll').innerText = `(${c.total || 0})`;
+        if (document.getElementById('filterCountActive')) document.getElementById('filterCountActive').innerText = `(${c.active || 0})`;
+        if (document.getElementById('filterCountBlocked')) document.getElementById('filterCountBlocked').innerText = `(${c.blocked || 0})`;
+        if (document.getElementById('filterCountErased')) document.getElementById('filterCountErased').innerText = `(${c.erased || 0})`;
+
         const tbody = document.getElementById('usersTableBody');
-        tbody.innerHTML = (data.users || []).map(u => `
-          <tr class="hover:bg-slate-800/40 transition-all cursor-pointer group">
+        tbody.innerHTML = (data.users || []).map(u => {
+          const isSel = selectedUserIds.has(u.id);
+          const isErased = u.isDeleted;
+          let badgeHTML = '';
+          if (u.displayStatus === 'self_erased') {
+            badgeHTML = `<span title="Erased by user on ${u.deletedAt ? new Date(u.deletedAt).toLocaleDateString() : ''}" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1 w-fit"><i class="fa-solid fa-triangle-exclamation text-[9px]"></i> SELF-ERASED</span>`;
+          } else if (u.displayStatus === 'admin_deleted') {
+            badgeHTML = `<span title="Archived by admin" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1 w-fit"><i class="fa-solid fa-box-archive text-[9px]"></i> DELETED</span>`;
+          } else if (u.displayStatus === 'blocked') {
+            badgeHTML = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 w-fit">BLOCKED 🔴</span>`;
+          } else {
+            badgeHTML = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 w-fit">ACTIVE 🟢</span>`;
+          }
+
+          return `
+          <tr class="hover:bg-slate-800/40 transition-all cursor-pointer group ${isSel ? 'bg-indigo-950/20' : ''}">
+            <td class="py-3 px-4 text-center" onclick="event.stopPropagation()">
+              <input type="checkbox" class="user-row-checkbox rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4" value="${u.id}" ${isSel ? 'checked' : ''} onchange="toggleUserSelection('${u.id}', this.checked, event)">
+            </td>
             <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4 flex items-center gap-3">
-              <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs border border-indigo-500/30 group-hover:scale-105 transition-all">
+              <div class="w-8 h-8 rounded-xl bg-gradient-to-tr ${isErased ? 'from-amber-500/20 to-rose-500/20 text-amber-400 border-amber-500/30' : 'from-indigo-500/20 to-purple-500/20 text-indigo-400 border-indigo-500/30'} flex items-center justify-center font-bold text-xs border group-hover:scale-105 transition-all">
                 ${(u.name || 'U')[0]}
               </div>
               <div>
@@ -1137,27 +1427,42 @@
               </span>
             </td>
             <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4">
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${u.isVerified !== false ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">
-                ${u.isVerified !== false ? 'Active' : 'Blocked'}
-              </span>
+              ${badgeHTML}
             </td>
             <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4 text-slate-400 text-[11px]">${new Date(u.createdAt).toLocaleDateString()}</td>
-            <td class="py-3 px-4 text-right space-x-1.5">
-              <button onclick="inspectUserDossier('${u.id}')" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30">
-                <i class="fa-solid fa-eye mr-1"></i> 360° Inspect
+            <td class="py-3 px-4 text-right space-x-1" onclick="event.stopPropagation()">
+              <button onclick="inspectUserDossier('${u.id}')" title="View 360 Dossier" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30">
+                <i class="fa-solid fa-eye"></i>
               </button>
-              <button onclick="openBalanceModal('${u.id}', '${u.email}')" title="Modify Balance" class="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-xs">
+              <button onclick="openBalanceModal('${u.id}', '${u.email}')" title="Adjust Balance" class="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-xs">
                 <i class="fa-solid fa-hand-holding-dollar"></i>
               </button>
+              ${isErased ? `
+                <button onclick="restoreUser('${u.id}')" title="Restore Account" class="p-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg text-xs">
+                  <i class="fa-solid fa-rotate-left"></i>
+                </button>
+              ` : `
+                <button onclick="toggleBlockUser('${u.id}')" title="${u.isVerified !== false ? 'Block' : 'Unblock'}" class="p-1.5 ${u.isVerified !== false ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400'} rounded-lg text-xs">
+                  <i class="fa-solid ${u.isVerified !== false ? 'fa-user-slash' : 'fa-user-check'}"></i>
+                </button>
+                <button onclick="softDeleteUser('${u.id}', '${u.email}')" title="Archive / Soft-Delete" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs">
+                  <i class="fa-solid fa-box-archive"></i>
+                </button>
+              `}
             </td>
           </tr>
-        `).join('') || '<tr><td colspan="6" class="py-8 text-center text-slate-500">No users found matching query.</td></tr>';
+        `;
+        }).join('') || '<tr><td colspan="7" class="py-8 text-center text-slate-500">No users found for this filter.</td></tr>';
+
+        updateBulkActionBar();
       } catch (err) {
         console.error(err);
       }
     }
 
     // ============================================================
+    // 🔍 360-DEGREE USER DOSSIER INSPECTOR (WITH EXPIRED NUMBERS & RENEW)
+    // ============================================================    // ============================================================
     // 🔍 360-DEGREE USER DOSSIER INSPECTOR (WITH EXPIRED NUMBERS & RENEW)
     // ============================================================
     async function inspectUserDossier(userId, skipHash = false) {
@@ -1198,14 +1503,36 @@
         document.getElementById('udWalletBalance').innerText = `$${(user.walletBalance || 0).toFixed(2)}`;
 
         const statusBadge = document.getElementById('udStatusBadge');
-        if (user.isVerified !== false) {
-          statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-          statusBadge.innerText = 'ACTIVE';
-          document.getElementById('udBtnBlock').innerHTML = '<i class="fa-solid fa-user-slash mr-1"></i> Block Account';
+        const erasedBanner = document.getElementById('udErasedBanner');
+        const btnRestore = document.getElementById('udBtnRestore');
+
+        if (user.isDeleted) {
+          statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+          statusBadge.innerText = user.deletedReason === 'user_self_erase' ? 'SELF-ERASED ⚠️' : 'ARCHIVED 🗑️';
+          
+          if (erasedBanner) {
+            erasedBanner.classList.remove('hidden');
+            const noteEl = document.getElementById('udErasedNote');
+            const tagEl = document.getElementById('udErasedTag');
+            if (tagEl) tagEl.innerText = (user.deletedReason || 'user_self_erase').toUpperCase();
+            if (noteEl) noteEl.innerHTML = `This user erased their account on <b>${user.deletedAt ? new Date(user.deletedAt).toLocaleString() : 'N/A'}</b> (${user.deletedReason || 'self-erasure'}). All telecom lines, calls, SMS, and wallet transactions are permanently archived for your records.`;
+          }
+          if (btnRestore) btnRestore.classList.remove('hidden');
+          document.getElementById('udBtnBlock').classList.add('hidden');
         } else {
-          statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20';
-          statusBadge.innerText = 'BLOCKED / SUSPENDED';
-          document.getElementById('udBtnBlock').innerHTML = '<i class="fa-solid fa-user-check mr-1"></i> Unblock Account';
+          if (erasedBanner) erasedBanner.classList.add('hidden');
+          if (btnRestore) btnRestore.classList.add('hidden');
+          document.getElementById('udBtnBlock').classList.remove('hidden');
+
+          if (user.isVerified !== false) {
+            statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+            statusBadge.innerText = 'ACTIVE 🟢';
+            document.getElementById('udBtnBlock').innerHTML = '<i class="fa-solid fa-user-slash mr-1"></i> Block Account';
+          } else {
+            statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20';
+            statusBadge.innerText = 'BLOCKED 🔴';
+            document.getElementById('udBtnBlock').innerHTML = '<i class="fa-solid fa-user-check mr-1"></i> Unblock Account';
+          }
         }
 
         document.getElementById('udTotalDeposited').innerText = `$${metrics.totalDeposited.toFixed(2)}`;
@@ -1359,6 +1686,12 @@
     function openCustomBalanceFromDetail() {
       const email = document.getElementById('udEmail').innerText;
       openBalanceModal(currentInspectedUserId, email);
+    }
+
+    async function handleRestoreUserFromDetail() {
+      if (!currentInspectedUserId) return;
+      await restoreUser(currentInspectedUserId);
+      inspectUserDossier(currentInspectedUserId);
     }
 
     async function handleToggleBlockFromDetail() {

@@ -829,14 +829,14 @@
 
                   <!-- Title -->
                   <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Pop-up Headline / Title *</label>
-                    <input type="text" id="annTitle" oninput="updateLivePreview()" placeholder="e.g. 🎉 Special 50% Off on USA Virtual Lines!" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500">
+                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Pop-up Headline / Title <span class="text-slate-500 font-normal">(Optional if Image provided)</span></label>
+                    <input type="text" id="annTitle" oninput="updateLivePreview()" placeholder="e.g. 🎉 Special 50% Off on USA Virtual Lines! (Optional if image provided)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500">
                   </div>
 
                   <!-- Message -->
                   <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Message Body / Offer Details *</label>
-                    <textarea id="annMessage" oninput="updateLivePreview()" rows="3" placeholder="e.g. Top-up $10.00 today and unlock a free USA private line with unlimited free inbound SMS!" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500"></textarea>
+                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Message Body / Offer Details <span class="text-slate-500 font-normal">(Optional if Image provided)</span></label>
+                    <textarea id="annMessage" oninput="updateLivePreview()" rows="3" placeholder="e.g. Top-up $10.00 today and unlock a free USA private line! (Optional if image provided)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500"></textarea>
                   </div>
 
                   <!-- Image URL with Size Guidelines -->
@@ -852,7 +852,7 @@
                   <!-- Action Button Text & Destination -->
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label class="block text-[11px] font-semibold text-slate-400 mb-1">Action Button Text</label>
+                      <label class="block text-[11px] font-semibold text-slate-400 mb-1">Action Button Text <span class="text-slate-500 font-normal">(Optional)</span></label>
                       <input type="text" id="annBtnText" oninput="updateLivePreview()" placeholder="e.g. Claim Offer Now 🚀" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
                     </div>
                     <div>
@@ -994,24 +994,24 @@
                     <!-- 🪟 LIVE INTERACTIVE POP-UP MODAL OVERLAY -->
                     <div id="simulatedPopupModal" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-30 flex items-center justify-center p-3 transition-all">
                       
-                      <!-- Modal Card -->
-                      <div class="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-700/80 rounded-3xl w-full shadow-2xl overflow-hidden relative flex flex-col animate-scale-up">
+                      <!-- Modal Card (Supports Full-Bleed Graphic Poster or Standard Card) -->
+                      <div id="simModalCard" class="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-700/80 rounded-3xl w-full shadow-2xl overflow-hidden relative flex flex-col animate-scale-up max-h-[92%]">
                         
                         <!-- ✖ Top-Right User Close Button (Interactive!) -->
-                        <button onclick="dismissPreviewPopup()" title="Click to test X dismiss" class="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-slate-950/80 hover:bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-white flex items-center justify-center text-xs font-bold z-20 shadow-md transition-all cursor-pointer">
+                        <button onclick="dismissPreviewPopup()" title="Click to test X dismiss" class="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-black/75 hover:bg-black border border-white/40 text-white flex items-center justify-center text-xs font-bold z-30 shadow-lg transition-all cursor-pointer">
                           <i class="fa-solid fa-xmark"></i>
                         </button>
 
-                        <!-- Pop-up Top Header Image (1080x600 px 16:9 Aspect Ratio) -->
-                        <div class="w-full h-32 bg-slate-800 relative overflow-hidden flex items-center justify-center">
+                        <!-- Pop-up Header / Full Poster Image -->
+                        <div id="simImgContainer" class="w-full h-32 bg-slate-800 relative overflow-hidden flex items-center justify-center">
                           <img id="simPreviewImg" src="https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=600&q=80" alt="Banner" class="w-full h-full object-cover">
                           <div id="simPreviewImgPlaceholder" class="hidden absolute inset-0 bg-gradient-to-tr from-amber-600 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold">
                             <i class="fa-solid fa-gift"></i>
                           </div>
                         </div>
 
-                        <!-- Content Body -->
-                        <div class="p-3.5 space-y-2.5 text-center">
+                        <!-- Content Body (Hidden in Graphic-Only Mode) -->
+                        <div id="simContentContainer" class="p-3.5 space-y-2.5 text-center">
                           <h4 id="simPreviewTitle" class="text-xs font-extrabold text-white leading-tight">
                             🎉 Special 50% Off on USA Virtual Lines!
                           </h4>
@@ -1023,10 +1023,12 @@
                           <button id="simPreviewBtn" class="w-full py-2 px-3 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold text-[11px] rounded-xl shadow-lg shadow-amber-500/20 hover:scale-[1.02] transition-all">
                             Claim Offer Now 🚀
                           </button>
+                        </div>
 
-                          <!-- Bottom Dismiss Text -->
-                          <button onclick="dismissPreviewPopup()" class="text-[9px] text-slate-500 hover:text-slate-400 font-medium transition-all block mx-auto pt-0.5">
-                            Maybe Later / Close
+                        <!-- Floating CTA Button for Graphic-Only Poster -->
+                        <div id="simGraphicOnlyBtnContainer" class="hidden absolute bottom-3 inset-x-3 z-20">
+                          <button id="simGraphicOnlyBtn" class="w-full py-2 px-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold text-[11px] rounded-xl shadow-lg shadow-indigo-500/30 hover:scale-[1.02] transition-all">
+                            Claim Offer Now 🚀
                           </button>
                         </div>
                       </div>
@@ -2448,10 +2450,10 @@
     let announcementsList = [];
 
     function updateLivePreview() {
-      const title = document.getElementById('annTitle')?.value.trim() || '🎉 Special 50% Off on USA Virtual Lines!';
-      const message = document.getElementById('annMessage')?.value.trim() || 'Top-up $10.00 today and unlock a free USA private line with unlimited free inbound SMS!';
-      const imgUrl = document.getElementById('annImageUrl')?.value.trim();
-      const btnText = document.getElementById('annBtnText')?.value.trim() || 'Claim Offer Now 🚀';
+      const rawTitle = document.getElementById('annTitle')?.value.trim() || '';
+      const rawMsg = document.getElementById('annMessage')?.value.trim() || '';
+      const imgUrl = document.getElementById('annImageUrl')?.value.trim() || '';
+      const btnText = document.getElementById('annBtnText')?.value.trim() || '';
       const actionType = document.getElementById('annActionType')?.value || 'navigate_numbers';
 
       const titleEl = document.getElementById('simPreviewTitle');
@@ -2459,26 +2461,74 @@
       const btnEl = document.getElementById('simPreviewBtn');
       const imgEl = document.getElementById('simPreviewImg');
       const imgPlaceEl = document.getElementById('simPreviewImgPlaceholder');
+      const imgContainer = document.getElementById('simImgContainer');
+      const contentContainer = document.getElementById('simContentContainer');
+      const graphicOnlyBtnContainer = document.getElementById('simGraphicOnlyBtnContainer');
+      const graphicOnlyBtn = document.getElementById('simGraphicOnlyBtn');
       const extUrlContainer = document.getElementById('externalUrlContainer');
-
-      if (titleEl) titleEl.innerText = title;
-      if (msgEl) msgEl.innerText = message;
-      if (btnEl) btnEl.innerText = btnText;
 
       if (extUrlContainer) {
         if (actionType === 'open_url') extUrlContainer.classList.remove('hidden');
         else extUrlContainer.classList.add('hidden');
       }
 
-      if (imgUrl) {
+      const isGraphicOnly = imgUrl && !rawTitle && !rawMsg;
+
+      if (isGraphicOnly) {
+        // Full Bleed Poster Mode
+        if (imgContainer) {
+          imgContainer.className = 'w-full h-72 bg-slate-900 relative overflow-hidden flex items-center justify-center';
+        }
         if (imgEl) {
           imgEl.src = imgUrl;
+          imgEl.className = 'w-full h-full object-contain';
           imgEl.classList.remove('hidden');
         }
         if (imgPlaceEl) imgPlaceEl.classList.add('hidden');
+        if (contentContainer) contentContainer.classList.add('hidden');
+
+        if (btnText && actionType !== 'none') {
+          if (graphicOnlyBtnContainer) graphicOnlyBtnContainer.classList.remove('hidden');
+          if (graphicOnlyBtn) graphicOnlyBtn.innerText = btnText;
+        } else {
+          if (graphicOnlyBtnContainer) graphicOnlyBtnContainer.classList.add('hidden');
+        }
       } else {
-        if (imgEl) imgEl.classList.add('hidden');
-        if (imgPlaceEl) imgPlaceEl.classList.remove('hidden');
+        // Standard Card Mode (Graphic + Text or Text Only)
+        if (imgContainer) {
+          imgContainer.className = 'w-full h-32 bg-slate-800 relative overflow-hidden flex items-center justify-center';
+        }
+        if (contentContainer) contentContainer.classList.remove('hidden');
+        if (graphicOnlyBtnContainer) graphicOnlyBtnContainer.classList.add('hidden');
+
+        if (imgUrl) {
+          if (imgEl) {
+            imgEl.src = imgUrl;
+            imgEl.className = 'w-full h-full object-cover';
+            imgEl.classList.remove('hidden');
+          }
+          if (imgPlaceEl) imgPlaceEl.classList.add('hidden');
+        } else {
+          if (imgEl) imgEl.classList.add('hidden');
+          if (imgPlaceEl) imgPlaceEl.classList.remove('hidden');
+        }
+
+        if (titleEl) {
+          titleEl.innerText = rawTitle || (imgUrl ? '' : '🎉 Special Announcement');
+          titleEl.style.display = rawTitle || !imgUrl ? 'block' : 'none';
+        }
+        if (msgEl) {
+          msgEl.innerText = rawMsg || (imgUrl ? '' : 'Tap below to explore new features & offers.');
+          msgEl.style.display = rawMsg || !imgUrl ? 'block' : 'none';
+        }
+        if (btnEl) {
+          if (btnText && actionType !== 'none') {
+            btnEl.innerText = btnText;
+            btnEl.classList.remove('hidden');
+          } else {
+            btnEl.classList.add('hidden');
+          }
+        }
       }
     }
 

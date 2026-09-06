@@ -1973,7 +1973,8 @@ app.post('/api/support/messages', async (req, res) => {
 
     // Auto-update or Create Support Ticket in Incoming Queue
     const existingTicket = await prisma.supportTicket.findUnique({ where: { userId } });
-    const ticketStatus = (existingTicket && existingTicket.status === 'in_progress') ? 'in_progress' : 'unassigned';
+    const isLiveAgentAssigned = existingTicket && (existingTicket.status === 'in_progress' || Boolean(existingTicket.assignedStaffId));
+    const ticketStatus = isLiveAgentAssigned ? 'in_progress' : 'unassigned';
 
     await prisma.supportTicket.upsert({
       where: { userId },
@@ -1998,29 +1999,32 @@ app.post('/api/support/messages', async (req, res) => {
       }
     });
 
-    const lower = text.toLowerCase();
-    let replyText = 'Thank you for contacting Simly Support! Our specialist team has queued your ticket. A live telecom engineer is reviewing your line right now.';
+    let agentMsg = null;
+    // ONLY send automated bot acknowledgement if ticket is NOT currently handled by a live human agent
+    if (!isLiveAgentAssigned) {
+      const lower = text.toLowerCase();
+      let replyText = 'Thank you for contacting Simly Support! Our specialist team has queued your ticket. A live telecom engineer is reviewing your line right now.';
 
-    if (lower.includes('whatsapp') || lower.includes('otp') || lower.includes('code') || lower.includes('telegram')) {
-      replyText = 'For WhatsApp/Telegram OTPs:\n1. Make sure you entered the correct country code (+1 or +44).\n2. If the SMS is delayed, tap "Call Me" in WhatsApp to receive the voice verification code directly on your line!\n3. Check your Simly "Messages" tab.';
-    } else if (lower.includes('rate') || lower.includes('call') || lower.includes('dial') || lower.includes('minute')) {
-      replyText = 'All calls are billed in real-time per minute from your wallet balance. As soon as you dial any country code (e.g. +92, +1, +44, +65), your rate and remaining minutes show directly above the keypad.';
-    } else if (lower.includes('topup') || lower.includes('balance') || lower.includes('money') || lower.includes('wallet')) {
-      replyText = 'You can top up any custom amount in the "Wallet" section. Credits are applied instantly and never expire!';
-    } else if (lower.includes('human') || lower.includes('agent') || lower.includes('live')) {
-      replyText = 'You are in queue for a senior telecom agent. Current wait time is under 2 minutes. Please stay on this screen.';
-    }
-
-    const agentMsg = await prisma.supportMessage.create({
-      data: {
-        userId,
-        sender: 'agent',
-        senderName: 'Sarah (VIP Support)',
-        text: replyText
+      if (lower.includes('whatsapp') || lower.includes('otp') || lower.includes('code') || lower.includes('telegram')) {
+        replyText = 'For WhatsApp/Telegram OTPs:\n1. Make sure you entered the correct country code (+1 or +44).\n2. If the SMS is delayed, tap "Call Me" in WhatsApp to receive the voice verification code directly on your line!\n3. Check your Simly "Messages" tab.';
+      } else if (lower.includes('rate') || lower.includes('call') || lower.includes('dial') || lower.includes('minute')) {
+        replyText = 'All calls are billed in real-time per minute from your wallet balance. As soon as you dial any country code (e.g. +92, +1, +44, +65), your rate and remaining minutes show directly above the keypad.';
+      } else if (lower.includes('topup') || lower.includes('balance') || lower.includes('money') || lower.includes('wallet')) {
+        replyText = 'You can top up any custom amount in the "Wallet" section. Credits are applied instantly and never expire!';
+      } else if (lower.includes('human') || lower.includes('agent') || lower.includes('live')) {
+        replyText = 'You are in queue for a senior telecom agent. Current wait time is under 2 minutes. Please stay on this screen.';
       }
-    });
 
-    console.log(`💬 [SUPPORT CHAT] User: "${text}" -> Agent: "${replyText.substring(0, 40)}..."`);
+      agentMsg = await prisma.supportMessage.create({
+        data: {
+          userId,
+          sender: 'agent',
+          senderName: 'Sarah (VIP Support)',
+          text: replyText
+        }
+      });
+      console.log(`💬 [SUPPORT BOT] Sent auto-ack to unassigned User: "${replyText.substring(0, 40)}..."`);
+    }
 
     res.json({
       success: true,
@@ -3938,6 +3942,17 @@ app.post('/api/admin/support/claim', requireStaffPermission('can_handle_support'
       }
     });
 
+    // Notify customer in real-time that human agent joined chat
+    const agentDisplayName = req.staff?.name || 'Support Agent';
+    await prisma.supportMessage.create({
+      data: {
+        userId,
+        sender: 'system',
+        senderName: 'Simly Support',
+        text: `🎧 ${agentDisplayName} (Support Agent) has joined the chat to assist you.`
+      }
+    });
+
     await logAuditEvent({
       staffId: req.staff.id,
       staffName: req.staff.name,
@@ -4019,6 +4034,17 @@ app.post('/api/admin/support/resolve', requireStaffPermission('can_handle_suppor
       }
     });
 
+    // Notify customer that ticket is resolved and prompt rating
+    const agentDisplayName = req.staff?.name || 'Your Support Agent';
+    await prisma.supportMessage.create({
+      data: {
+        userId,
+        sender: 'system',
+        senderName: 'Simly Support',
+        text: `✅ This support ticket has been resolved by ${agentDisplayName}. Please rate your experience below! ⭐`
+      }
+    });
+
     // Increment agent's resolved count
     if (req.staff.id !== 'root_super_admin') {
       await prisma.staffUser.update({
@@ -4045,6 +4071,67 @@ app.post('/api/admin/support/resolve', requireStaffPermission('can_handle_suppor
       ticket
     });
   } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 12b. Endpoint: Submit Customer Satisfaction (CSAT) Star Rating & Review
+app.post('/api/support/rate', async (req, res) => {
+  try {
+    const { userId, rating, feedback = '' } = req.body;
+    if (!userId || !rating || isNaN(Number(rating))) {
+      return res.status(400).json({ success: false, error: 'User ID and valid rating (1-5) are required.' });
+    }
+
+    const starCount = Math.min(5, Math.max(1, parseInt(rating, 10)));
+    const starsEmoji = '⭐'.repeat(starCount);
+
+    const ticket = await prisma.supportTicket.findUnique({ where: { userId } });
+    
+    // Post confirmation into chat
+    await prisma.supportMessage.create({
+      data: {
+        userId,
+        sender: 'system',
+        senderName: 'Simly Support',
+        text: `🌟 Customer Rated ${starCount}/5 Stars ${starsEmoji}${feedback.trim() ? `\nReview: "${feedback.trim()}"` : ''}`
+      }
+    });
+
+    if (ticket) {
+      await prisma.supportTicket.update({
+        where: { userId },
+        data: {
+          internalNotes: `Rating: ${starCount}/5 Stars ${starsEmoji}. Feedback: ${feedback.trim() || 'No text review'}`
+        }
+      });
+
+      // Track in staff audit log
+      if (ticket.assignedStaffId && ticket.assignedStaffId !== 'root_super_admin') {
+        const staff = await prisma.staffUser.findUnique({ where: { id: ticket.assignedStaffId } });
+        if (staff) {
+          await logAuditEvent({
+            staffId: staff.id,
+            staffName: staff.name,
+            staffEmail: staff.email,
+            staffRole: staff.role,
+            action: 'RECEIVED_CUSTOMER_RATING',
+            targetId: userId,
+            targetType: 'staff',
+            details: `Received ${starCount}/5 ⭐ CSAT Rating from customer '${ticket.userName || userId}'. Review: "${feedback.trim()}"`,
+            req
+          });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Thank you! Your ${starCount}-star rating has been recorded.`,
+      rating: starCount
+    });
+  } catch (error) {
+    console.error('[SIMLY ERROR] Failed to submit support rating:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

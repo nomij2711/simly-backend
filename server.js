@@ -2467,24 +2467,110 @@ app.post('/api/admin/login', (req, res) => {
   return res.status(401).json({ success: false, error: 'Invalid admin credentials.' });
 });
 
+// ============================================================
+// 💎 MASTER TELECOM FINANCIAL & PROFIT ENGINE (8-DECIMAL ACCURACY)
+// ============================================================
+async function calculateMasterFinancials() {
+  // 1. Total Customer Deposits (All-time topups/deposits loaded into prepaid wallets)
+  const depositTx = await prisma.transaction.findMany({
+    where: { type: { in: ['topup', 'deposit', 'crypto_deposit', 'stripe_deposit'] } },
+    select: { amount: true }
+  });
+  const totalCustomerDeposits = depositTx.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+
+  // 2. Active User Wallet Balances (Customer funds held in escrow / platform liability)
+  const allUsers = await prisma.user.findMany({ select: { walletBalance: true } });
+  const totalUserBalance = allUsers.reduce((sum, u) => sum + (u.walletBalance || 0), 0);
+
+  // 3. Realized Retail Revenue (Actual charges paid by users for platform services)
+  const [lineTx, callTx, smsTx] = await Promise.all([
+    prisma.transaction.findMany({
+      where: { type: { in: ['number_purchase', 'renewal', 'number_renewal'] } },
+      select: { amount: true }
+    }),
+    prisma.transaction.findMany({
+      where: { type: { in: ['call', 'call_charge'] } },
+      select: { amount: true }
+    }),
+    prisma.transaction.findMany({
+      where: { type: { in: ['sms', 'sms_charge'] } },
+      select: { amount: true }
+    })
+  ]);
+
+  const retailLineRevenue = lineTx.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+  const retailCallRevenue = callTx.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+  const retailSmsRevenue = smsTx.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+  const totalRetailRevenue = retailLineRevenue + retailCallRevenue + retailSmsRevenue;
+
+  // 4. Wholesale Telecom Carrier Costs (Telnyx Direct Wholesale DIDs, Termination & SMS)
+  // A. Numbers Wholesale Cost: Telnyx wholesale DID rate per purchased line ($1.00000000 / month standard)
+  const purchasedNumbers = await prisma.purchasedNumber.findMany({ select: { id: true, planType: true, createdAt: true } });
+  let wholesaleNumberCost = 0;
+  purchasedNumbers.forEach(n => {
+    if (n.planType === '7_days') wholesaleNumberCost += 0.25000000;
+    else if (n.planType === '365_days') wholesaleNumberCost += 12.00000000;
+    else wholesaleNumberCost += 1.00000000;
+  });
+
+  // B. Calls Wholesale Cost: Termination per second ($0.00900000 / min = $0.00015000 / sec)
+  const allCalls = await prisma.callLog.findMany({ select: { durationSeconds: true, status: true } });
+  const totalCallSeconds = allCalls.reduce((acc, c) => acc + (c.durationSeconds || 0), 0);
+  const totalCallMinutes = totalCallSeconds / 60;
+  const wholesaleCallCost = totalCallSeconds * (0.00900000 / 60);
+
+  // C. SMS Wholesale Cost: Outbound carrier cost ($0.00750000 / SMS)
+  const allSmsOutbound = await prisma.message.count({ where: { direction: 'outbound' } });
+  const wholesaleSmsCost = allSmsOutbound * 0.00750000;
+
+  const totalWholesaleCost = wholesaleNumberCost + wholesaleCallCost + wholesaleSmsCost;
+
+  // 5. TRUE NET REALIZED PROFIT (Retail Billed Revenue - Wholesale Carrier Costs)
+  const netProfit = totalRetailRevenue - totalWholesaleCost;
+  const marginPercent = totalRetailRevenue > 0 ? ((netProfit / totalRetailRevenue) * 100) : 0.0;
+
+  return {
+    netProfit: parseFloat(netProfit.toFixed(8)),
+    netProfitStr: netProfit.toFixed(8),
+    marginPercent: parseFloat(marginPercent.toFixed(4)),
+    marginPercentStr: marginPercent.toFixed(4),
+    totalWholesaleCost: parseFloat(totalWholesaleCost.toFixed(8)),
+    totalWholesaleCostStr: totalWholesaleCost.toFixed(8),
+    totalRetailRevenue: parseFloat(totalRetailRevenue.toFixed(8)),
+    totalRetailRevenueStr: totalRetailRevenue.toFixed(8),
+    retailLineRevenue: parseFloat(retailLineRevenue.toFixed(8)),
+    retailLineRevenueStr: retailLineRevenue.toFixed(8),
+    retailCallRevenue: parseFloat(retailCallRevenue.toFixed(8)),
+    retailCallRevenueStr: retailCallRevenue.toFixed(8),
+    retailSmsRevenue: parseFloat(retailSmsRevenue.toFixed(8)),
+    retailSmsRevenueStr: retailSmsRevenue.toFixed(8),
+    wholesaleNumberCost: parseFloat(wholesaleNumberCost.toFixed(8)),
+    wholesaleNumberCostStr: wholesaleNumberCost.toFixed(8),
+    wholesaleCallCost: parseFloat(wholesaleCallCost.toFixed(8)),
+    wholesaleCallCostStr: wholesaleCallCost.toFixed(8),
+    wholesaleSmsCost: parseFloat(wholesaleSmsCost.toFixed(8)),
+    wholesaleSmsCostStr: wholesaleSmsCost.toFixed(8),
+    totalCustomerDeposits: parseFloat(totalCustomerDeposits.toFixed(8)),
+    totalCustomerDepositsStr: totalCustomerDeposits.toFixed(8),
+    totalUserBalance: parseFloat(totalUserBalance.toFixed(8)),
+    totalUserBalanceStr: totalUserBalance.toFixed(8),
+    totalCallSeconds,
+    totalCallMinutes: parseFloat(totalCallMinutes.toFixed(4)),
+    totalSmsSent: allSmsOutbound,
+    activeNumbers: purchasedNumbers.length
+  };
+}
+
 // 2. Master Dashboard KPI Stats
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   try {
     const totalUsers = await prisma.user.count();
     const activeNumbers = await prisma.purchasedNumber.count({ where: { status: 'active' } });
     const totalCalls = await prisma.callLog.count();
-    const totalMessages = await prisma.message.count();
+    const totalMessages = await prisma.message.count({ where: { direction: 'outbound' } });
     
-    // Sum balances
-    const allUsers = await prisma.user.findMany({ select: { walletBalance: true } });
-    const totalUserBalance = allUsers.reduce((sum, u) => sum + (u.walletBalance || 0), 0);
-
-    // Sum topup revenue
-    const topupTransactions = await prisma.transaction.findMany({
-      where: { type: { in: ['topup', 'deposit', 'crypto_deposit', 'stripe_deposit'] } },
-      select: { amount: true }
-    });
-    const totalRevenue = topupTransactions.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+    // Master financials calculation with 8-decimal precision
+    const fin = await calculateMasterFinancials();
 
     // Recent 5 users
     const recentUsers = await prisma.user.findMany({
@@ -2513,11 +2599,17 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
         activeNumbers,
         totalCalls,
         totalMessages,
-        totalUserBalance: parseFloat(totalUserBalance.toFixed(2)),
-        totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+        totalRevenue: fin.totalCustomerDeposits,
+        totalCustomerDeposits: fin.totalCustomerDeposits,
+        totalRetailRevenue: fin.totalRetailRevenue,
+        totalWholesaleCost: fin.totalWholesaleCost,
+        netProfit: fin.netProfit,
+        marginPercent: fin.marginPercent,
+        totalUserBalance: fin.totalUserBalance,
         countryDistribution,
         recentUsers,
         recentTransactions,
+        financials: fin,
         serverStatus: 'ONLINE 🟢',
         uptime: process.uptime()
       }
@@ -4526,63 +4618,13 @@ app.get('/api/admin/telecom/carrier-health', requireAdmin, async (req, res) => {
   }
 });
 
-// 2. Real-Time Net Profit Margins & Cost Analytics
+// 2. Real-Time Net Profit Margins & Cost Analytics (8-Decimal Accuracy)
 app.get('/api/admin/finance/margins', requireAdmin, async (req, res) => {
   try {
-    // 1. Gross Revenue (from user deposits)
-    const topupTx = await prisma.transaction.aggregate({
-      _sum: { amount: true },
-      where: { type: 'topup' }
-    });
-    const grossDeposits = topupTx._sum.amount || 0;
-
-    // 2. Retail charges breakdown
-    const [lineTx, callTx, smsTx] = await Promise.all([
-      prisma.transaction.aggregate({ _sum: { amount: true }, where: { type: 'number_purchase' } }),
-      prisma.transaction.aggregate({ _sum: { amount: true }, where: { type: 'call_charge' } }),
-      prisma.transaction.aggregate({ _sum: { amount: true }, where: { type: 'sms_charge' } })
-    ]);
-
-    const retailLineRevenue = lineTx._sum.amount || 0;
-    const retailCallRevenue = callTx._sum.amount || 0;
-    const retailSmsRevenue = smsTx._sum.amount || 0;
-
-    // 3. Wholesale Carrier Costs Estimation
-    const [activeNumbersCount, allCalls, allSmsOutbound] = await Promise.all([
-      prisma.purchasedNumber.count({ where: { status: 'active' } }),
-      prisma.callLog.findMany({ select: { durationSeconds: true, status: true } }),
-      prisma.message.count({ where: { direction: 'outbound' } })
-    ]);
-
-    const totalCallSeconds = allCalls.reduce((acc, c) => acc + (c.durationSeconds || 0), 0);
-    const totalCallMinutes = Math.ceil(totalCallSeconds / 60);
-
-    // Realistic Telnyx wholesale benchmarks
-    const wholesaleNumberCost = activeNumbersCount * 1.00; // ~$1.00 / month per DID
-    const wholesaleCallCost = totalCallMinutes * 0.009;   // ~$0.009 / min termination
-    const wholesaleSmsCost = allSmsOutbound * 0.0075;     // ~$0.0075 / SMS
-    const totalWholesaleCost = wholesaleNumberCost + wholesaleCallCost + wholesaleSmsCost;
-
-    const netProfit = grossDeposits - totalWholesaleCost;
-    const marginPercent = grossDeposits > 0 ? ((netProfit / grossDeposits) * 100).toFixed(1) : '100.0';
-
+    const fin = await calculateMasterFinancials();
     res.json({
       success: true,
-      data: {
-        grossDeposits: parseFloat(grossDeposits.toFixed(2)),
-        retailLineRevenue: parseFloat(retailLineRevenue.toFixed(2)),
-        retailCallRevenue: parseFloat(retailCallRevenue.toFixed(2)),
-        retailSmsRevenue: parseFloat(retailSmsRevenue.toFixed(2)),
-        wholesaleNumberCost: parseFloat(wholesaleNumberCost.toFixed(2)),
-        wholesaleCallCost: parseFloat(wholesaleCallCost.toFixed(2)),
-        wholesaleSmsCost: parseFloat(wholesaleSmsCost.toFixed(2)),
-        totalWholesaleCost: parseFloat(totalWholesaleCost.toFixed(2)),
-        netProfit: parseFloat(netProfit.toFixed(2)),
-        marginPercent: parseFloat(marginPercent),
-        totalCallMinutes,
-        totalSmsSent: allSmsOutbound,
-        activeNumbers: activeNumbersCount
-      }
+      data: fin
     });
   } catch (error) {
     console.error('[FINANCE MARGINS ERROR]', error);

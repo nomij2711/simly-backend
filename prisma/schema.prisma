@@ -20,6 +20,12 @@ model User {
   isDeleted     Boolean   @default(false)
   deletedAt     DateTime?
   deletedReason String?   // "user_self_erase", "admin_deleted", etc.
+  riskScore     Int       @default(0)       // 0 to 100 risk calculation
+  riskLevel     String    @default("LOW")   // "LOW", "MEDIUM", "HIGH"
+  isBanned      Boolean   @default(false)   // true = permanently locked
+  banReason     String?                     // Admin/system ban explanation
+  lastLoginIp   String?                     // Last known IP address
+  deviceId      String?                     // Hardware fingerprint
   createdAt     DateTime  @default(now())
 }
 
@@ -126,7 +132,6 @@ model Announcement {
   updatedAt        DateTime  @updatedAt
 }
 
-
 model StaffUser {
   id              String    @id @default(uuid())
   name            String
@@ -170,10 +175,45 @@ model AuditLog {
   staffName   String   @default("System / Master Admin")
   staffEmail  String   @default("owner@simlytel.com")
   staffRole   String   @default("super_admin")
-  action      String   // "STAFF_LOGIN", "REPLY_SUPPORT", "CLAIM_TICKET", "TRANSFER_TICKET", "RESOLVE_TICKET", "ADJUST_BALANCE", "EXTEND_NUMBER", "TOGGLE_NUMBER_STATUS", "SEND_BROADCAST", "CREATE_STAFF", "SUSPEND_STAFF", "UPDATE_PRICING", "DELETE_RECORD"
+  action      String   // "STAFF_LOGIN", "REPLY_SUPPORT", "CLAIM_TICKET", "TRANSFER_TICKET", "RESOLVE_TICKET", "ADJUST_BALANCE", "EXTEND_NUMBER", "TOGGLE_NUMBER_STATUS", "SEND_BROADCAST", "CREATE_STAFF", "SUSPEND_STAFF", "UPDATE_PRICING", "DELETE_RECORD", "BAN_USER", "UNBAN_USER", "ADD_BLACKLIST", "REMOVE_BLACKLIST", "UPDATE_CONFIG", "UPDATE_ALERTS"
   targetId    String?
-  targetType  String?  // "user", "ticket", "number", "staff", "system"
+  targetType  String?  // "user", "ticket", "number", "staff", "system", "config", "blacklist"
   details     String?
   ipAddress   String?  @default("127.0.0.1")
   createdAt   DateTime @default(now())
+}
+
+model Blacklist {
+  id          String   @id @default(uuid())
+  type        String   // "EMAIL", "IP", "DEVICE_ID", "PHONE"
+  value       String   // e.g., "badactor@tempmail.com", "185.220.101.5", "device_fingerprint_xyz"
+  reason      String   // "Card Testing Fraud", "DDoS Attempt", "Abusive User"
+  createdBy   String   @default("System Admin")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model SystemConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique // "maintenance_mode", "min_app_version", "allow_outbound_calls", etc.
+  value       String   // "true", "1.2.0", "enabled"
+  description String?  // Description of this configuration parameter
+  updatedBy   String?  @default("Super Admin")
+  updatedAt   DateTime @updatedAt
+}
+
+model AdminAlertSetting {
+  id                        String   @id @default(uuid())
+  primaryChannel            String   @default("EMAIL") // "EMAIL", "SMS", "WHATSAPP", "TELEGRAM", "DISCORD", "IN_APP"
+  ownerEmail                String?  @default("admin@simlytel.com")
+  ownerPhone                String?
+  webhookUrl                String?
+  telegramBotToken          String?
+  telegramChatId            String?
+  notifyOnLargeDeposit      Boolean  @default(true)
+  notifyOnLowCarrierBalance Boolean  @default(true)
+  notifyOnHighRiskFraud     Boolean  @default(true)
+  notifyOnUnassignedTicket  Boolean  @default(true)
+  isEnabled                 Boolean  @default(true)
+  updatedAt                 DateTime @updatedAt
 }

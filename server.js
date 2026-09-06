@@ -4625,7 +4625,7 @@ app.get('/api/admin/finance/margins', requireAdmin, async (req, res) => {
 const DEFAULT_SYSTEM_CONFIGS = {
   maintenance_mode: { value: 'false', desc: 'Global app maintenance mode (true = locked, false = live)' },
   maintenance_message: { value: 'SimlyTel is currently undergoing scheduled network maintenance. We will be back online shortly!', desc: 'Maintenance message shown to users' },
-  min_app_version: { value: '99.0.0', desc: 'Minimum required mobile app version before force update popup' },
+  min_app_version: { value: '1.1.0', desc: 'Minimum required mobile app version before force update popup' },
   force_update_title: { value: 'Update Required', desc: 'Title on force update modal' },
   force_update_message: { value: 'A new version of SimlyTel is required. Please update your app now.', desc: 'Message on force update modal' },
   store_url_android: { value: 'https://play.google.com/store/apps/details?id=com.simlytel.app', desc: 'Google Play Store URL' },

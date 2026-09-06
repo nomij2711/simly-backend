@@ -126,3 +126,54 @@ model Announcement {
   updatedAt        DateTime  @updatedAt
 }
 
+
+model StaffUser {
+  id              String    @id @default(uuid())
+  name            String
+  email           String    @unique
+  password        String
+  role            String    @default("support_agent") // "super_admin", "support_agent", "operations_manager", "finance_manager"
+  permissions     String    @default("all") // JSON or comma-separated permissions
+  avatarUrl       String?
+  isActive        Boolean   @default(true)
+  isOnline        Boolean   @default(false)
+  lastLoginAt     DateTime?
+  ticketsResolved Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model SupportTicket {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  userName          String?   @default("SimlyTel User")
+  userEmail         String?
+  status            String    @default("unassigned") // "unassigned", "in_progress", "resolved", "closed"
+  priority          String    @default("normal") // "normal", "urgent"
+  assignedStaffId   String?
+  assignedStaffName String?
+  claimedAt         DateTime?
+  resolvedAt        DateTime?
+  lastMessageText   String?
+  lastMessageSender String?   // "user" or "agent"
+  lastMessageAt     DateTime  @default(now())
+  unreadUserCount   Int       @default(0)
+  unreadStaffCount  Int       @default(0)
+  internalNotes     String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  staffId     String?
+  staffName   String   @default("System / Master Admin")
+  staffEmail  String   @default("owner@simlytel.com")
+  staffRole   String   @default("super_admin")
+  action      String   // "STAFF_LOGIN", "REPLY_SUPPORT", "CLAIM_TICKET", "TRANSFER_TICKET", "RESOLVE_TICKET", "ADJUST_BALANCE", "EXTEND_NUMBER", "TOGGLE_NUMBER_STATUS", "SEND_BROADCAST", "CREATE_STAFF", "SUSPEND_STAFF", "UPDATE_PRICING", "DELETE_RECORD"
+  targetId    String?
+  targetType  String?  // "user", "ticket", "number", "staff", "system"
+  details     String?
+  ipAddress   String?  @default("127.0.0.1")
+  createdAt   DateTime @default(now())
+}

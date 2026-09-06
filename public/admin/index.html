@@ -111,6 +111,14 @@
           <i class="fa-solid fa-tags w-5 text-center text-pink-400"></i>
           <span>Rates & Promos</span>
         </button>
+        <button onclick="switchTab('team')" id="tab-btn-team" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
+          <i class="fa-solid fa-user-shield w-5 text-center text-amber-400"></i>
+          <span>Team & Staff (RBAC)</span>
+        </button>
+        <button onclick="switchTab('audit')" id="tab-btn-audit" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
+          <i class="fa-solid fa-shield-halved w-5 text-center text-emerald-400"></i>
+          <span>Activity Audit Trail</span>
+        </button>
       </nav>
 
       <!-- Server Status & Logout -->
@@ -145,13 +153,13 @@
           <button onclick="refreshActiveTab()" title="Refresh Live Data" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
             <i class="fa-solid fa-arrows-rotate text-sm"></i>
           </button>
-          <div class="flex items-center gap-2 pl-3 border-l border-slate-800">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
-              NA
+          <div class="flex items-center gap-2.5 pl-3 border-l border-slate-800">
+            <div id="headerStaffAvatar" class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-md">
+              SA
             </div>
             <div class="hidden md:block text-left leading-tight">
-              <div class="text-xs font-semibold text-white">Nouman Ali</div>
-              <div class="text-[10px] text-slate-400">Super Admin</div>
+              <div id="headerStaffName" class="text-xs font-bold text-white">Staff Member</div>
+              <div id="headerStaffRoleBadge" class="text-[10px] text-indigo-400 font-semibold">Super Admin</div>
             </div>
           </div>
         </div>
@@ -747,35 +755,103 @@
         <!-- ============================================================ -->
         <!-- 💬 TAB 6: SUPPORT DESK -->
         <!-- ============================================================ -->
+        <!-- ============================================================ -->
+        <!-- 💬 TAB 6: SMART MULTI-AGENT HELPDESK & QUEUE -->
+        <!-- ============================================================ -->
         <div id="tab-view-support" class="tab-view hidden space-y-4">
-          <div>
-            <h2 class="text-xl font-bold text-white tracking-tight">Customer Support Live Desk</h2>
-            <p class="text-xs text-slate-400">Reply directly to user support chat messages in real time.</p>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
+                <i class="fa-solid fa-headset text-violet-400"></i>
+                <span>Smart Multi-Agent Live Helpdesk</span>
+              </h2>
+              <p class="text-xs text-slate-400">Collaborative customer ticketing, ticket claiming, live agent routing & resolution.</p>
+            </div>
+            <button onclick="loadSupportQueue()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 self-start sm:self-auto">
+              <i class="fa-solid fa-rotate-right text-xs"></i> <span>Refresh Queue</span>
+            </button>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-[560px]">
-            <!-- Threads List -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col overflow-hidden">
-              <div class="font-bold text-xs text-slate-400 uppercase tracking-wider mb-3 px-2">User Conversations</div>
+          <!-- Queue Filter Tabs -->
+          <div class="flex items-center gap-2 border-b border-slate-800 pb-2">
+            <button onclick="switchQueueFilter('unassigned')" id="qtab-btn-unassigned" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+              <span>Incoming Queue</span>
+              <span id="badgeUnassignedCount" class="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-[10px]">0</span>
+            </button>
+            <button onclick="switchQueueFilter('my_chats')" id="qtab-btn-my_chats" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center gap-2">
+              <i class="fa-solid fa-user-check text-emerald-400"></i>
+              <span>My Assigned Chats</span>
+              <span id="badgeMyChatsCount" class="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px]">0</span>
+            </button>
+            <button onclick="switchQueueFilter('all')" id="qtab-btn-all" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center gap-2">
+              <i class="fa-solid fa-layer-group text-indigo-400"></i>
+              <span>All Threads & History</span>
+            </button>
+          </div>
+
+          <!-- Helpdesk Workstation -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-[580px]">
+            <!-- Left: Threads List -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col overflow-hidden shadow-xl">
+              <div class="flex items-center justify-between mb-3 px-1">
+                <span id="queueListHeader" class="font-bold text-xs text-slate-400 uppercase tracking-wider">Incoming Queue</span>
+                <span id="queueItemCount" class="text-[11px] text-slate-500 font-medium">0 waiting</span>
+              </div>
               <div id="supportThreadsList" class="flex-1 overflow-y-auto custom-scrollbar space-y-2">
                 <div class="text-center text-slate-500 text-xs py-8">Loading conversations...</div>
               </div>
             </div>
 
-            <!-- Active Chat Thread -->
-            <div class="md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col overflow-hidden">
-              <div id="chatHeader" class="pb-3 border-b border-slate-800 flex items-center justify-between">
-                <div class="text-sm font-bold text-white">Select a conversation</div>
-                <span id="chatUserMeta" class="text-xs text-slate-400"></span>
+            <!-- Right: Active Chat Workstation -->
+            <div class="md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col overflow-hidden shadow-xl relative">
+              
+              <!-- Workstation Header -->
+              <div id="chatHeader" class="pb-3 border-b border-slate-800 flex items-center justify-between flex-wrap gap-2">
+                <div class="flex items-center gap-3">
+                  <div id="chatUserAvatar" class="w-9 h-9 rounded-full bg-indigo-600/30 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-xs">
+                    ?
+                  </div>
+                  <div>
+                    <div id="chatUserName" class="text-sm font-bold text-white">Select a Customer</div>
+                    <div id="chatUserMeta" class="text-[11px] text-slate-400">Click any conversation from the list</div>
+                  </div>
+                </div>
+
+                <!-- Ticket Action Controls (Claim / Transfer / Resolve) -->
+                <div id="ticketActionControls" class="flex items-center gap-2 hidden">
+                  <button id="btnClaimTicket" onclick="handleClaimCurrentTicket()" class="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-xl text-xs font-bold shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-hand"></i> <span>Pick Up / Claim</span>
+                  </button>
+                  <button id="btnTransferTicket" onclick="openTransferTicketModal()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-shuffle text-indigo-400"></i> <span>Transfer</span>
+                  </button>
+                  <button id="btnResolveTicket" onclick="handleResolveCurrentTicket()" class="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> <span>Mark Resolved</span>
+                  </button>
+                </div>
               </div>
+
+              <!-- Ticket Status / Collision Lock Banner -->
+              <div id="ticketBanner" class="hidden my-2 px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between">
+                <span id="ticketBannerText"></span>
+                <span id="ticketBannerSub" class="text-[10px] opacity-80"></span>
+              </div>
+
+              <!-- Messages Stream -->
               <div id="chatMessagesBody" class="flex-1 overflow-y-auto custom-scrollbar py-4 space-y-3">
-                <div class="text-center text-slate-500 text-xs py-12">Click any user thread on the left to read and reply.</div>
+                <div class="text-center text-slate-500 text-xs py-16 flex flex-col items-center gap-2">
+                  <i class="fa-solid fa-comments text-slate-600 text-3xl"></i>
+                  <span>Select any ticket from the left queue to assist customer.</span>
+                </div>
               </div>
+
+              <!-- Reply Input Area -->
               <form id="replyForm" onsubmit="handleSendSupportReply(event)" class="pt-3 border-t border-slate-800 flex gap-2">
-                <input type="text" id="replyTextInput" placeholder="Type your reply to customer..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
-                <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
+                <input type="text" id="replyTextInput" placeholder="Type your reply to customer..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                <button type="submit" id="btnSendReply" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 transition-all">
                   <span>Send</span>
-                  <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                  <i class="fa-solid fa-paper-plane text-[11px]"></i>
                 </button>
               </form>
             </div>
@@ -1273,7 +1349,7 @@
       btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Verifying...';
 
       try {
-        const res = await fetch(`${API_BASE}/api/admin/login`, {
+        const res = await fetch(`${API_BASE}/api/staff/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
@@ -1282,9 +1358,11 @@
         if (data.success && data.token) {
           ADMIN_TOKEN = data.token;
           localStorage.setItem('simly_admin_token', ADMIN_TOKEN);
+          CURRENT_STAFF = data.staff;
+          localStorage.setItem('simly_staff_profile', JSON.stringify(CURRENT_STAFF));
           showAdminApp();
         } else {
-          errEl.innerText = data.error || 'Invalid credentials';
+          errEl.innerText = data.error || 'Invalid staff credentials';
           errEl.classList.remove('hidden');
         }
       } catch (err) {
@@ -1322,7 +1400,7 @@
 
       // 3. Check clean hash tab names
       const cleanHash = hash.replace(/^#tab=/, '').replace(/^#/, '');
-      const validTabs = ['overview', 'users', 'numbers', 'cdr', 'transactions', 'support', 'announcements', 'pricing'];
+      const validTabs = ['overview', 'users', 'numbers', 'cdr', 'transactions', 'support', 'announcements', 'pricing', 'team', 'audit'];
       if (validTabs.includes(cleanHash)) {
         switchTab(cleanHash, true);
         return;
@@ -1344,10 +1422,82 @@
       switchTab('overview', false);
     }
 
-    function showAdminApp() {
+    let CURRENT_STAFF = null;
+
+    async function showAdminApp() {
       document.getElementById('loginModal').classList.add('hidden');
       document.getElementById('adminApp').classList.remove('hidden');
+      
+      // Load Current Staff Profile
+      await syncStaffProfile();
       restoreStateFromHashOrStorage();
+    }
+
+    async function syncStaffProfile() {
+      try {
+        const res = await adminFetch('/api/staff/me');
+        if (res.success && res.staff) {
+          CURRENT_STAFF = res.staff;
+          localStorage.setItem('simly_staff_profile', JSON.stringify(CURRENT_STAFF));
+          applyStaffRoleUI(CURRENT_STAFF);
+        }
+      } catch (e) {
+        console.warn('Profile sync warning:', e);
+      }
+    }
+
+    function applyStaffRoleUI(staff) {
+      if (!staff) return;
+
+      const nameEl = document.getElementById('headerStaffName');
+      const badgeEl = document.getElementById('headerStaffRoleBadge');
+      const avatarEl = document.getElementById('headerStaffAvatar');
+
+      if (nameEl) nameEl.innerText = staff.name || 'Staff Member';
+      
+      const roleMap = {
+        super_admin: '👑 Super Admin',
+        support_agent: '🎧 Support Specialist',
+        operations_manager: '📦 Operations Lead',
+        finance_manager: '💼 Finance Manager'
+      };
+
+      if (badgeEl) badgeEl.innerText = roleMap[staff.role] || staff.role;
+      if (avatarEl) {
+        const initials = (staff.name || 'ST').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        avatarEl.innerText = initials;
+      }
+
+      // Role-Based Tab Visibility Filter
+      const allTabBtns = {
+        overview: document.getElementById('tab-btn-overview'),
+        users: document.getElementById('tab-btn-users'),
+        numbers: document.getElementById('tab-btn-numbers'),
+        cdr: document.getElementById('tab-btn-cdr'),
+        transactions: document.getElementById('tab-btn-transactions'),
+        support: document.getElementById('tab-btn-support'),
+        announcements: document.getElementById('tab-btn-announcements'),
+        pricing: document.getElementById('tab-btn-pricing'),
+        team: document.getElementById('tab-btn-team'),
+        audit: document.getElementById('tab-btn-audit')
+      };
+
+      // Reset all to visible first
+      Object.values(allTabBtns).forEach(btn => { if (btn) btn.classList.remove('hidden'); });
+
+      if (staff.role === 'support_agent') {
+        ['overview', 'numbers', 'transactions', 'announcements', 'pricing', 'team', 'audit'].forEach(t => {
+          if (allTabBtns[t]) allTabBtns[t].classList.add('hidden');
+        });
+      } else if (staff.role === 'operations_manager') {
+        ['transactions', 'pricing', 'team', 'audit'].forEach(t => {
+          if (allTabBtns[t]) allTabBtns[t].classList.add('hidden');
+        });
+      } else if (staff.role === 'finance_manager') {
+        ['numbers', 'cdr', 'support', 'announcements', 'pricing', 'team', 'audit'].forEach(t => {
+          if (allTabBtns[t]) allTabBtns[t].classList.add('hidden');
+        });
+      }
     }
 
     function handleAdminLogout() {
@@ -1407,6 +1557,9 @@
       else if (currentActiveTab === 'transactions') loadTransactions();
       else if (currentActiveTab === 'support') loadSupport();
       else if (currentActiveTab === 'announcements') loadAnnouncements();
+      else if (currentActiveTab === 'team') loadTeam();
+      else if (currentActiveTab === 'audit') loadAuditLogs();
+      else if (currentActiveTab === 'support') loadSupportQueue();
       else if (currentActiveTab === 'pricing') loadPricing();
     }
 
@@ -2718,6 +2871,688 @@
       }
     }
 
+  
+
+    // ============================================================
+    // 🎧 SMART MULTI-AGENT HELPDESK & QUEUE LOGIC
+    // ============================================================
+    let currentQueueFilter = 'unassigned';
+    let rawQueueData = { unassigned: [], myChats: [], allChats: [] };
+    let activeSupportUserId = null;
+    let activeTicketData = null;
+
+    async function loadSupportQueue() {
+      try {
+        const res = await adminFetch('/api/admin/support/queue');
+        if (!res.success) return;
+
+        rawQueueData = res;
+
+        // Update Counter Badges
+        const unassignedBadge = document.getElementById('badgeUnassignedCount');
+        const myChatsBadge = document.getElementById('badgeMyChatsCount');
+        if (unassignedBadge) unassignedBadge.innerText = res.stats?.unassignedCount || 0;
+        if (myChatsBadge) myChatsBadge.innerText = res.stats?.myChatsCount || 0;
+
+        renderQueueThreads();
+      } catch (err) {
+        console.error('Queue load error:', err);
+      }
+    }
+
+    function switchQueueFilter(filter) {
+      currentQueueFilter = filter;
+      ['unassigned', 'my_chats', 'all'].forEach(f => {
+        const btn = document.getElementById('qtab-btn-' + f);
+        if (btn) {
+          if (f === filter) {
+            btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-2';
+          } else {
+            btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center gap-2';
+          }
+        }
+      });
+
+      const headerEl = document.getElementById('queueListHeader');
+      if (headerEl) {
+        headerEl.innerText = filter === 'unassigned' ? 'Incoming Queue' : filter === 'my_chats' ? 'My Assigned Chats' : 'All Conversations';
+      }
+
+      renderQueueThreads();
+    }
+
+    function renderQueueThreads() {
+      const container = document.getElementById('supportThreadsList');
+      if (!container) return;
+
+      const list = currentQueueFilter === 'unassigned'
+        ? rawQueueData.unassigned
+        : currentQueueFilter === 'my_chats'
+        ? rawQueueData.myChats
+        : rawQueueData.allChats;
+
+      const countEl = document.getElementById('queueItemCount');
+      if (countEl) countEl.innerText = `${list.length} ${currentQueueFilter === 'unassigned' ? 'waiting' : 'threads'}`;
+
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="text-center text-slate-500 text-xs py-12 flex flex-col items-center gap-2">
+            <i class="fa-solid fa-circle-check text-slate-600 text-2xl"></i>
+            <span>No ${currentQueueFilter === 'unassigned' ? 'unassigned tickets in queue' : 'threads found'}.</span>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = list.map(t => {
+        const isSelected = t.userId === activeSupportUserId;
+        const lastMsg = t.lastMessageText || (t.messages && t.messages[t.messages.length - 1]?.text) || 'No messages yet';
+        const timeAgo = formatTimeAgo(new Date(t.lastMessageAt || t.updatedAt));
+
+        let statusBadge = '';
+        if (t.status === 'unassigned') {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">🟡 Waiting in Queue</span>';
+        } else if (t.isMine) {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">🟢 Handled by You</span>';
+        } else if (t.isLockedByOther) {
+          statusBadge = `<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-800 text-slate-400 border border-slate-700">🔒 ${t.assignedStaffName || 'Agent'}</span>`;
+        } else if (t.status === 'resolved') {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">✅ Resolved</span>';
+        }
+
+        return `
+          <div onclick="selectSupportTicket('${t.userId}')" class="p-3 rounded-xl border transition-all cursor-pointer ${isSelected ? 'bg-indigo-600/10 border-indigo-500/50 shadow-md' : 'bg-slate-950/60 hover:bg-slate-800/40 border-slate-800'}">
+            <div class="flex items-center justify-between gap-1 mb-1">
+              <span class="font-bold text-white text-xs truncate max-w-[130px]">${t.userName || t.userEmail || 'Customer'}</span>
+              <span class="text-[10px] text-slate-500 whitespace-nowrap">${timeAgo}</span>
+            </div>
+            <div class="text-[11px] text-slate-400 truncate mb-1.5">${lastMsg}</div>
+            <div class="flex items-center justify-between">
+              ${statusBadge}
+              ${t.unreadStaffCount > 0 ? `<span class="px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-bold text-[9px]">${t.unreadStaffCount} new</span>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function selectSupportTicket(userId) {
+      activeSupportUserId = userId;
+      
+      const ticket = rawQueueData.allChats.find(x => x.userId === userId) || rawQueueData.unassigned.find(x => x.userId === userId) || rawQueueData.myChats.find(x => x.userId === userId);
+      if (!ticket) return;
+
+      activeTicketData = ticket;
+      renderQueueThreads();
+
+      // Update Chat Header
+      const nameEl = document.getElementById('chatUserName');
+      const metaEl = document.getElementById('chatUserMeta');
+      const avatarEl = document.getElementById('chatUserAvatar');
+      const controlsEl = document.getElementById('ticketActionControls');
+      const bannerEl = document.getElementById('ticketBanner');
+      const bannerText = document.getElementById('ticketBannerText');
+      const bannerSub = document.getElementById('ticketBannerSub');
+      const btnClaim = document.getElementById('btnClaimTicket');
+      const btnTransfer = document.getElementById('btnTransferTicket');
+      const btnResolve = document.getElementById('btnResolveTicket');
+      const replyInput = document.getElementById('replyTextInput');
+      const btnSend = document.getElementById('btnSendReply');
+
+      if (nameEl) nameEl.innerText = ticket.userName || ticket.userEmail || 'Customer';
+      if (metaEl) metaEl.innerText = `User ID: ${ticket.userId} • ${ticket.userEmail || 'No email'}`;
+      if (avatarEl) avatarEl.innerText = (ticket.userName || 'C')[0].toUpperCase();
+      if (controlsEl) controlsEl.classList.remove('hidden');
+
+      // Configure Action Buttons & Collision Lock Banner
+      if (ticket.status === 'unassigned') {
+        if (bannerEl) {
+          bannerEl.className = 'my-2 px-3 py-2 rounded-xl text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20 flex items-center justify-between';
+          bannerEl.classList.remove('hidden');
+        }
+        if (bannerText) bannerText.innerHTML = '<i class="fa-solid fa-clock-rotate-left mr-1.5"></i> Customer is waiting in Queue for an Agent.';
+        if (bannerSub) bannerSub.innerText = 'Click "Pick Up / Claim" to assist.';
+        if (btnClaim) btnClaim.classList.remove('hidden');
+        if (btnTransfer) btnTransfer.classList.add('hidden');
+        if (btnResolve) btnResolve.classList.add('hidden');
+        if (replyInput) replyInput.placeholder = 'Claim this ticket first to reply...';
+      } else if (ticket.isMine) {
+        if (bannerEl) {
+          bannerEl.className = 'my-2 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 flex items-center justify-between';
+          bannerEl.classList.remove('hidden');
+        }
+        if (bannerText) bannerText.innerHTML = '<i class="fa-solid fa-user-check mr-1.5"></i> You are actively assisting this customer.';
+        if (bannerSub) bannerSub.innerText = 'Live Session Active';
+        if (btnClaim) btnClaim.classList.add('hidden');
+        if (btnTransfer) btnTransfer.classList.remove('hidden');
+        if (btnResolve) btnResolve.classList.remove('hidden');
+        if (replyInput) replyInput.placeholder = 'Type your response to customer...';
+      } else if (ticket.isLockedByOther) {
+        if (bannerEl) {
+          bannerEl.className = 'my-2 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700 flex items-center justify-between';
+          bannerEl.classList.remove('hidden');
+        }
+        if (bannerText) bannerText.innerHTML = `<i class="fa-solid fa-lock mr-1.5 text-amber-400"></i> Assigned to ${ticket.assignedStaffName || 'another agent'}.`;
+        if (bannerSub) bannerSub.innerText = 'Collision Lock: Replies disabled';
+        if (btnClaim) {
+          if (CURRENT_STAFF?.role === 'super_admin') {
+            btnClaim.classList.remove('hidden');
+            btnClaim.innerHTML = '<i class="fa-solid fa-shield-halved"></i> <span>Force Takeover</span>';
+          } else {
+            btnClaim.classList.add('hidden');
+          }
+        }
+        if (btnTransfer) btnTransfer.classList.add('hidden');
+        if (btnResolve) btnResolve.classList.add('hidden');
+        if (replyInput) replyInput.placeholder = 'Locked: Another agent is currently handling this chat.';
+      } else if (ticket.status === 'resolved') {
+        if (bannerEl) {
+          bannerEl.className = 'my-2 px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 flex items-center justify-between';
+          bannerEl.classList.remove('hidden');
+        }
+        if (bannerText) bannerText.innerHTML = '<i class="fa-solid fa-circle-check mr-1.5"></i> Ticket Resolved & Closed.';
+        if (bannerSub) bannerSub.innerText = 'Archived';
+        if (btnClaim) {
+          btnClaim.classList.remove('hidden');
+          btnClaim.innerHTML = '<i class="fa-solid fa-rotate-left"></i> <span>Re-open Ticket</span>';
+        }
+        if (btnTransfer) btnTransfer.classList.add('hidden');
+        if (btnResolve) btnResolve.classList.add('hidden');
+        if (replyInput) replyInput.placeholder = 'Ticket resolved. Re-open to send message.';
+      }
+
+      renderChatMessages(ticket.messages || []);
+    }
+
+    function renderChatMessages(messages) {
+      const body = document.getElementById('chatMessagesBody');
+      if (!body) return;
+
+      if (messages.length === 0) {
+        body.innerHTML = '<div class="text-center text-slate-500 text-xs py-12">No messages in this conversation yet.</div>';
+        return;
+      }
+
+      body.innerHTML = messages.map(m => {
+        const isUser = m.sender === 'user';
+        return `
+          <div class="flex flex-col ${isUser ? 'items-start' : 'items-end'}">
+            <div class="flex items-center gap-1.5 mb-1 px-1">
+              <span class="text-[10px] font-bold ${isUser ? 'text-indigo-400' : 'text-emerald-400'}">
+                ${isUser ? (activeTicketData?.userName || 'Customer') : (m.senderName || 'Simly Support')}
+              </span>
+              <span class="text-[9px] text-slate-500">${new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+            <div class="max-w-[80%] rounded-2xl px-4 py-2.5 text-xs ${isUser ? 'bg-slate-950 text-slate-200 border border-slate-800 rounded-tl-sm' : 'bg-indigo-600 text-white rounded-tr-sm shadow-md'}">
+              ${escapeHtml(m.text)}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      body.scrollTop = body.scrollHeight;
+    }
+
+    async function handleClaimCurrentTicket() {
+      if (!activeSupportUserId) return;
+      try {
+        const res = await adminFetch('/api/admin/support/claim', {
+          method: 'POST',
+          body: JSON.stringify({ userId: activeSupportUserId })
+        });
+        if (res.success) {
+          await loadSupportQueue();
+          switchQueueFilter('my_chats');
+          selectSupportTicket(activeSupportUserId);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function openTransferTicketModal() {
+      if (!activeSupportUserId) return;
+      const select = document.getElementById('transferAgentSelect');
+      if (!select) return;
+
+      select.innerHTML = '<option value="">Loading active colleagues...</option>';
+      document.getElementById('transferTicketModal')?.classList.remove('hidden');
+
+      try {
+        const res = await adminFetch('/api/admin/support/agents');
+        if (res.success && res.agents) {
+          select.innerHTML = '<option value="">-- Choose Agent to Transfer --</option>' + res.agents
+            .filter(a => a.id !== CURRENT_STAFF?.id)
+            .map(a => `<option value="${a.id}">${a.name} (${a.role}) ${a.isOnline ? '🟢 Online' : '⚪ Offline'}</option>`)
+            .join('');
+        }
+      } catch (e) {
+        select.innerHTML = '<option value="">Failed to load agents</option>';
+      }
+    }
+
+    function closeTransferTicketModal() {
+      document.getElementById('transferTicketModal')?.classList.add('hidden');
+    }
+
+    async function handleExecuteTicketTransfer(e) {
+      e.preventDefault();
+      const targetStaffId = document.getElementById('transferAgentSelect')?.value;
+      const internalNotes = document.getElementById('transferNoteInput')?.value || '';
+
+      if (!targetStaffId) {
+        alert('Please select an agent to transfer the ticket to.');
+        return;
+      }
+
+      try {
+        const res = await adminFetch('/api/admin/support/transfer', {
+          method: 'POST',
+          body: JSON.stringify({ userId: activeSupportUserId, targetStaffId, internalNotes })
+        });
+        if (res.success) {
+          alert(res.message);
+          closeTransferTicketModal();
+          await loadSupportQueue();
+          selectSupportTicket(activeSupportUserId);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function handleResolveCurrentTicket() {
+      if (!activeSupportUserId) return;
+      if (!confirm('Mark this customer ticket as Resolved & Closed?')) return;
+
+      try {
+        const res = await adminFetch('/api/admin/support/resolve', {
+          method: 'POST',
+          body: JSON.stringify({ userId: activeSupportUserId })
+        });
+        if (res.success) {
+          await loadSupportQueue();
+          selectSupportTicket(activeSupportUserId);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function handleSendSupportReply(e) {
+      e.preventDefault();
+      if (!activeSupportUserId) {
+        alert('Please select a customer thread first.');
+        return;
+      }
+
+      const input = document.getElementById('replyTextInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+
+      try {
+        const res = await adminFetch('/api/admin/support/reply', {
+          method: 'POST',
+          body: JSON.stringify({ userId: activeSupportUserId, text })
+        });
+        if (res.success) {
+          if (!activeTicketData.messages) activeTicketData.messages = [];
+          activeTicketData.messages.push(res.data);
+          renderChatMessages(activeTicketData.messages);
+        }
+      } catch (err) {
+        alert(err.message);
+        input.value = text;
+      }
+    }
+
+    // ============================================================
+    // 👥 TEAM & STAFF MANAGEMENT (RBAC) LOGIC
+    // ============================================================
+    let teamList = [];
+
+    async function loadTeam() {
+      try {
+        const res = await adminFetch('/api/admin/team');
+        if (!res.success) return;
+
+        teamList = res.team || [];
+        
+        // Update Stats
+        const totalEl = document.getElementById('statTotalStaff');
+        const activeAgentsEl = document.getElementById('statActiveAgents');
+        const resolvedEl = document.getElementById('statTeamTicketsResolved');
+
+        if (totalEl) totalEl.innerText = teamList.length;
+        if (activeAgentsEl) activeAgentsEl.innerText = teamList.filter(m => m.role === 'support_agent' && m.isActive).length;
+        if (resolvedEl) resolvedEl.innerText = teamList.reduce((acc, m) => acc + (m.ticketsResolved || 0), 0);
+
+        const tbody = document.getElementById('teamTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = teamList.map(m => {
+          const roleBadges = {
+            super_admin: '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">👑 Super Admin</span>',
+            support_agent: '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">🎧 Support Specialist</span>',
+            operations_manager: '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">📦 Operations Lead</span>',
+            finance_manager: '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">💼 Finance Lead</span>'
+          };
+
+          const initials = (m.name || 'ST').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+          return `
+            <tr class="hover:bg-slate-800/40 transition-all">
+              <td class="py-3 px-4 flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 text-white font-bold text-xs flex items-center justify-center">
+                  ${initials}
+                </div>
+                <div>
+                  <div class="font-bold text-white text-xs flex items-center gap-1.5">
+                    <span>${escapeHtml(m.name)}</span>
+                    ${m.isOnline ? '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Online now"></span>' : ''}
+                  </div>
+                  <div class="text-[11px] text-slate-400">${escapeHtml(m.email)}</div>
+                </div>
+              </td>
+              <td class="py-3 px-4">${roleBadges[m.role] || m.role}</td>
+              <td class="py-3 px-4 text-slate-400 text-[11px]">
+                <span class="truncate block max-w-[150px]" title="${m.permissions}">${m.permissions === 'all' ? 'Full Access' : m.permissions.split(',').length + ' Modules'}</span>
+              </td>
+              <td class="py-3 px-4">
+                <button onclick="toggleStaffActive('${m.id}', ${!m.isActive})" class="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${m.isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">
+                  ${m.isActive ? 'Active 🟢' : 'Suspended 🔴'}
+                </button>
+              </td>
+              <td class="py-3 px-4 font-bold text-indigo-400 text-xs">${m.ticketsResolved || 0} solved</td>
+              <td class="py-3 px-4 text-slate-400 text-[11px]">${m.lastLoginAt ? new Date(m.lastLoginAt).toLocaleDateString() : 'Never'}</td>
+              <td class="py-3 px-4 text-right space-x-1">
+                <button onclick="editStaff('${m.id}')" title="Edit Role & Permissions" class="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-xs">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button onclick="deleteStaff('${m.id}', '${m.name}')" title="Delete Staff Account" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('') || '<tr><td colspan="7" class="py-8 text-center text-slate-500">No staff members created yet.</td></tr>';
+
+      } catch (err) {
+        console.error('Load team error:', err);
+      }
+    }
+
+    function openCreateStaffModal() {
+      document.getElementById('staffEditId').value = '';
+      document.getElementById('staffNameInput').value = '';
+      document.getElementById('staffEmailInput').value = '';
+      document.getElementById('staffPasswordInput').value = '';
+      document.getElementById('staffPasswordInput').required = true;
+      document.getElementById('staffPasswordLabel').innerText = 'Account Password *';
+      document.getElementById('staffRoleSelect').value = 'support_agent';
+      handleStaffRoleChange();
+
+      document.getElementById('staffModalTitle').innerHTML = '<i class="fa-solid fa-user-plus text-amber-400"></i> <span>Add New Team Member</span>';
+      document.getElementById('btnSaveStaff').innerText = 'Create Staff Account';
+      document.getElementById('staffModal')?.classList.remove('hidden');
+    }
+
+    function editStaff(id) {
+      const m = teamList.find(x => x.id === id);
+      if (!m) return;
+
+      document.getElementById('staffEditId').value = m.id;
+      document.getElementById('staffNameInput').value = m.name;
+      document.getElementById('staffEmailInput').value = m.email;
+      document.getElementById('staffPasswordInput').value = '';
+      document.getElementById('staffPasswordInput').required = false;
+      document.getElementById('staffPasswordLabel').innerText = 'New Password (leave blank to keep existing)';
+      document.getElementById('staffRoleSelect').value = m.role;
+
+      // Set Permissions Checkboxes
+      const perms = (m.permissions || '').split(',');
+      ['can_handle_support', 'can_manage_users', 'can_manage_numbers', 'can_view_cdr', 'can_view_transactions', 'can_adjust_balance'].forEach(p => {
+        const el = document.getElementById('perm_' + p);
+        if (el) el.checked = m.permissions === 'all' || perms.includes(p);
+      });
+
+      document.getElementById('staffModalTitle').innerHTML = '<i class="fa-solid fa-user-pen text-indigo-400"></i> <span>Edit Staff Member</span>';
+      document.getElementById('btnSaveStaff').innerText = 'Save Changes';
+      document.getElementById('staffModal')?.classList.remove('hidden');
+    }
+
+    function closeStaffModal() {
+      document.getElementById('staffModal')?.classList.add('hidden');
+    }
+
+    function handleStaffRoleChange() {
+      const role = document.getElementById('staffRoleSelect')?.value;
+      const isSuper = role === 'super_admin';
+      const isSupport = role === 'support_agent';
+      const isOps = role === 'operations_manager';
+      const isFinance = role === 'finance_manager';
+
+      document.getElementById('perm_can_handle_support').checked = isSuper || isSupport || isOps;
+      document.getElementById('perm_can_manage_users').checked = isSuper || isSupport || isOps || isFinance;
+      document.getElementById('perm_can_manage_numbers').checked = isSuper || isOps;
+      document.getElementById('perm_can_view_cdr').checked = isSuper || isSupport || isOps;
+      document.getElementById('perm_can_view_transactions').checked = isSuper || isFinance;
+      document.getElementById('perm_can_adjust_balance').checked = isSuper;
+    }
+
+    async function handleSaveStaff(e) {
+      e.preventDefault();
+      const id = document.getElementById('staffEditId')?.value || undefined;
+      const name = document.getElementById('staffNameInput')?.value.trim();
+      const email = document.getElementById('staffEmailInput')?.value.trim();
+      const password = document.getElementById('staffPasswordInput')?.value.trim() || undefined;
+      const role = document.getElementById('staffRoleSelect')?.value;
+
+      const permsList = [];
+      ['can_handle_support', 'can_manage_users', 'can_manage_numbers', 'can_view_cdr', 'can_view_transactions', 'can_adjust_balance'].forEach(p => {
+        if (document.getElementById('perm_' + p)?.checked) permsList.push(p);
+      });
+      const permissions = role === 'super_admin' ? 'all' : permsList.join(',');
+
+      try {
+        const url = id ? `/api/admin/team/${id}` : '/api/admin/team';
+        const method = id ? 'PUT' : 'POST';
+
+        const res = await adminFetch(url, {
+          method,
+          body: JSON.stringify({ name, email, password, role, permissions })
+        });
+
+        if (res.success) {
+          alert(res.message);
+          closeStaffModal();
+          loadTeam();
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function toggleStaffActive(id, newStatus) {
+      try {
+        const res = await adminFetch(`/api/admin/team/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ isActive: newStatus })
+        });
+        if (res.success) loadTeam();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteStaff(id, name) {
+      if (!confirm(`Are you sure you want to delete staff account '${name}'?`)) return;
+      try {
+        const res = await adminFetch(`/api/admin/team/${id}`, { method: 'DELETE' });
+        if (res.success) {
+          alert(res.message);
+          loadTeam();
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // ============================================================
+    // 🛡️ AUDIT TRAIL LOGIC
+    // ============================================================
+    async function loadAuditLogs() {
+      const action = document.getElementById('auditActionFilter')?.value || '';
+      try {
+        const url = action ? `/api/admin/audit-logs?action=${action}` : '/api/admin/audit-logs';
+        const res = await adminFetch(url);
+        if (!res.success) return;
+
+        const tbody = document.getElementById('auditTableBody');
+        if (!tbody) return;
+
+        const actionBadges = {
+          STAFF_LOGIN: '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-500/10 text-indigo-400">LOGIN 🔑</span>',
+          STAFF_LOGOUT: '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-800 text-slate-400">LOGOUT 🚪</span>',
+          REPLY_SUPPORT: '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-violet-500/10 text-violet-400">SUPPORT REPLY 💬</span>',
+          CLAIM_TICKET: '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-400">CLAIM TICKET ⚡</span>',
+          TRANSFER_TICKET: '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-500/10 text-cyan-400">TRANSFER 🔄</span>',
+          RESOLVE_TICKET: '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-400">RESOLVED ✅</span>',
+          ADJUST_BALANCE: '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-400">BALANCE EDIT 💳</span>',
+          CREATE_STAFF: '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-400">STAFF CREATED 👥</span>',
+          UPDATE_STAFF: '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-500/10 text-indigo-400">STAFF UPDATED ⚙️</span>',
+          DELETE_STAFF: '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500/10 text-rose-400">STAFF DELETED 🗑️</span>'
+        };
+
+        tbody.innerHTML = (res.logs || []).map(l => {
+          return `
+            <tr class="hover:bg-slate-800/40 transition-all font-mono text-[11px]">
+              <td class="py-3 px-4 text-slate-400">
+                <div>${new Date(l.createdAt).toLocaleString()}</div>
+                <div class="text-[9px] text-slate-500">${l.ipAddress || '127.0.0.1'}</div>
+              </td>
+              <td class="py-3 px-4 font-sans font-bold text-white">${escapeHtml(l.staffName)}</td>
+              <td class="py-3 px-4 font-sans text-slate-400 uppercase text-[10px]">${l.staffRole}</td>
+              <td class="py-3 px-4 font-sans">${actionBadges[l.action] || `<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-800 text-slate-300">${l.action}</span>`}</td>
+              <td class="py-3 px-4 text-indigo-300 truncate max-w-[120px]">${l.targetId || 'System'}</td>
+              <td class="py-3 px-4 font-sans text-slate-300 max-w-[260px] truncate" title="${escapeHtml(l.details || '')}">${escapeHtml(l.details || '-')}</td>
+            </tr>
+          `;
+        }).join('') || '<tr><td colspan="6" class="py-8 text-center text-slate-500">No activity logs found.</td></tr>';
+
+      } catch (err) {
+        console.error('Audit log error:', err);
+      }
+    }
+
+    function formatTimeAgo(date) {
+      const seconds = Math.floor((new Date() - date) / 1000);
+      if (seconds < 60) return 'just now';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return minutes + 'm ago';
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return hours + 'h ago';
+      return Math.floor(hours / 24) + 'd ago';
+    }
+
   </script>
+
+  <!-- 👥 CREATE / EDIT STAFF MEMBER MODAL -->
+  <div id="staffModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 id="staffModalTitle" class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-user-plus text-amber-400"></i>
+          <span>Add New Team Member</span>
+        </h3>
+        <button onclick="closeStaffModal()" class="text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleSaveStaff(event)" class="space-y-3.5 text-xs">
+        <input type="hidden" id="staffEditId" value="">
+
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Full Name *</label>
+          <input type="text" id="staffNameInput" placeholder="e.g. Ali Raza" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Work Email Address *</label>
+          <input type="email" id="staffEmailInput" placeholder="e.g. ali@simlytel.com" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div>
+          <label id="staffPasswordLabel" class="block text-[11px] font-semibold text-slate-400 mb-1">Account Password *</label>
+          <input type="password" id="staffPasswordInput" placeholder="Enter secure password" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Assigned Staff Role *</label>
+          <select id="staffRoleSelect" onchange="handleStaffRoleChange()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+            <option value="support_agent">🎧 Support Specialist (Customer Care)</option>
+            <option value="operations_manager">📦 Operations Manager (Number Fleet & Delivery)</option>
+            <option value="finance_manager">💼 Finance Lead (Invoices & Billing)</option>
+            <option value="super_admin">👑 Super Admin (Full Unrestricted Access)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Granular Permissions Granted:</label>
+          <div id="staffPermissionsGrid" class="grid grid-cols-2 gap-2 p-3 bg-slate-950 border border-slate-800 rounded-xl text-[11px] text-slate-300">
+            <label class="flex items-center gap-2"><input type="checkbox" id="perm_can_handle_support" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>Handle Support Chats</span></label>
+            <label class="flex items-center gap-2"><input type="checkbox" id="perm_can_manage_users" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>User Lookup (CRM)</span></label>
+            <label class="flex items-center gap-2"><input type="checkbox" id="perm_can_manage_numbers" class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>Manage Numbers</span></label>
+            <label class="flex items-center gap-2"><input type="checkbox" id="perm_can_view_cdr" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>View Call/SMS Logs</span></label>
+            <label class="flex items-center gap-2"><input type="checkbox" id="perm_can_view_transactions" class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>View Ledger/Billing</span></label>
+            <label class="flex items-center gap-2"><input type="checkbox" id="perm_can_adjust_balance" class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>Adjust User Balances</span></label>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeStaffModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+          <button type="submit" id="btnSaveStaff" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-indigo-600/30">Save Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 🔄 TRANSFER TICKET MODAL -->
+  <div id="transferTicketModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-shuffle text-indigo-400"></i>
+          <span>Transfer Support Ticket</span>
+        </h3>
+        <button onclick="closeTransferTicketModal()" class="text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleExecuteTicketTransfer(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Select Colleague / Agent *</label>
+          <select id="transferAgentSelect" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+            <option value="">Loading active agents...</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Internal Handover Note (Optional)</label>
+          <textarea id="transferNoteInput" rows="3" placeholder="e.g. Customer needs Telnyx line reactivation / verified balance issue" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-indigo-500"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeTransferTicketModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-indigo-600/30">Transfer Ticket Now</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 </body>
 </html>

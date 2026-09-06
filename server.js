@@ -2430,7 +2430,7 @@ async function calculateUserRiskScore(user) {
 const requireStaffPermission = (requiredPermission = null) => {
   return async (req, res, next) => {
     try {
-      const token = req.headers['x-admin-token'] || req.headers['authorization']?.replace('Bearer ', '');
+      const token = req.headers['x-admin-token'] || req.headers['authorization']?.replace('Bearer ', '') || req.query.adminToken;
       if (!token) {
         return res.status(401).json({ success: false, error: 'Authentication required. Please sign in to staff portal.' });
       }

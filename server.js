@@ -335,7 +335,10 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 // H. Current User Profile
 app.get('/api/auth/me', async (req, res) => {
   try {
-    const { userId = 'user_demo_1' } = req.query;
+    const { userId } = req.query;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Authentication required. Please sign in.' });
+    }
     let user = await prisma.user.findFirst({
       where: {
         OR: [
@@ -489,8 +492,11 @@ app.get('/api/numbers/search', async (req, res) => {
 // 2. Endpoint: Virtual Number Assignment (1.5x pricing + real-time wallet deduction)
 const handleBuyTest = async (req, res) => {
   try {
-    const rawPhoneNumber = (req.method === 'POST' ? req.body?.phoneNumber : req.query.phoneNumber) || "+12025550123";
-    const rawUserId = (req.method === 'POST' ? req.body?.userId : req.query.userId) || "user_demo_1";
+    const rawPhoneNumber = (req.method === 'POST' ? req.body?.phoneNumber : req.query.phoneNumber);
+    const rawUserId = (req.method === 'POST' ? req.body?.userId : req.query.userId);
+    if (!rawPhoneNumber || !rawUserId) {
+      return res.status(400).json({ success: false, error: 'Phone number and user authentication required.' });
+    }
     const rawCountryCode = (req.method === 'POST' ? req.body?.countryCode : req.query.countryCode) || "US";
     const planType = (req.method === 'POST' ? req.body?.planType : req.query.planType) || "30_days";
     const durationDays = parseInt((req.method === 'POST' ? req.body?.durationDays : req.query.durationDays) || (planType === "7_days" ? 7 : planType === "365_days" ? 365 : 30), 10);
@@ -511,17 +517,9 @@ const handleBuyTest = async (req, res) => {
     });
 
     if (!user) {
-      const emailCandidate = cleanUserId.includes('@') ? cleanUserId.toLowerCase() : `user_${cleanUserId.replace(/[^a-zA-Z0-9]/g, '') || Date.now()}@simlytel.com`;
-      const existingEmail = await prisma.user.findUnique({ where: { email: emailCandidate } });
-      const finalEmail = existingEmail ? `user_${Date.now()}_${Math.floor(Math.random()*1000)}@simlytel.com` : emailCandidate;
-
-      user = await prisma.user.create({
-        data: {
-          id: cleanUserId,
-          name: cleanUserId.includes('@') ? cleanUserId.split('@')[0] : 'SimlyTel User',
-          email: finalEmail,
-          walletBalance: 15.0
-        }
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required. Please sign in or create an account to purchase a line.'
       });
     }
 
@@ -1385,7 +1383,15 @@ app.post('/api/calls/simulate-inbound', async (req, res) => {
 // 12. Endpoint: Get Wallet Information & Balance
 app.get('/api/wallet/info', async (req, res) => {
   try {
-    const { userId = 'user_demo_1' } = req.query;
+    const { userId } = req.query;
+    if (!userId) {
+      return res.json({
+        success: true,
+        balance: 0.0,
+        currency: 'USD',
+        transactions: []
+      });
+    }
 
     const cleanUserId = userId.toString().trim().toLowerCase();
     const cleanPhone = normalizePhone(userId);
@@ -1403,11 +1409,11 @@ app.get('/api/wallet/info', async (req, res) => {
     });
 
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email: cleanUserId.includes('@') ? cleanUserId : `${cleanUserId}@simlytel.com`,
-          walletBalance: 0.0
-        }
+      return res.json({
+        success: true,
+        balance: 0.0,
+        currency: 'USD',
+        transactions: []
       });
     }
 
@@ -1437,7 +1443,11 @@ app.get('/api/wallet/info', async (req, res) => {
 // 13. Endpoint: Top-Up Wallet Balance
 app.post('/api/wallet/topup', async (req, res) => {
   try {
-    const { userId = 'user_demo_1', packageId, amount, packageName } = req.body;
+    const { userId, packageId, amount, packageName } = req.body;
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'User ID is required for top-up' });
+    }
+
     const topupAmount = parseFloat(amount);
 
     if (isNaN(topupAmount) || topupAmount <= 0) {
@@ -1460,18 +1470,16 @@ app.post('/api/wallet/topup', async (req, res) => {
     });
 
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email: cleanUserId.includes('@') ? cleanUserId : `${cleanUserId}@simlytel.com`,
-          walletBalance: 10.0 + topupAmount
-        }
-      });
-    } else {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { walletBalance: { increment: topupAmount } }
+      return res.status(404).json({
+        success: false,
+        error: 'User account not found. Please log in or create an account first.'
       });
     }
+
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: { walletBalance: { increment: topupAmount } }
+    });
 
     const tx = await prisma.transaction.create({
       data: {
@@ -2160,7 +2168,10 @@ app.get('/api/numbers/check-expiry', async (req, res) => {
 // 20. Endpoint: User Account Self-Erasure & Telecom Deactivation (Preserves Auditing Records for Admin)
 app.delete('/api/account/delete', async (req, res) => {
   try {
-    const { userId = 'user_demo_1' } = req.body;
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'User ID is required' });
+    }
     console.log(`⚠️ [ACCOUNT SELF-ERASURE REQUEST] Processing self-erasure for User: ${userId}`);
 
     const user = await prisma.user.findFirst({

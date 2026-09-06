@@ -2322,7 +2322,136 @@ let adminRuntimeConfig = {
 };
 
 // Admin Auth Middleware
-const requireAdmin = (req, res, next) => {
+
+// ============================================================
+// 👥 RBAC, MULTI-AGENT HELPDESK & AUDIT TRAIL ENGINE
+// ============================================================
+const staffSessions = new Map(); // token -> staffUser object
+
+// 1. Audit Logger Helper
+async function logAuditEvent({ staffId, staffName, staffEmail, staffRole, action, targetId, targetType, details, req }) {
+  try {
+    const ip = req?.headers?.['x-forwarded-for'] || req?.socket?.remoteAddress || '127.0.0.1';
+    const log = await prisma.auditLog.create({
+      data: {
+        staffId: staffId || null,
+        staffName: staffName || 'Master Admin',
+        staffEmail: staffEmail || 'owner@simlytel.com',
+        staffRole: staffRole || 'super_admin',
+        action,
+        targetId: targetId ? String(targetId) : null,
+        targetType: targetType || null,
+        details: typeof details === 'object' ? JSON.stringify(details) : String(details || ''),
+        ipAddress: String(ip)
+      }
+    });
+    console.log(`🛡️ [AUDIT] [${(staffRole || 'ADMIN').toUpperCase()}] ${staffName}: ${action} -> ${details || ''}`);
+    return log;
+  } catch (err) {
+    console.error('⚠️ [AUDIT ERROR]', err);
+  }
+}
+
+// 2. Dynamic Staff Authentication & Permission Guard
+const requireStaffPermission = (requiredPermission = null) => {
+  return async (req, res, next) => {
+    try {
+      const token = req.headers['x-admin-token'] || req.headers['authorization']?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ success: false, error: 'Authentication required. Please sign in to staff portal.' });
+      }
+
+      // Master Fail-Safe Admin Token
+      if (token === ADMIN_SECRET_TOKEN) {
+        req.staff = {
+          id: 'root_super_admin',
+          name: 'Owner (Super Admin)',
+          email: ADMIN_MASTER_EMAIL,
+          role: 'super_admin',
+          permissions: 'all'
+        };
+        return next();
+      }
+
+      // Check Active Staff Session
+      const sessionStaff = staffSessions.get(token);
+      if (!sessionStaff) {
+        return res.status(401).json({ success: false, error: 'Session expired or invalid. Please sign in again.' });
+      }
+
+      // If Root Super Admin Session
+      if (sessionStaff.id === 'root_super_admin') {
+        req.staff = sessionStaff;
+        return next();
+      }
+
+      // Verify in Database
+      const dbStaff = await prisma.staffUser.findUnique({ where: { id: sessionStaff.id } });
+      if (!dbStaff || !dbStaff.isActive) {
+        staffSessions.delete(token);
+        return res.status(403).json({ success: false, error: 'Your staff account has been deactivated or suspended by Administrator.' });
+      }
+
+      req.staff = dbStaff;
+
+      // Super Admin bypass
+      if (dbStaff.role === 'super_admin' || dbStaff.permissions === 'all') {
+        return next();
+      }
+
+      // Role & Permission Checks
+      if (requiredPermission) {
+        if (requiredPermission === 'super_admin_only') {
+          return res.status(403).json({
+            success: false,
+            error: 'Access Denied: Super Admin master privileges required.'
+          });
+        }
+
+        const perms = dbStaff.permissions ? dbStaff.permissions.split(',').map(p => p.trim()) : [];
+        if (!perms.includes(requiredPermission) && !perms.includes('all')) {
+          return res.status(403).json({
+            success: false,
+            error: `Access Denied: Your staff role (${dbStaff.role}) does not have '${requiredPermission}' permission.`
+          });
+        }
+      }
+
+      next();
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  };
+};
+
+// Seed default owner account if database has zero staff
+async function ensureSuperAdminExists() {
+  try {
+    const count = await prisma.staffUser.count();
+    if (count === 0) {
+      await prisma.staffUser.create({
+        data: {
+          name: 'Owner (Super Admin)',
+          email: 'admin@simlytel.com',
+          password: ADMIN_MASTER_PASSWORD,
+          role: 'super_admin',
+          permissions: 'all',
+          isActive: true
+        }
+      });
+      console.log('👑 [STAFF SEEDED] Initial Super Admin account created: admin@simlytel.com');
+    }
+  } catch (e) {
+    console.error('Seed staff check error:', e);
+  }
+}
+ensureSuperAdminExists();
+
+// Legacy requireAdmin alias
+const requireAdmin = requireStaffPermission('all');
+const requireSuperAdmin = requireStaffPermission('super_admin_only');
+
+const old_requireAdmin = (req, res, next) => {
   const token = req.headers['x-admin-token'] || req.headers['authorization']?.replace('Bearer ', '');
   if (!token || token !== ADMIN_SECRET_TOKEN) {
     return res.status(401).json({ success: false, error: 'Unauthorized: Master Admin Token required.' });
@@ -3169,6 +3298,537 @@ app.get('/api/admin/transactions', requireAdmin, async (req, res) => {
   }
 });
 
+
+// ============================================================
+// === STAFF & TEAM MANAGEMENT API ENDPOINTS ===
+// ============================================================
+
+// 1. Staff Sign-in / Authentication
+app.post('/api/staff/login', async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: 'Email and password are required.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check Root Super Admin Master credentials
+    if (
+      (cleanEmail === ADMIN_MASTER_EMAIL.toLowerCase() || cleanEmail === 'admin@simlytel.com' || cleanEmail === 'admin' || cleanEmail === 'nomi') &&
+      password === ADMIN_MASTER_PASSWORD
+    ) {
+      const token = 'staff_master_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
+      const rootStaff = {
+        id: 'root_super_admin',
+        name: 'Owner (Super Admin)',
+        email: ADMIN_MASTER_EMAIL,
+        role: 'super_admin',
+        permissions: 'all',
+        isActive: true,
+        isOnline: true
+      };
+      staffSessions.set(token, rootStaff);
+
+      await logAuditEvent({
+        staffId: 'root_super_admin',
+        staffName: 'Owner (Super Admin)',
+        staffEmail: ADMIN_MASTER_EMAIL,
+        staffRole: 'super_admin',
+        action: 'STAFF_LOGIN',
+        details: 'Owner logged in via Master Gateway',
+        req
+      });
+
+      return res.json({
+        success: true,
+        message: 'Welcome, Super Admin!',
+        token,
+        staff: rootStaff
+      });
+    }
+
+    // Check in Database for Registered Staff Members
+    const staff = await prisma.staffUser.findUnique({
+      where: { email: cleanEmail }
+    });
+
+    if (!staff || staff.password !== password) {
+      return res.status(401).json({ success: false, error: 'Invalid staff email or password.' });
+    }
+
+    if (!staff.isActive) {
+      return res.status(403).json({ success: false, error: 'Your staff account has been deactivated. Please contact the administrator.' });
+    }
+
+    const token = 'staff_tok_' + Date.now() + '_' + Math.random().toString(36).substring(2, 12);
+    
+    // Update last login & online state
+    await prisma.staffUser.update({
+      where: { id: staff.id },
+      data: { lastLoginAt: new Date(), isOnline: true }
+    });
+
+    staffSessions.set(token, staff);
+
+    await logAuditEvent({
+      staffId: staff.id,
+      staffName: staff.name,
+      staffEmail: staff.email,
+      staffRole: staff.role,
+      action: 'STAFF_LOGIN',
+      details: `Staff signed in with role '${staff.role}'`,
+      req
+    });
+
+    res.json({
+      success: true,
+      message: `Welcome back, ${staff.name}!`,
+      token,
+      staff: {
+        id: staff.id,
+        name: staff.name,
+        email: staff.email,
+        role: staff.role,
+        permissions: staff.permissions,
+        avatarUrl: staff.avatarUrl,
+        ticketsResolved: staff.ticketsResolved
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 2. Get Current Authenticated Staff Profile
+app.get('/api/staff/me', requireStaffPermission(), async (req, res) => {
+  res.json({
+    success: true,
+    staff: req.staff
+  });
+});
+
+// 3. Staff Sign-out / Logout
+app.post('/api/staff/logout', requireStaffPermission(), async (req, res) => {
+  try {
+    const token = req.headers['x-admin-token'] || req.headers['authorization']?.replace('Bearer ', '');
+    if (token) {
+      staffSessions.delete(token);
+    }
+    if (req.staff && req.staff.id !== 'root_super_admin') {
+      await prisma.staffUser.update({
+        where: { id: req.staff.id },
+        data: { isOnline: false }
+      }).catch(() => {});
+    }
+
+    await logAuditEvent({
+      staffId: req.staff.id,
+      staffName: req.staff.name,
+      staffEmail: req.staff.email,
+      staffRole: req.staff.role,
+      action: 'STAFF_LOGOUT',
+      details: 'Staff member signed out safely',
+      req
+    });
+
+    res.json({ success: true, message: 'Signed out successfully.' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4. Super Admin: List All Team Members
+app.get('/api/admin/team', requireStaffPermission('super_admin_only'), async (req, res) => {
+  try {
+    const team = await prisma.staffUser.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Mask passwords for safety
+    const safeTeam = team.map(m => ({
+      id: m.id,
+      name: m.name,
+      email: m.email,
+      role: m.role,
+      permissions: m.permissions,
+      isActive: m.isActive,
+      isOnline: m.isOnline,
+      lastLoginAt: m.lastLoginAt,
+      ticketsResolved: m.ticketsResolved,
+      createdAt: m.createdAt
+    }));
+
+    res.json({ success: true, count: safeTeam.length, team: safeTeam });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. Super Admin: Create New Staff Member
+app.post('/api/admin/team', requireStaffPermission('super_admin_only'), async (req, res) => {
+  try {
+    const { name, email, password, role = 'support_agent', permissions } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, error: 'Name, email, and password are required.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const existing = await prisma.staffUser.findUnique({ where: { email: cleanEmail } });
+    if (existing) {
+      return res.status(400).json({ success: false, error: 'A staff member with this email address already exists.' });
+    }
+
+    // Default permission presets
+    let perms = permissions;
+    if (!perms) {
+      if (role === 'support_agent') perms = 'can_handle_support,can_manage_users,can_view_cdr';
+      else if (role === 'operations_manager') perms = 'can_manage_numbers,can_manage_users,can_view_cdr,can_handle_support';
+      else if (role === 'finance_manager') perms = 'can_view_transactions,can_view_stats,can_manage_users';
+      else perms = 'all';
+    }
+
+    const staff = await prisma.staffUser.create({
+      data: {
+        name: name.trim(),
+        email: cleanEmail,
+        password: password.trim(),
+        role,
+        permissions: perms,
+        isActive: true
+      }
+    });
+
+    await logAuditEvent({
+      staffId: req.staff.id,
+      staffName: req.staff.name,
+      staffEmail: req.staff.email,
+      staffRole: req.staff.role,
+      action: 'CREATE_STAFF',
+      targetId: staff.id,
+      targetType: 'staff',
+      details: `Created new staff account '${staff.name}' (${staff.email}) with role '${role}'`,
+      req
+    });
+
+    res.json({
+      success: true,
+      message: `Team member ${staff.name} created successfully!`,
+      staff: {
+        id: staff.id,
+        name: staff.name,
+        email: staff.email,
+        role: staff.role,
+        permissions: staff.permissions,
+        isActive: staff.isActive
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6. Super Admin: Update Staff Member (Role, Status, Password)
+app.put('/api/admin/team/:id', requireStaffPermission('super_admin_only'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, role, permissions, password, isActive } = req.body;
+
+    const dataToUpdate = {};
+    if (name) dataToUpdate.name = name.trim();
+    if (role) dataToUpdate.role = role;
+    if (permissions !== undefined) dataToUpdate.permissions = permissions;
+    if (password && password.trim()) dataToUpdate.password = password.trim();
+    if (isActive !== undefined) dataToUpdate.isActive = Boolean(isActive);
+
+    const updated = await prisma.staffUser.update({
+      where: { id },
+      data: dataToUpdate
+    });
+
+    await logAuditEvent({
+      staffId: req.staff.id,
+      staffName: req.staff.name,
+      staffEmail: req.staff.email,
+      staffRole: req.staff.role,
+      action: 'UPDATE_STAFF',
+      targetId: id,
+      targetType: 'staff',
+      details: `Updated staff '${updated.name}' (Role: ${updated.role}, Active: ${updated.isActive})`,
+      req
+    });
+
+    res.json({
+      success: true,
+      message: `Staff account ${updated.name} updated successfully!`,
+      staff: updated
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 7. Super Admin: Delete Staff Member
+app.delete('/api/admin/team/:id', requireStaffPermission('super_admin_only'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const staff = await prisma.staffUser.delete({ where: { id } });
+
+    await logAuditEvent({
+      staffId: req.staff.id,
+      staffName: req.staff.name,
+      staffEmail: req.staff.email,
+      staffRole: req.staff.role,
+      action: 'DELETE_STAFF',
+      targetId: id,
+      targetType: 'staff',
+      details: `Permanently removed staff account '${staff.name}' (${staff.email})`,
+      req
+    });
+
+    res.json({ success: true, message: `Staff member ${staff.name} deleted successfully.` });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 8. Super Admin: Get Live Audit Logs
+app.get('/api/admin/audit-logs', requireStaffPermission('super_admin_only'), async (req, res) => {
+  try {
+    const { limit = 100, action, staffId } = req.query;
+    const where = {};
+    if (action) where.action = action;
+    if (staffId) where.staffId = staffId;
+
+    const logs = await prisma.auditLog.findMany({
+      where,
+      take: Number(limit),
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ success: true, count: logs.length, logs });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// 🎧 MULTI-AGENT SMART HELPDESK & QUEUE API
+// ============================================================
+
+// 9. Get Live Support Queue & Filtered Threads
+app.get('/api/admin/support/queue', requireStaffPermission('can_handle_support'), async (req, res) => {
+  try {
+    const currentStaffId = req.staff.id;
+
+    // Fetch all user tickets
+    const tickets = await prisma.supportTicket.findMany({
+      orderBy: { lastMessageAt: 'desc' }
+    });
+
+    // Also get messages grouped by user
+    const messages = await prisma.supportMessage.findMany({
+      take: 200,
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const userMessagesMap = {};
+    for (const m of messages) {
+      if (!userMessagesMap[m.userId]) userMessagesMap[m.userId] = [];
+      userMessagesMap[m.userId].push(m);
+    }
+
+    // Categorize
+    const unassigned = [];
+    const myChats = [];
+    const allChats = [];
+
+    for (const t of tickets) {
+      const msgs = userMessagesMap[t.userId] || [];
+      const item = {
+        ...t,
+        messages: msgs.reverse(),
+        isMine: t.assignedStaffId === currentStaffId,
+        isLockedByOther: Boolean(t.assignedStaffId && t.assignedStaffId !== currentStaffId && t.status === 'in_progress')
+      };
+
+      if (t.status === 'unassigned') {
+        unassigned.push(item);
+      }
+      if (t.assignedStaffId === currentStaffId && t.status === 'in_progress') {
+        myChats.push(item);
+      }
+      allChats.push(item);
+    }
+
+    res.json({
+      success: true,
+      stats: {
+        unassignedCount: unassigned.length,
+        myChatsCount: myChats.length,
+        totalActive: allChats.filter(x => x.status !== 'resolved').length
+      },
+      unassigned,
+      myChats,
+      allChats,
+      currentStaff: {
+        id: req.staff.id,
+        name: req.staff.name,
+        role: req.staff.role
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 10. Agent: Pick Up / Claim Ticket
+app.post('/api/admin/support/claim', requireStaffPermission('can_handle_support'), async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ success: false, error: 'User ID is required.' });
+
+    const ticket = await prisma.supportTicket.upsert({
+      where: { userId },
+      update: {
+        status: 'in_progress',
+        assignedStaffId: req.staff.id,
+        assignedStaffName: req.staff.name,
+        claimedAt: new Date()
+      },
+      create: {
+        userId,
+        status: 'in_progress',
+        assignedStaffId: req.staff.id,
+        assignedStaffName: req.staff.name,
+        claimedAt: new Date()
+      }
+    });
+
+    await logAuditEvent({
+      staffId: req.staff.id,
+      staffName: req.staff.name,
+      staffEmail: req.staff.email,
+      staffRole: req.staff.role,
+      action: 'CLAIM_TICKET',
+      targetId: userId,
+      targetType: 'ticket',
+      details: `Claimed conversation with User '${userId}'`,
+      req
+    });
+
+    res.json({
+      success: true,
+      message: `You have claimed this chat. You are now assisting this customer.`,
+      ticket
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 11. Agent: Transfer Ticket to Another Agent
+app.post('/api/admin/support/transfer', requireStaffPermission('can_handle_support'), async (req, res) => {
+  try {
+    const { userId, targetStaffId, internalNotes = '' } = req.body;
+    if (!userId || !targetStaffId) {
+      return res.status(400).json({ success: false, error: 'User ID and Target Staff ID are required.' });
+    }
+
+    const targetStaff = await prisma.staffUser.findUnique({ where: { id: targetStaffId } });
+    if (!targetStaff) {
+      return res.status(404).json({ success: false, error: 'Target staff member not found.' });
+    }
+
+    const ticket = await prisma.supportTicket.update({
+      where: { userId },
+      data: {
+        assignedStaffId: targetStaff.id,
+        assignedStaffName: targetStaff.name,
+        status: 'in_progress',
+        internalNotes: internalNotes.trim() ? internalNotes.trim() : undefined
+      }
+    });
+
+    await logAuditEvent({
+      staffId: req.staff.id,
+      staffName: req.staff.name,
+      staffEmail: req.staff.email,
+      staffRole: req.staff.role,
+      action: 'TRANSFER_TICKET',
+      targetId: userId,
+      targetType: 'ticket',
+      details: `Transferred customer '${userId}' to '${targetStaff.name}' (${targetStaff.email}). Note: ${internalNotes}`,
+      req
+    });
+
+    res.json({
+      success: true,
+      message: `Ticket successfully transferred to ${targetStaff.name}!`,
+      ticket
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 12. Agent: Mark Ticket as Resolved / Close
+app.post('/api/admin/support/resolve', requireStaffPermission('can_handle_support'), async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ success: false, error: 'User ID is required.' });
+
+    const ticket = await prisma.supportTicket.update({
+      where: { userId },
+      data: {
+        status: 'resolved',
+        resolvedAt: new Date()
+      }
+    });
+
+    // Increment agent's resolved count
+    if (req.staff.id !== 'root_super_admin') {
+      await prisma.staffUser.update({
+        where: { id: req.staff.id },
+        data: { ticketsResolved: { increment: 1 } }
+      }).catch(() => {});
+    }
+
+    await logAuditEvent({
+      staffId: req.staff.id,
+      staffName: req.staff.name,
+      staffEmail: req.staff.email,
+      staffRole: req.staff.role,
+      action: 'RESOLVE_TICKET',
+      targetId: userId,
+      targetType: 'ticket',
+      details: `Marked ticket for User '${userId}' as Resolved ✅`,
+      req
+    });
+
+    res.json({
+      success: true,
+      message: 'Ticket marked as Resolved and moved to completed archive.',
+      ticket
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 13. Get List of Available Online Agents for Transfer Dropdown
+app.get('/api/admin/support/agents', requireStaffPermission('can_handle_support'), async (req, res) => {
+  try {
+    const agents = await prisma.staffUser.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, email: true, role: true, isOnline: true }
+    });
+    res.json({ success: true, agents });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 13. Customer Support Helpdesk Messages
 app.get('/api/admin/support', requireAdmin, async (req, res) => {
   try {
@@ -3202,20 +3862,58 @@ app.get('/api/admin/support', requireAdmin, async (req, res) => {
 });
 
 // 14. Admin Reply to Customer Support
-app.post('/api/admin/support/reply', requireAdmin, async (req, res) => {
+app.post('/api/admin/support/reply', requireStaffPermission('can_handle_support'), async (req, res) => {
   try {
     const { userId, text } = req.body;
     if (!userId || !text) {
       return res.status(400).json({ success: false, error: 'User ID and message text are required.' });
     }
 
+    const agentName = req.staff ? `${req.staff.name} (Simly Support)` : 'Sarah (Simly VIP Support)';
+
     const saved = await prisma.supportMessage.create({
       data: {
         userId,
         sender: 'agent',
-        senderName: 'Master Admin (Nomi)',
+        senderName: agentName,
         text: text.trim()
       }
+    });
+
+    // Update ticket status
+    await prisma.supportTicket.upsert({
+      where: { userId },
+      update: {
+        status: 'in_progress',
+        assignedStaffId: req.staff?.id,
+        assignedStaffName: req.staff?.name,
+        lastMessageText: text.trim(),
+        lastMessageSender: 'agent',
+        lastMessageAt: new Date(),
+        unreadUserCount: { increment: 1 }
+      },
+      create: {
+        userId,
+        status: 'in_progress',
+        assignedStaffId: req.staff?.id,
+        assignedStaffName: req.staff?.name,
+        lastMessageText: text.trim(),
+        lastMessageSender: 'agent',
+        lastMessageAt: new Date(),
+        unreadUserCount: 1
+      }
+    });
+
+    await logAuditEvent({
+      staffId: req.staff?.id,
+      staffName: req.staff?.name,
+      staffEmail: req.staff?.email,
+      staffRole: req.staff?.role,
+      action: 'REPLY_SUPPORT',
+      targetId: userId,
+      targetType: 'ticket',
+      details: `Replied to customer '${userId}': "${text.slice(0, 50)}..."`,
+      req
     });
 
     res.json({ success: true, message: 'Reply sent successfully!', data: saved });

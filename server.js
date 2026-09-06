@@ -208,17 +208,8 @@ app.post('/api/auth/verify-otp', async (req, res) => {
           email: generatedEmail,
           phone: isEmail ? null : cleanTarget,
           authProvider: isEmail ? 'email_otp' : 'phone_otp',
-          walletBalance: 10.0,
+          walletBalance: 0.0,
           isVerified: true
-        }
-      });
-
-      await prisma.transaction.create({
-        data: {
-          userId: user.id,
-          type: 'topup',
-          amount: 10.0,
-          description: 'SimlyTel Welcome Gift Credits ($10.00)'
         }
       });
     }
@@ -260,17 +251,8 @@ app.post('/api/auth/social-login', async (req, res) => {
           email: resolvedEmail,
           avatarUrl: avatarUrl || null,
           authProvider: provider,
-          walletBalance: 10.0,
+          walletBalance: 0.0,
           isVerified: true
-        }
-      });
-
-      await prisma.transaction.create({
-        data: {
-          userId: user.id,
-          type: 'topup',
-          amount: 10.0,
-          description: 'SimlyTel Welcome Gift Credits ($10.00)'
         }
       });
     }
@@ -1424,16 +1406,7 @@ app.get('/api/wallet/info', async (req, res) => {
       user = await prisma.user.create({
         data: {
           email: cleanUserId.includes('@') ? cleanUserId : `${cleanUserId}@simlytel.com`,
-          walletBalance: 10.0
-        }
-      });
-      // Initial welcome credit transaction
-      await prisma.transaction.create({
-        data: {
-          userId: user.id,
-          type: 'topup',
-          amount: 10.0,
-          description: 'Welcome Signup Bonus Credits'
+          walletBalance: 0.0
         }
       });
     }
@@ -5113,38 +5086,14 @@ app.post('/api/admin/system/purge-all-data', requireAdmin, async (req, res) => {
     await prisma.blacklist.deleteMany({});
     const deletedUsers = await prisma.user.deleteMany({});
 
-    // Reset Announcements with Force Update popup
+    // Delete all announcements
     await prisma.announcement.deleteMany({});
-    await prisma.announcement.create({
-      data: {
-        title: 'App Update Required 🚀',
-        message: 'A critical update is available for SimlyTel. Please update your application to the latest version to continue testing.',
-        buttonText: 'Update Now',
-        actionType: 'none',
-        bannerType: 'modal_popup',
-        displayFrequency: 'always',
-        isActive: true,
-        targetAudience: 'all'
-      }
-    });
 
-    // Set Force Update Remote Config (min_app_version: 99.0.0)
+    // Reset Remote Config min_app_version to 1.0.0
     await prisma.systemConfig.upsert({
       where: { key: 'min_app_version' },
-      update: { value: '99.0.0', updatedBy: 'Super Admin' },
-      create: { key: 'min_app_version', value: '99.0.0', description: 'Minimum required app version', updatedBy: 'Super Admin' }
-    });
-
-    await prisma.systemConfig.upsert({
-      where: { key: 'force_update_title' },
-      update: { value: 'App Update Required', updatedBy: 'Super Admin' },
-      create: { key: 'force_update_title', value: 'App Update Required', description: 'Update title', updatedBy: 'Super Admin' }
-    });
-
-    await prisma.systemConfig.upsert({
-      where: { key: 'force_update_message' },
-      update: { value: 'A new version of SimlyTel is required. Please update your app now to continue.', updatedBy: 'Super Admin' },
-      create: { key: 'force_update_message', value: 'A new version of SimlyTel is required. Please update your app now to continue.', description: 'Update message', updatedBy: 'Super Admin' }
+      update: { value: '1.0.0', updatedBy: 'Super Admin' },
+      create: { key: 'min_app_version', value: '1.0.0', description: 'Minimum required app version', updatedBy: 'Super Admin' }
     });
 
     console.log(`✅ [FACTORY PURGE] Done! Deleted ${deletedUsers.count} users.`);

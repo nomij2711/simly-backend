@@ -1301,10 +1301,6 @@
           </div>
         </div>
 
-      </div>
-    </main>
-  </div>
-
   
         <!-- ============================================================ -->
         <!-- 👥 TAB 9: TEAM & STAFF MANAGEMENT (RBAC) -->
@@ -1630,6 +1626,11 @@
           </div>
         </div>
 
+  
+      </div> <!-- END OF SCROLLABLE TAB CONTAINER -->
+    </main> <!-- END OF MAIN -->
+  </div> <!-- END OF #adminApp -->
+  
   <!-- 🛡️ ADD TO BLACKLIST MODAL -->
   <div id="addBlacklistModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
     <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
@@ -4032,9 +4033,8 @@
 // ==========================================
 async function fetchCarrierHealth() {
   try {
-    const res = await fetch('/api/admin/telecom/carrier-health');
-    const data = await res.json();
-    if (data.success) {
+    const data = await adminFetch('/api/admin/telecom/carrier-health');
+    if (data && data.success) {
       const pill = document.getElementById('carrierHealthPill');
       if (pill) pill.classList.remove('hidden');
 
@@ -4065,9 +4065,8 @@ async function fetchCarrierHealth() {
 
 async function fetchFinanceMargins() {
   try {
-    const res = await fetch('/api/admin/finance/margins');
-    const data = await res.json();
-    if (data.success && data.data) {
+    const data = await adminFetch('/api/admin/finance/margins');
+    if (data && data.success && data.data) {
       const npEl = document.getElementById('kpiNetProfit');
       if (npEl) npEl.innerText = '$' + data.data.netProfit.toFixed(2);
 
@@ -4093,15 +4092,14 @@ async function loadBlacklist() {
   tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading security blocks...</td></tr>';
 
   try {
-    const res = await fetch('/api/admin/security/blacklist');
-    const data = await res.json();
-    if (data.success) {
+    const data = await adminFetch('/api/admin/security/blacklist');
+    if (data && data.success) {
       blacklistEntries = data.blacklist || [];
       const totalEl = document.getElementById('blacklistTotalCount');
       if (totalEl) totalEl.innerText = blacklistEntries.length;
       renderBlacklistTable();
     } else {
-      tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-rose-400">Failed to load blacklist: ' + data.error + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-rose-400">Failed to load blacklist: ' + (data?.error || 'Unknown error') + '</td></tr>';
     }
   } catch (err) {
     tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-rose-400">Error connecting to server</td></tr>';
@@ -4161,20 +4159,18 @@ async function submitAddBlacklist() {
   if (!value) return showToast('Please enter target value to block', 'error');
 
   try {
-    const res = await fetch('/api/admin/security/blacklist', {
+    const data = await adminFetch('/api/admin/security/blacklist', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, value, reason })
     });
-    const data = await res.json();
-    if (data.success) {
+    if (data && data.success) {
       showToast('Security block added successfully!', 'success');
       closeAddBlacklistModal();
       document.getElementById('newBlValue').value = '';
       document.getElementById('newBlReason').value = '';
       loadBlacklist();
     } else {
-      showToast(data.error || 'Failed to add block', 'error');
+      showToast(data?.error || 'Failed to add block', 'error');
     }
   } catch (err) {
     showToast('Network error adding block', 'error');
@@ -4184,13 +4180,12 @@ async function submitAddBlacklist() {
 async function removeBlacklistEntry(id) {
   if (!confirm('Are you sure you want to remove this security block?')) return;
   try {
-    const res = await fetch('/api/admin/security/blacklist/' + id, { method: 'DELETE' });
-    const data = await res.json();
-    if (data.success) {
+    const data = await adminFetch('/api/admin/security/blacklist/' + id, { method: 'DELETE' });
+    if (data && data.success) {
       showToast('Removed from blocklist', 'success');
       loadBlacklist();
     } else {
-      showToast(data.error || 'Failed to remove', 'error');
+      showToast(data?.error || 'Failed to remove', 'error');
     }
   } catch (e) {
     showToast('Network error removing block', 'error');
@@ -4223,18 +4218,16 @@ async function submitBanUserAction() {
   const blacklistDevice = document.getElementById('banBlacklistDevice').checked;
 
   try {
-    const res = await fetch('/api/admin/users/' + currentBanTargetUser.id + '/ban', {
+    const data = await adminFetch('/api/admin/users/' + currentBanTargetUser.id + '/ban', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason, blacklistEmail, blacklistIp, blacklistDevice })
     });
-    const data = await res.json();
-    if (data.success) {
+    if (data && data.success) {
       showToast('User has been banned and locked!', 'success');
       closeBanUserModal();
       loadUsers();
     } else {
-      showToast(data.error || 'Failed to ban user', 'error');
+      showToast(data?.error || 'Failed to ban user', 'error');
     }
   } catch (e) {
     showToast('Network error banning user', 'error');
@@ -4244,13 +4237,12 @@ async function submitBanUserAction() {
 async function unbanUser(userId) {
   if (!confirm('Are you sure you want to unban this user and restore access?')) return;
   try {
-    const res = await fetch('/api/admin/users/' + userId + '/unban', { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
+    const data = await adminFetch('/api/admin/users/' + userId + '/unban', { method: 'POST' });
+    if (data && data.success) {
       showToast('User account has been restored!', 'success');
       loadUsers();
     } else {
-      showToast(data.error || 'Failed to unban user', 'error');
+      showToast(data?.error || 'Failed to unban user', 'error');
     }
   } catch (e) {
     showToast('Network error unbanning user', 'error');
@@ -4262,9 +4254,8 @@ async function unbanUser(userId) {
 // ==========================================
 async function loadRemoteConfig() {
   try {
-    const res = await fetch('/api/admin/config');
-    const data = await res.json();
-    if (data.success && data.configs) {
+    const data = await adminFetch('/api/admin/config');
+    if (data && data.success && data.configs) {
       const map = {};
       data.configs.forEach(c => { map[c.key] = c.value; });
 
@@ -4298,16 +4289,14 @@ async function saveAllRemoteConfigs() {
   };
 
   try {
-    const res = await fetch('/api/admin/config', {
+    const data = await adminFetch('/api/admin/config', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
-    if (data.success) {
+    if (data && data.success) {
       showToast('Remote configuration published successfully!', 'success');
     } else {
-      showToast(data.error || 'Failed to save config', 'error');
+      showToast(data?.error || 'Failed to save config', 'error');
     }
   } catch (e) {
     showToast('Network error saving configuration', 'error');
@@ -4340,9 +4329,8 @@ function toggleAlertChannelFields() {
 
 async function loadOwnerAlertSettings() {
   try {
-    const res = await fetch('/api/admin/alerts/settings');
-    const data = await res.json();
-    if (data.success && data.settings) {
+    const data = await adminFetch('/api/admin/alerts/settings');
+    if (data && data.success && data.settings) {
       const s = data.settings;
       document.getElementById('alertSettingEnabled').checked = s.isEnabled;
       document.getElementById('alertPrimaryChannel').value = s.primaryChannel || 'EMAIL';
@@ -4380,17 +4368,15 @@ async function saveOwnerAlertSettings() {
   };
 
   try {
-    const res = await fetch('/api/admin/alerts/settings', {
+    const data = await adminFetch('/api/admin/alerts/settings', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
-    if (data.success) {
+    if (data && data.success) {
       showToast('Owner alert preferences saved!', 'success');
       closeAlertSettingsModal();
     } else {
-      showToast(data.error || 'Failed to save', 'error');
+      showToast(data?.error || 'Failed to save', 'error');
     }
   } catch (e) {
     showToast('Network error saving alert settings', 'error');
@@ -4399,12 +4385,11 @@ async function saveOwnerAlertSettings() {
 
 async function sendTestAlertNotification() {
   try {
-    const res = await fetch('/api/admin/alerts/test', { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
+    const data = await adminFetch('/api/admin/alerts/test', { method: 'POST' });
+    if (data && data.success) {
       showToast('Test alert dispatched: ' + data.message, 'success');
     } else {
-      showToast(data.error || 'Test alert failed', 'error');
+      showToast(data?.error || 'Test alert failed', 'error');
     }
   } catch (e) {
     showToast('Network error testing alert', 'error');
@@ -4416,7 +4401,7 @@ async function sendTestAlertNotification() {
 // ==========================================
 function exportData(type) {
   showToast('Generating ' + type.toUpperCase() + ' CSV export...', 'info');
-  window.open('/api/admin/export/' + type, '_blank');
+  window.open('/api/admin/export/' + type + '?adminToken=' + encodeURIComponent(ADMIN_TOKEN), '_blank');
 }
 
 // Auto-poll Carrier health every 60s

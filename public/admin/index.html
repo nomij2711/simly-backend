@@ -119,6 +119,14 @@
           <i class="fa-solid fa-shield-halved w-5 text-center text-emerald-400"></i>
           <span>Activity Audit Trail</span>
         </button>
+        <button onclick="switchTab('blacklist')" id="tab-btn-blacklist" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
+          <i class="fa-solid fa-shield-virus w-5 text-center text-rose-400"></i>
+          <span>Fraud & Blacklist</span>
+        </button>
+        <button onclick="switchTab('config')" id="tab-btn-config" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
+          <i class="fa-solid fa-sliders w-5 text-center text-sky-400"></i>
+          <span>Remote App Config</span>
+        </button>
       </nav>
 
       <!-- Server Status & Logout -->
@@ -150,6 +158,20 @@
 
         <!-- Right Header Items -->
         <div class="flex items-center gap-3 ml-auto">
+          <!-- Carrier Health & Balance -->
+          <div id="carrierHealthPill" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+            <span id="carrierHealthDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-slate-400 font-medium">Telnyx:</span>
+            <span id="carrierBalanceHeader" class="text-white font-bold">$0.00</span>
+            <span id="carrierStatusBadge" class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-semibold uppercase">Healthy</span>
+          </div>
+
+          <!-- Owner Alert Settings Bell -->
+          <button onclick="openAlertSettingsModal()" title="Owner Multi-Channel Alert Settings" class="p-2 rounded-xl text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-all relative">
+            <i class="fa-solid fa-bell text-sm"></i>
+            <span id="alertBellDot" class="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full"></span>
+          </button>
+
           <button onclick="refreshActiveTab()" title="Refresh Live Data" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
             <i class="fa-solid fa-arrows-rotate text-sm"></i>
           </button>
@@ -185,6 +207,34 @@
 
           <!-- KPI Cards Grid -->
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Net Profit Card -->
+        <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden group hover:border-slate-700 transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Net Real Profit</span>
+            <div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-sm">
+              <i class="fa-solid fa-arrow-trend-up"></i>
+            </div>
+          </div>
+          <div class="mt-3 flex items-baseline gap-2">
+            <div id="kpiNetProfit" class="text-2xl font-bold text-white">$178.10</div>
+            <span id="kpiMarginPercent" class="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">72.4% Margin</span>
+          </div>
+          <p class="text-[11px] text-slate-500 mt-1">Gross revenue minus Telnyx costs</p>
+        </div>
+
+        <!-- Wholesale Carrier Cost Card -->
+        <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden group hover:border-slate-700 transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Wholesale Telecom Cost</span>
+            <div class="w-9 h-9 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 text-sm">
+              <i class="fa-solid fa-server"></i>
+            </div>
+          </div>
+          <div class="mt-3 flex items-baseline gap-2">
+            <div id="kpiWholesaleCost" class="text-2xl font-bold text-white">$68.00</div>
+          </div>
+          <p class="text-[11px] text-slate-500 mt-1">DIDs, call termination & SMS usage</p>
+        </div>
             <!-- Card 1 -->
             <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl relative overflow-hidden group hover:border-slate-700 transition-all">
               <div class="flex items-center justify-between">
@@ -1379,7 +1429,396 @@
           </div>
         </div>
 
-<!-- 💰 ADJUST BALANCE MODAL -->
+
+        <!-- ================================================================ -->
+        <!-- 🛡️ TAB 12: FRAUD PREVENTION & SECURITY BLACKLIST                  -->
+        <!-- ================================================================ -->
+        <div id="tab-view-blacklist" class="tab-view hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-shield-virus text-rose-400"></i>
+                <span>Fraud Radar & Security Blacklist</span>
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">Protect SimlyTel from stolen credit cards, SMS toll fraud, and malicious IPs.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="openAddBlacklistModal()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-rose-600/30 flex items-center gap-2 transition-all">
+                <i class="fa-solid fa-plus"></i>
+                <span>Add Security Block</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Filter & Search Bar -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+              <span class="text-xs font-semibold text-slate-400">Filter Type:</span>
+              <select id="blacklistTypeFilter" onchange="renderBlacklistTable()" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-rose-500">
+                <option value="ALL">All Blocked Types</option>
+                <option value="EMAIL">Email Addresses</option>
+                <option value="IP">IP Addresses</option>
+                <option value="DEVICE_ID">Device Fingerprints</option>
+                <option value="PHONE">Phone Numbers</option>
+              </select>
+            </div>
+            <div class="text-xs text-slate-400">
+              Active Security Blocks: <span id="blacklistTotalCount" class="font-bold text-rose-400">0</span>
+            </div>
+          </div>
+
+          <!-- Blacklist Table -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <div class="overflow-x-auto custom-scrollbar">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 bg-slate-950/60 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th class="py-3.5 px-4">Type</th>
+                    <th class="py-3.5 px-4">Blocked Target / Value</th>
+                    <th class="py-3.5 px-4">Reason / Threat</th>
+                    <th class="py-3.5 px-4">Added By</th>
+                    <th class="py-3.5 px-4">Date Added</th>
+                    <th class="py-3.5 px-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="blacklistTableBody" class="divide-y divide-slate-800 text-xs">
+                  <tr>
+                    <td colspan="6" class="py-8 text-center text-slate-500">Loading security blocklist...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================================================================ -->
+        <!-- ⚙️ TAB 13: CLOUD REMOTE CONFIG & KILL-SWITCHES                    -->
+        <!-- ================================================================ -->
+        <div id="tab-view-config" class="tab-view hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-sky-400"></i>
+                <span>Cloud Remote Config & Kill-Switches</span>
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">Control live mobile app states, maintenance modes, and feature kill-switches instantly.</p>
+            </div>
+            <button onclick="saveAllRemoteConfigs()" class="px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-sky-600/30 flex items-center gap-2 transition-all">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span>Save & Publish Changes</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- 1. Maintenance Mode Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 text-lg">
+                    <i class="fa-solid fa-screwdriver-wrench"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-bold text-white">Maintenance Mode</h3>
+                    <p class="text-xs text-slate-400">Show maintenance screen on mobile app</p>
+                  </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" id="cfgMaintenanceMode" class="sr-only peer">
+                  <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                </label>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Maintenance Message Displayed to Users</label>
+                <textarea id="cfgMaintenanceMsg" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500 placeholder-slate-600"></textarea>
+              </div>
+            </div>
+
+            <!-- 2. Force App Update Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 text-lg">
+                  <i class="fa-brands fa-google-play"></i>
+                </div>
+                <div>
+                  <h3 class="text-sm font-bold text-white">Force App Update Threshold</h3>
+                  <p class="text-xs text-slate-400">Require users below version to update</p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-400 mb-1">Min Required Version</label>
+                  <input type="text" id="cfgMinAppVersion" placeholder="1.0.0" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-400 mb-1">Update Title</label>
+                  <input type="text" id="cfgForceUpdateTitle" placeholder="Update Required" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Google Play Store URL</label>
+                <input type="text" id="cfgStoreUrlAndroid" placeholder="https://play.google.com/..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Apple App Store URL</label>
+                <input type="text" id="cfgStoreUrlIos" placeholder="https://apps.apple.com/..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+              </div>
+            </div>
+
+            <!-- 3. Emergency Feature Kill-Switches -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 md:col-span-2">
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400 text-lg">
+                  <i class="fa-solid fa-power-off"></i>
+                </div>
+                <div>
+                  <h3 class="text-sm font-bold text-white">Emergency Feature Kill-Switches</h3>
+                  <p class="text-xs text-slate-400">Instantly shut down or enable specific capabilities in case of carrier exploits</p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <!-- VoIP Calls Kill Switch -->
+                <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <div class="text-xs font-bold text-white flex items-center gap-2">
+                      <i class="fa-solid fa-phone text-emerald-400"></i>
+                      <span>Outbound VoIP Calls</span>
+                    </div>
+                    <span class="text-[10px] text-slate-400">Allow users to place calls</span>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="cfgAllowCalls" class="sr-only peer" checked>
+                    <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                  </label>
+                </div>
+
+                <!-- SMS Kill Switch -->
+                <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <div class="text-xs font-bold text-white flex items-center gap-2">
+                      <i class="fa-solid fa-comment-sms text-cyan-400"></i>
+                      <span>Outbound SMS</span>
+                    </div>
+                    <span class="text-[10px] text-slate-400">Allow users to send SMS</span>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="cfgAllowSms" class="sr-only peer" checked>
+                    <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
+                  </label>
+                </div>
+
+                <!-- Wallet Recharge Kill Switch -->
+                <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <div class="text-xs font-bold text-white flex items-center gap-2">
+                      <i class="fa-solid fa-credit-card text-purple-400"></i>
+                      <span>In-App Wallet Topups</span>
+                    </div>
+                    <span class="text-[10px] text-slate-400">Allow payments/recharges</span>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="cfgAllowDeposits" class="sr-only peer" checked>
+                    <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-500"></div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+  <!-- 🛡️ ADD TO BLACKLIST MODAL -->
+  <div id="addBlacklistModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-shield-virus text-rose-400"></i>
+          <span>Add Security Block / Blacklist</span>
+        </h3>
+        <button onclick="closeAddBlacklistModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-400 mb-1">Block Type</label>
+          <select id="newBlType" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-rose-500">
+            <option value="EMAIL">Email Address</option>
+            <option value="IP">IP Address</option>
+            <option value="DEVICE_ID">Device Hardware Fingerprint</option>
+            <option value="PHONE">Phone Number</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-400 mb-1">Target Value to Block</label>
+          <input type="text" id="newBlValue" placeholder="e.g. scammer@fraud.com or 192.168.1.1" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-rose-500">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-400 mb-1">Threat / Reason</label>
+          <input type="text" id="newBlReason" placeholder="e.g. Stolen credit card testing or DDoS" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-rose-500">
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeAddBlacklistModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+        <button onclick="submitAddBlacklist()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-rose-600/30">Confirm Block</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🛑 BAN USER MODAL -->
+  <div id="banUserModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-ban text-rose-500"></i>
+          <span>Ban & Freeze User Account</span>
+        </h3>
+        <button onclick="closeBanUserModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <p class="text-xs text-slate-400">
+        You are banning <span id="banUserTargetName" class="text-white font-bold"></span> (<span id="banUserTargetEmail" class="text-indigo-400"></span>). This will lock their mobile app session and suspend their active numbers.
+      </p>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-400 mb-1">Reason for Ban</label>
+          <textarea id="banReasonInput" rows="2" placeholder="e.g. Chargeback fraud / spam traffic abuse" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-rose-500"></textarea>
+        </div>
+
+        <div class="space-y-2 p-3 bg-slate-950 rounded-xl border border-slate-800">
+          <div class="text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">Auto-Add to Security Blacklist:</div>
+          <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+            <input type="checkbox" id="banBlacklistEmail" checked class="rounded border-slate-800 bg-slate-900 text-rose-500">
+            <span>Blacklist Email Address</span>
+          </label>
+          <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+            <input type="checkbox" id="banBlacklistIp" checked class="rounded border-slate-800 bg-slate-900 text-rose-500">
+            <span>Blacklist Last Login IP</span>
+          </label>
+          <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+            <input type="checkbox" id="banBlacklistDevice" checked class="rounded border-slate-800 bg-slate-900 text-rose-500">
+            <span>Blacklist Device Hardware Fingerprint</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeBanUserModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+        <button onclick="submitBanUserAction()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-rose-600/30">Confirm Permanent Ban</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🔔 MULTI-CHANNEL OWNER ALERTS MODAL -->
+  <div id="alertSettingsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400">
+            <i class="fa-solid fa-bell"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Owner Alert Channels & Notifications</h3>
+            <p class="text-[11px] text-slate-400">Receive instant critical system alerts without staying on the dashboard</p>
+          </div>
+        </div>
+        <button onclick="closeAlertSettingsModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <!-- Master Enable Toggle -->
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+          <div>
+            <div class="font-bold text-white">Master Alerts Dispatcher</div>
+            <span class="text-[10px] text-slate-400">Enable or disable all outgoing owner notifications</span>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="alertSettingEnabled" class="sr-only peer" checked>
+            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+          </label>
+        </div>
+
+        <!-- Primary Channel -->
+        <div>
+          <label class="block font-semibold text-slate-400 mb-1">Primary Notification Delivery Channel</label>
+          <select id="alertPrimaryChannel" onchange="toggleAlertChannelFields()" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500">
+            <option value="EMAIL">📧 Direct Email Alert (Push to Phone)</option>
+            <option value="SMS">📲 Direct SMS Message (via Telnyx)</option>
+            <option value="TELEGRAM">💬 Telegram Private Bot</option>
+            <option value="DISCORD">📢 Discord / Slack Webhook</option>
+          </select>
+        </div>
+
+        <!-- Dynamic Inputs -->
+        <div id="channelFieldEmail">
+          <label class="block font-semibold text-slate-400 mb-1">Owner Email Address</label>
+          <input type="email" id="alertOwnerEmail" placeholder="admin@simlytel.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500">
+        </div>
+
+        <div id="channelFieldPhone" class="hidden">
+          <label class="block font-semibold text-slate-400 mb-1">Owner Mobile Phone Number (for SMS)</label>
+          <input type="text" id="alertOwnerPhone" placeholder="+1234567890" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500">
+        </div>
+
+        <div id="channelFieldWebhook" class="hidden">
+          <label class="block font-semibold text-slate-400 mb-1">Discord / Slack Webhook URL</label>
+          <input type="text" id="alertWebhookUrl" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500">
+        </div>
+
+        <div id="channelFieldTelegram" class="hidden grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">Telegram Bot Token</label>
+            <input type="text" id="alertTgToken" placeholder="123456:ABC-DEF..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">Telegram Chat ID</label>
+            <input type="text" id="alertTgChatId" placeholder="987654321" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500">
+          </div>
+        </div>
+
+        <!-- Trigger Checkboxes -->
+        <div class="space-y-2 p-3 bg-slate-950 rounded-xl border border-slate-800">
+          <div class="text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">Send Alerts For These Events:</div>
+          <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+            <input type="checkbox" id="alertOnLargeDeposit" checked class="rounded border-slate-800 bg-slate-900 text-amber-500">
+            <span>💰 Large Wallet Top-up ($100+ deposits)</span>
+          </label>
+          <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+            <input type="checkbox" id="alertOnLowCarrierBalance" checked class="rounded border-slate-800 bg-slate-900 text-amber-500">
+            <span>🚨 Telnyx Carrier Low Balance (&lt;$50 threshold)</span>
+          </label>
+          <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+            <input type="checkbox" id="alertOnHighRiskFraud" checked class="rounded border-slate-800 bg-slate-900 text-amber-500">
+            <span>🛡️ High Risk Fraud Detection (Score &ge; 70)</span>
+          </label>
+          <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+            <input type="checkbox" id="alertOnUnassignedTicket" checked class="rounded border-slate-800 bg-slate-900 text-amber-500">
+            <span>🎧 Urgent Support Ticket Unclaimed &gt; 15 mins</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+        <button onclick="sendTestAlertNotification()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
+          <i class="fa-solid fa-paper-plane"></i>
+          <span>Send Test Alert</span>
+        </button>
+        <div class="flex gap-2">
+          <button onclick="closeAlertSettingsModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+          <button onclick="saveOwnerAlertSettings()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-amber-600/30">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 💰 ADJUST BALANCE MODAL -->
   <div id="balanceModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
     <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4">
       <div class="flex items-center justify-between">
@@ -3581,7 +4020,406 @@
       return Math.floor(hours / 24) + 'd ago';
     }
 
-  </script>
+  
+
+// ==========================================
+// 📡 TELECOM CARRIER HEALTH & NET PROFIT
+// ==========================================
+async function fetchCarrierHealth() {
+  try {
+    const res = await fetch('/api/admin/telecom/carrier-health');
+    const data = await res.json();
+    if (data.success) {
+      const pill = document.getElementById('carrierHealthPill');
+      if (pill) pill.classList.remove('hidden');
+
+      const balEl = document.getElementById('carrierBalanceHeader');
+      if (balEl) balEl.innerText = '$' + (data.balance || 0).toFixed(2);
+
+      const badgeEl = document.getElementById('carrierStatusBadge');
+      const dotEl = document.getElementById('carrierHealthDot');
+
+      if (badgeEl && dotEl) {
+        badgeEl.innerText = data.healthStatus.replace(/[🟢🟡🔴]/g, '').trim();
+        if (data.healthColor === 'rose') {
+          badgeEl.className = 'text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 font-semibold uppercase';
+          dotEl.className = 'w-2 h-2 rounded-full bg-rose-500 animate-ping';
+        } else if (data.healthColor === 'amber') {
+          badgeEl.className = 'text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-semibold uppercase';
+          dotEl.className = 'w-2 h-2 rounded-full bg-amber-400';
+        } else {
+          badgeEl.className = 'text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-semibold uppercase';
+          dotEl.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Carrier health poll failed:', e);
+  }
+}
+
+async function fetchFinanceMargins() {
+  try {
+    const res = await fetch('/api/admin/finance/margins');
+    const data = await res.json();
+    if (data.success && data.data) {
+      const npEl = document.getElementById('kpiNetProfit');
+      if (npEl) npEl.innerText = '$' + data.data.netProfit.toFixed(2);
+
+      const mpEl = document.getElementById('kpiMarginPercent');
+      if (mpEl) mpEl.innerText = data.data.marginPercent + '% Margin';
+
+      const wcEl = document.getElementById('kpiWholesaleCost');
+      if (wcEl) wcEl.innerText = '$' + data.data.totalWholesaleCost.toFixed(2);
+    }
+  } catch (e) {
+    console.warn('Finance margins fetch failed:', e);
+  }
+}
+
+// ==========================================
+// 🛡️ SECURITY BLACKLIST & FRAUD RADAR
+// ==========================================
+let blacklistEntries = [];
+
+async function loadBlacklist() {
+  const tbody = document.getElementById('blacklistTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading security blocks...</td></tr>';
+
+  try {
+    const res = await fetch('/api/admin/security/blacklist');
+    const data = await res.json();
+    if (data.success) {
+      blacklistEntries = data.blacklist || [];
+      const totalEl = document.getElementById('blacklistTotalCount');
+      if (totalEl) totalEl.innerText = blacklistEntries.length;
+      renderBlacklistTable();
+    } else {
+      tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-rose-400">Failed to load blacklist: ' + data.error + '</td></tr>';
+    }
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-rose-400">Error connecting to server</td></tr>';
+  }
+}
+
+function renderBlacklistTable() {
+  const filter = document.getElementById('blacklistTypeFilter')?.value || 'ALL';
+  const tbody = document.getElementById('blacklistTableBody');
+  if (!tbody) return;
+
+  const filtered = filter === 'ALL' ? blacklistEntries : blacklistEntries.filter(b => b.type === filter);
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="py-10 text-center text-slate-500"><i class="fa-solid fa-shield-check text-2xl text-emerald-500/40 mb-2 block"></i>No active security blocks in this filter.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(b => {
+    let typeBadge = '';
+    if (b.type === 'EMAIL') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"><i class="fa-solid fa-envelope mr-1"></i>EMAIL</span>';
+    else if (b.type === 'IP') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-network-wired mr-1"></i>IP ADDRESS</span>';
+    else if (b.type === 'DEVICE_ID') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-mobile mr-1"></i>DEVICE HW</span>';
+    else typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"><i class="fa-solid fa-phone mr-1"></i>PHONE</span>';
+
+    return `
+      <tr class="hover:bg-slate-800/40 transition-all">
+        <td class="py-3 px-4">${typeBadge}</td>
+        <td class="py-3 px-4 font-mono font-bold text-white">${b.value}</td>
+        <td class="py-3 px-4 text-slate-300">${b.reason || 'Security threat prevention'}</td>
+        <td class="py-3 px-4 text-slate-400">${b.createdBy || 'Super Admin'}</td>
+        <td class="py-3 px-4 text-slate-500 text-[11px]">${new Date(b.createdAt).toLocaleDateString()}</td>
+        <td class="py-3 px-4 text-right">
+          <button onclick="removeBlacklistEntry('${b.id}')" class="px-2.5 py-1 bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg text-xs font-semibold transition-all">
+            <i class="fa-solid fa-trash-can mr-1"></i>Whitelist
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openAddBlacklistModal() {
+  const m = document.getElementById('addBlacklistModal');
+  if (m) m.classList.remove('hidden');
+}
+function closeAddBlacklistModal() {
+  const m = document.getElementById('addBlacklistModal');
+  if (m) m.classList.add('hidden');
+}
+
+async function submitAddBlacklist() {
+  const type = document.getElementById('newBlType').value;
+  const value = document.getElementById('newBlValue').value.trim();
+  const reason = document.getElementById('newBlReason').value.trim();
+
+  if (!value) return showToast('Please enter target value to block', 'error');
+
+  try {
+    const res = await fetch('/api/admin/security/blacklist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, value, reason })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Security block added successfully!', 'success');
+      closeAddBlacklistModal();
+      document.getElementById('newBlValue').value = '';
+      document.getElementById('newBlReason').value = '';
+      loadBlacklist();
+    } else {
+      showToast(data.error || 'Failed to add block', 'error');
+    }
+  } catch (err) {
+    showToast('Network error adding block', 'error');
+  }
+}
+
+async function removeBlacklistEntry(id) {
+  if (!confirm('Are you sure you want to remove this security block?')) return;
+  try {
+    const res = await fetch('/api/admin/security/blacklist/' + id, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Removed from blocklist', 'success');
+      loadBlacklist();
+    } else {
+      showToast(data.error || 'Failed to remove', 'error');
+    }
+  } catch (e) {
+    showToast('Network error removing block', 'error');
+  }
+}
+
+// ==========================================
+// 🛑 1-CLICK USER BAN / UNBAN
+// ==========================================
+let currentBanTargetUser = null;
+
+function openBanUserModal(userId, userName, userEmail) {
+  currentBanTargetUser = { id: userId, name: userName, email: userEmail };
+  document.getElementById('banUserTargetName').innerText = userName || 'User';
+  document.getElementById('banUserTargetEmail').innerText = userEmail || '';
+  document.getElementById('banReasonInput').value = '';
+  document.getElementById('banUserModal').classList.remove('hidden');
+}
+
+function closeBanUserModal() {
+  document.getElementById('banUserModal').classList.add('hidden');
+  currentBanTargetUser = null;
+}
+
+async function submitBanUserAction() {
+  if (!currentBanTargetUser) return;
+  const reason = document.getElementById('banReasonInput').value.trim();
+  const blacklistEmail = document.getElementById('banBlacklistEmail').checked;
+  const blacklistIp = document.getElementById('banBlacklistIp').checked;
+  const blacklistDevice = document.getElementById('banBlacklistDevice').checked;
+
+  try {
+    const res = await fetch('/api/admin/users/' + currentBanTargetUser.id + '/ban', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason, blacklistEmail, blacklistIp, blacklistDevice })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('User has been banned and locked!', 'success');
+      closeBanUserModal();
+      loadUsers();
+    } else {
+      showToast(data.error || 'Failed to ban user', 'error');
+    }
+  } catch (e) {
+    showToast('Network error banning user', 'error');
+  }
+}
+
+async function unbanUser(userId) {
+  if (!confirm('Are you sure you want to unban this user and restore access?')) return;
+  try {
+    const res = await fetch('/api/admin/users/' + userId + '/unban', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('User account has been restored!', 'success');
+      loadUsers();
+    } else {
+      showToast(data.error || 'Failed to unban user', 'error');
+    }
+  } catch (e) {
+    showToast('Network error unbanning user', 'error');
+  }
+}
+
+// ==========================================
+// ⚙️ REMOTE APP CONFIG & KILL-SWITCHES
+// ==========================================
+async function loadRemoteConfig() {
+  try {
+    const res = await fetch('/api/admin/config');
+    const data = await res.json();
+    if (data.success && data.configs) {
+      const map = {};
+      data.configs.forEach(c => { map[c.key] = c.value; });
+
+      document.getElementById('cfgMaintenanceMode').checked = map.maintenance_mode === 'true';
+      document.getElementById('cfgMaintenanceMsg').value = map.maintenance_message || '';
+      document.getElementById('cfgMinAppVersion').value = map.min_app_version || '1.0.0';
+      document.getElementById('cfgForceUpdateTitle').value = map.force_update_title || 'Update Required';
+      document.getElementById('cfgStoreUrlAndroid').value = map.store_url_android || '';
+      document.getElementById('cfgStoreUrlIos').value = map.store_url_ios || '';
+
+      document.getElementById('cfgAllowCalls').checked = map.allow_outbound_calls !== 'false';
+      document.getElementById('cfgAllowSms').checked = map.allow_sms !== 'false';
+      document.getElementById('cfgAllowDeposits').checked = map.allow_deposits !== 'false';
+    }
+  } catch (e) {
+    showToast('Failed to load remote configuration', 'error');
+  }
+}
+
+async function saveAllRemoteConfigs() {
+  const payload = {
+    maintenance_mode: document.getElementById('cfgMaintenanceMode').checked ? 'true' : 'false',
+    maintenance_message: document.getElementById('cfgMaintenanceMsg').value.trim(),
+    min_app_version: document.getElementById('cfgMinAppVersion').value.trim(),
+    force_update_title: document.getElementById('cfgForceUpdateTitle').value.trim(),
+    store_url_android: document.getElementById('cfgStoreUrlAndroid').value.trim(),
+    store_url_ios: document.getElementById('cfgStoreUrlIos').value.trim(),
+    allow_outbound_calls: document.getElementById('cfgAllowCalls').checked ? 'true' : 'false',
+    allow_sms: document.getElementById('cfgAllowSms').checked ? 'true' : 'false',
+    allow_deposits: document.getElementById('cfgAllowDeposits').checked ? 'true' : 'false'
+  };
+
+  try {
+    const res = await fetch('/api/admin/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Remote configuration published successfully!', 'success');
+    } else {
+      showToast(data.error || 'Failed to save config', 'error');
+    }
+  } catch (e) {
+    showToast('Network error saving configuration', 'error');
+  }
+}
+
+// ==========================================
+// 🔔 MULTI-CHANNEL OWNER ALERTS
+// ==========================================
+function openAlertSettingsModal() {
+  loadOwnerAlertSettings();
+  document.getElementById('alertSettingsModal').classList.remove('hidden');
+}
+function closeAlertSettingsModal() {
+  document.getElementById('alertSettingsModal').classList.add('hidden');
+}
+
+function toggleAlertChannelFields() {
+  const channel = document.getElementById('alertPrimaryChannel').value;
+  document.getElementById('channelFieldEmail').classList.add('hidden');
+  document.getElementById('channelFieldPhone').classList.add('hidden');
+  document.getElementById('channelFieldWebhook').classList.add('hidden');
+  document.getElementById('channelFieldTelegram').classList.add('hidden');
+
+  if (channel === 'EMAIL') document.getElementById('channelFieldEmail').classList.remove('hidden');
+  else if (channel === 'SMS') document.getElementById('channelFieldPhone').classList.remove('hidden');
+  else if (channel === 'DISCORD') document.getElementById('channelFieldWebhook').classList.remove('hidden');
+  else if (channel === 'TELEGRAM') document.getElementById('channelFieldTelegram').classList.remove('hidden');
+}
+
+async function loadOwnerAlertSettings() {
+  try {
+    const res = await fetch('/api/admin/alerts/settings');
+    const data = await res.json();
+    if (data.success && data.settings) {
+      const s = data.settings;
+      document.getElementById('alertSettingEnabled').checked = s.isEnabled;
+      document.getElementById('alertPrimaryChannel').value = s.primaryChannel || 'EMAIL';
+      document.getElementById('alertOwnerEmail').value = s.ownerEmail || '';
+      document.getElementById('alertOwnerPhone').value = s.ownerPhone || '';
+      document.getElementById('alertWebhookUrl').value = s.webhookUrl || '';
+      document.getElementById('alertTgToken').value = s.telegramBotToken || '';
+      document.getElementById('alertTgChatId').value = s.telegramChatId || '';
+
+      document.getElementById('alertOnLargeDeposit').checked = s.notifyOnLargeDeposit;
+      document.getElementById('alertOnLowCarrierBalance').checked = s.notifyOnLowCarrierBalance;
+      document.getElementById('alertOnHighRiskFraud').checked = s.notifyOnHighRiskFraud;
+      document.getElementById('alertOnUnassignedTicket').checked = s.notifyOnUnassignedTicket;
+
+      toggleAlertChannelFields();
+    }
+  } catch (e) {
+    console.warn('Failed to load alert settings', e);
+  }
+}
+
+async function saveOwnerAlertSettings() {
+  const payload = {
+    isEnabled: document.getElementById('alertSettingEnabled').checked,
+    primaryChannel: document.getElementById('alertPrimaryChannel').value,
+    ownerEmail: document.getElementById('alertOwnerEmail').value.trim(),
+    ownerPhone: document.getElementById('alertOwnerPhone').value.trim(),
+    webhookUrl: document.getElementById('alertWebhookUrl').value.trim(),
+    telegramBotToken: document.getElementById('alertTgToken').value.trim(),
+    telegramChatId: document.getElementById('alertTgChatId').value.trim(),
+    notifyOnLargeDeposit: document.getElementById('alertOnLargeDeposit').checked,
+    notifyOnLowCarrierBalance: document.getElementById('alertOnLowCarrierBalance').checked,
+    notifyOnHighRiskFraud: document.getElementById('alertOnHighRiskFraud').checked,
+    notifyOnUnassignedTicket: document.getElementById('alertOnUnassignedTicket').checked
+  };
+
+  try {
+    const res = await fetch('/api/admin/alerts/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Owner alert preferences saved!', 'success');
+      closeAlertSettingsModal();
+    } else {
+      showToast(data.error || 'Failed to save', 'error');
+    }
+  } catch (e) {
+    showToast('Network error saving alert settings', 'error');
+  }
+}
+
+async function sendTestAlertNotification() {
+  try {
+    const res = await fetch('/api/admin/alerts/test', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Test alert dispatched: ' + data.message, 'success');
+    } else {
+      showToast(data.error || 'Test alert failed', 'error');
+    }
+  } catch (e) {
+    showToast('Network error testing alert', 'error');
+  }
+}
+
+// ==========================================
+// 📊 1-CLICK CSV DATA EXPORTS
+// ==========================================
+function exportData(type) {
+  showToast('Generating ' + type.toUpperCase() + ' CSV export...', 'info');
+  window.open('/api/admin/export/' + type, '_blank');
+}
+
+// Auto-poll Carrier health every 60s
+setInterval(fetchCarrierHealth, 60000);
+setTimeout(fetchCarrierHealth, 1000);
+setTimeout(fetchFinanceMargins, 1500);
+
+</script>
 
   <!-- 👥 CREATE / EDIT STAFF MEMBER MODAL -->
   <div id="staffModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">

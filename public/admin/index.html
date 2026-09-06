@@ -1255,7 +1255,131 @@
     </main>
   </div>
 
-  <!-- 💰 ADJUST BALANCE MODAL -->
+  
+        <!-- ============================================================ -->
+        <!-- 👥 TAB 9: TEAM & STAFF MANAGEMENT (RBAC) -->
+        <!-- ============================================================ -->
+        <div id="tab-view-team" class="tab-view hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
+                <i class="fa-solid fa-user-shield text-amber-400"></i>
+                <span>Team Members & Role-Based Access (RBAC)</span>
+              </h2>
+              <p class="text-xs text-slate-400">Create staff accounts, assign granular role permissions, and track employee performance.</p>
+            </div>
+            <button onclick="openCreateStaffModal()" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-xl text-xs font-bold shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2">
+              <i class="fa-solid fa-plus"></i> <span>Add New Team Member</span>
+            </button>
+          </div>
+
+          <!-- Team Performance KPI Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center gap-3 shadow-lg">
+              <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-users-gear"></i>
+              </div>
+              <div>
+                <div class="text-[11px] text-slate-400 font-semibold uppercase">Total Staff Accounts</div>
+                <div id="statTotalStaff" class="text-lg font-bold text-white">0</div>
+              </div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center gap-3 shadow-lg">
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-headset"></i>
+              </div>
+              <div>
+                <div class="text-[11px] text-slate-400 font-semibold uppercase">Active Support Agents</div>
+                <div id="statActiveAgents" class="text-lg font-bold text-emerald-400">0</div>
+              </div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center gap-3 shadow-lg">
+              <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-circle-check"></i>
+              </div>
+              <div>
+                <div class="text-[11px] text-slate-400 font-semibold uppercase">Team Tickets Resolved</div>
+                <div id="statTeamTicketsResolved" class="text-lg font-bold text-indigo-400">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Team Table -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-950/70 border-b border-slate-800 text-slate-400 uppercase font-semibold text-[10px] tracking-wider">
+                  <tr>
+                    <th class="py-3 px-4">Staff Member</th>
+                    <th class="py-3 px-4">Role</th>
+                    <th class="py-3 px-4">Permissions</th>
+                    <th class="py-3 px-4">Status</th>
+                    <th class="py-3 px-4">Tickets Solved</th>
+                    <th class="py-3 px-4">Last Login</th>
+                    <th class="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="teamTableBody" class="divide-y divide-slate-800/60">
+                  <tr><td colspan="7" class="py-8 text-center text-slate-500">Loading team members...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- 🛡️ TAB 10: AUDIT TRAIL & EMPLOYEE ACTIVITY -->
+        <!-- ============================================================ -->
+        <div id="tab-view-audit" class="tab-view hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
+                <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                <span>Staff Activity & Security Audit Trail</span>
+              </h2>
+              <p class="text-xs text-slate-400">Tamper-proof chronological log of every action performed by team members and administrators.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <select id="auditActionFilter" onchange="loadAuditLogs()" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                <option value="">All Actions</option>
+                <option value="STAFF_LOGIN">Staff Login</option>
+                <option value="REPLY_SUPPORT">Support Replies</option>
+                <option value="CLAIM_TICKET">Ticket Claims</option>
+                <option value="TRANSFER_TICKET">Ticket Transfers</option>
+                <option value="RESOLVE_TICKET">Ticket Resolutions</option>
+                <option value="ADJUST_BALANCE">Balance Adjustments</option>
+                <option value="CREATE_STAFF">Staff Created</option>
+                <option value="DELETE_STAFF">Staff Removed</option>
+              </select>
+              <button onclick="loadAuditLogs()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5">
+                <i class="fa-solid fa-rotate-right text-xs"></i> <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Audit Log Table -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-950/70 border-b border-slate-800 text-slate-400 uppercase font-semibold text-[10px] tracking-wider">
+                  <tr>
+                    <th class="py-3 px-4">Timestamp & IP</th>
+                    <th class="py-3 px-4">Staff Member</th>
+                    <th class="py-3 px-4">Role</th>
+                    <th class="py-3 px-4">Action</th>
+                    <th class="py-3 px-4">Target</th>
+                    <th class="py-3 px-4">Activity Details</th>
+                  </tr>
+                </thead>
+                <tbody id="auditTableBody" class="divide-y divide-slate-800/60">
+                  <tr><td colspan="6" class="py-8 text-center text-slate-500">Loading audit trail...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+<!-- 💰 ADJUST BALANCE MODAL -->
   <div id="balanceModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
     <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4">
       <div class="flex items-center justify-between">

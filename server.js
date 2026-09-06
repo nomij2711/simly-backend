@@ -854,6 +854,26 @@ app.post('/api/numbers/transfer', async (req, res) => {
       });
     }
 
+    if (senderUserId) {
+      const cleanSender = senderUserId.toString().trim();
+      const sender = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { id: cleanSender },
+            { email: cleanSender.toLowerCase() },
+            { email: `${cleanSender.toLowerCase()}@simlytel.com` }
+          ]
+        }
+      });
+      if (sender && (!sender.isVerified || sender.isBanned || sender.isDeleted)) {
+        return res.status(403).json({
+          success: false,
+          isBlocked: true,
+          error: 'Your account has been restricted by administrator. You cannot transfer lines. Please contact Customer Support.'
+        });
+      }
+    }
+
     if (senderUserId && targetUser.id === senderUserId) {
       return res.status(400).json({ success: false, error: 'Cannot transfer a number to your own account.' });
     }
@@ -1617,6 +1637,15 @@ app.post('/api/wallet/transfer', async (req, res) => {
 
     if (!sender) {
       return res.status(404).json({ success: false, error: 'Sender account not found.' });
+    }
+
+    // Check if Sender is Blocked / Restricted
+    if (!sender.isVerified || sender.isBanned || sender.isDeleted) {
+      return res.status(403).json({
+        success: false,
+        isBlocked: true,
+        error: 'Your account has been restricted by administrator. You cannot transfer balance. Please contact Customer Support.'
+      });
     }
 
     // Check Sender Balance

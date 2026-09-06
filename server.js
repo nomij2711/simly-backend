@@ -1952,11 +1952,49 @@ app.post('/api/support/messages', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Message text is required' });
     }
 
+    // Lookup user info for ticket profiling
+    const senderUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: userId },
+          { email: userId.toLowerCase() }
+        ]
+      },
+      select: { name: true, email: true }
+    });
+
     const userMsg = await prisma.supportMessage.create({
       data: {
         userId,
         sender: 'user',
         text: text.trim()
+      }
+    });
+
+    // Auto-update or Create Support Ticket in Incoming Queue
+    const existingTicket = await prisma.supportTicket.findUnique({ where: { userId } });
+    const ticketStatus = (existingTicket && existingTicket.status === 'in_progress') ? 'in_progress' : 'unassigned';
+
+    await prisma.supportTicket.upsert({
+      where: { userId },
+      update: {
+        userName: senderUser?.name || existingTicket?.userName || (userId.includes('@') ? userId.split('@')[0] : 'SimlyTel Customer'),
+        userEmail: senderUser?.email || existingTicket?.userEmail || (userId.includes('@') ? userId : null),
+        status: ticketStatus,
+        lastMessageText: text.trim(),
+        lastMessageSender: 'user',
+        lastMessageAt: new Date(),
+        unreadStaffCount: { increment: 1 }
+      },
+      create: {
+        userId,
+        userName: senderUser?.name || (userId.includes('@') ? userId.split('@')[0] : 'SimlyTel Customer'),
+        userEmail: senderUser?.email || (userId.includes('@') ? userId : null),
+        status: 'unassigned',
+        lastMessageText: text.trim(),
+        lastMessageSender: 'user',
+        lastMessageAt: new Date(),
+        unreadStaffCount: 1
       }
     });
 
@@ -3790,14 +3828,8 @@ app.get('/api/admin/support/queue', requireStaffPermission('can_handle_support')
   try {
     const currentStaffId = req.staff.id;
 
-    // Fetch all user tickets
-    const tickets = await prisma.supportTicket.findMany({
-      orderBy: { lastMessageAt: 'desc' }
-    });
-
-    // Also get messages grouped by user
+    // 1. Fetch messages grouped by user
     const messages = await prisma.supportMessage.findMany({
-      take: 200,
       orderBy: { createdAt: 'desc' }
     });
 
@@ -3807,16 +3839,48 @@ app.get('/api/admin/support/queue', requireStaffPermission('can_handle_support')
       userMessagesMap[m.userId].push(m);
     }
 
-    // Categorize
+    // 2. Fetch existing tickets and ensure all users with messages have tickets
+    const existingTickets = await prisma.supportTicket.findMany();
+    const existingTicketMap = new Map(existingTickets.map(t => [t.userId, t]));
+
+    for (const [uid, msgs] of Object.entries(userMessagesMap)) {
+      if (!existingTicketMap.has(uid) && msgs.length > 0) {
+        const lastMsg = msgs[0]; // newest
+        const userObj = await prisma.user.findFirst({
+          where: { OR: [{ id: uid }, { email: uid.toLowerCase() }] },
+          select: { name: true, email: true }
+        });
+
+        const newTicket = await prisma.supportTicket.create({
+          data: {
+            userId: uid,
+            userName: userObj?.name || (uid.includes('@') ? uid.split('@')[0] : 'SimlyTel Customer'),
+            userEmail: userObj?.email || (uid.includes('@') ? uid : null),
+            status: 'unassigned',
+            lastMessageText: lastMsg.text,
+            lastMessageSender: lastMsg.sender,
+            lastMessageAt: lastMsg.createdAt,
+            unreadStaffCount: msgs.filter(m => m.sender === 'user').length
+          }
+        });
+        existingTickets.push(newTicket);
+        existingTicketMap.set(uid, newTicket);
+      }
+    }
+
+    // 3. Sort tickets by lastMessageAt descending
+    existingTickets.sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
+
+    // 4. Categorize
     const unassigned = [];
     const myChats = [];
     const allChats = [];
 
-    for (const t of tickets) {
+    for (const t of existingTickets) {
       const msgs = userMessagesMap[t.userId] || [];
       const item = {
         ...t,
-        messages: msgs.reverse(),
+        messages: [...msgs].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)),
         isMine: t.assignedStaffId === currentStaffId,
         isLockedByOther: Boolean(t.assignedStaffId && t.assignedStaffId !== currentStaffId && t.status === 'in_progress')
       };

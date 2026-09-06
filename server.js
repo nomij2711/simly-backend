@@ -523,6 +523,15 @@ const handleBuyTest = async (req, res) => {
       });
     }
 
+    // Blocked / Suspended User Check
+    if (!user.isVerified || user.isBanned || user.isDeleted) {
+      return res.status(403).json({
+        success: false,
+        isBlocked: true,
+        error: 'Your account has been blocked by administrator. You cannot purchase virtual lines. Please contact support.'
+      });
+    }
+
     // Insufficient Wallet Balance Check
     if (user.walletBalance < price) {
       return res.status(402).json({
@@ -683,6 +692,15 @@ app.post('/api/numbers/renew', async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: existing.userId } });
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    // Blocked / Suspended User Check
+    if (!user.isVerified || user.isBanned || user.isDeleted) {
+      return res.status(403).json({
+        success: false,
+        isBlocked: true,
+        error: 'Your account has been blocked by administrator. Number renewal is disabled. Please contact support.'
+      });
     }
 
     if (user.walletBalance < price) {
@@ -913,6 +931,15 @@ app.post('/api/sms/send', async (req, res) => {
     let user = null;
     if (lineOwner) {
       user = await prisma.user.findUnique({ where: { id: lineOwner.userId } });
+    }
+
+    // Blocked / Suspended User Check
+    if (user && (!user.isVerified || user.isBanned || user.isDeleted)) {
+      return res.status(403).json({
+        success: false,
+        isBlocked: true,
+        error: 'Your account has been blocked by administrator. Outbound SMS is disabled. Please contact support.'
+      });
     }
 
     // Determine SMS cost (1.5x wholesale multiplier)
@@ -1230,6 +1257,15 @@ app.post('/api/calls/log', async (req, res) => {
         user = await prisma.user.findUnique({ where: { id: lineOwner.userId } });
       }
 
+      // Blocked / Suspended User Check
+      if (user && (!user.isVerified || user.isBanned || user.isDeleted)) {
+        return res.status(403).json({
+          success: false,
+          isBlocked: true,
+          error: 'Your account has been blocked by administrator. Outbound calling is disabled. Please contact support.'
+        });
+      }
+
       const minutes = Math.ceil(durSec / 60);
       let baseCallRate = 0.020;
       for (const r of baseRates) {
@@ -1428,10 +1464,15 @@ app.get('/api/wallet/info', async (req, res) => {
       take: 20
     });
 
+    const isBlocked = !user.isVerified || user.isBanned || user.isDeleted;
+
     res.json({
       success: true,
       balance: user.walletBalance,
       currency: 'USD',
+      isBlocked,
+      isVerified: user.isVerified,
+      isBanned: user.isBanned,
       transactions
     });
   } catch (error) {

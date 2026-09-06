@@ -3668,7 +3668,14 @@
         if (btnClaim) btnClaim.classList.remove('hidden');
         if (btnTransfer) btnTransfer.classList.add('hidden');
         if (btnResolve) btnResolve.classList.add('hidden');
-        if (replyInput) replyInput.placeholder = 'Claim this ticket first to reply...';
+        if (replyInput) {
+          replyInput.placeholder = '⚠️ Please Click "Pick Up / Claim" above before replying...';
+          replyInput.disabled = true;
+        }
+        if (btnSend) {
+          btnSend.disabled = true;
+          btnSend.classList.add('opacity-50', 'cursor-not-allowed');
+        }
       } else if (ticket.isMine) {
         if (bannerEl) {
           bannerEl.className = 'my-2 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 flex items-center justify-between';
@@ -3679,7 +3686,14 @@
         if (btnClaim) btnClaim.classList.add('hidden');
         if (btnTransfer) btnTransfer.classList.remove('hidden');
         if (btnResolve) btnResolve.classList.remove('hidden');
-        if (replyInput) replyInput.placeholder = 'Type your response to customer...';
+        if (replyInput) {
+          replyInput.placeholder = 'Type your response to customer...';
+          replyInput.disabled = false;
+        }
+        if (btnSend) {
+          btnSend.disabled = false;
+          btnSend.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
       } else if (ticket.isLockedByOther) {
         if (bannerEl) {
           bannerEl.className = 'my-2 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700 flex items-center justify-between';
@@ -3707,7 +3721,10 @@
           }
         }
         if (btnSend) {
-          btnSend.disabled = (CURRENT_STAFF?.role !== 'super_admin' && !ticket.isMine);
+          const canSend = CURRENT_STAFF?.role === 'super_admin';
+          btnSend.disabled = !canSend;
+          btnSend.classList.toggle('opacity-50', !canSend);
+          btnSend.classList.toggle('cursor-not-allowed', !canSend);
         }
       } else if (ticket.status === 'resolved') {
         if (bannerEl) {
@@ -3722,7 +3739,14 @@
         }
         if (btnTransfer) btnTransfer.classList.add('hidden');
         if (btnResolve) btnResolve.classList.add('hidden');
-        if (replyInput) replyInput.placeholder = 'Ticket resolved. Re-open to send message.';
+        if (replyInput) {
+          replyInput.placeholder = 'Ticket resolved. Re-open to send message.';
+          replyInput.disabled = true;
+        }
+        if (btnSend) {
+          btnSend.disabled = true;
+          btnSend.classList.add('opacity-50', 'cursor-not-allowed');
+        }
       }
 
       renderChatMessages(ticket.messages || []);
@@ -3741,7 +3765,7 @@
         const isUser = m.sender === 'user';
         const senderLabel = isUser 
           ? (activeTicketData?.userName || 'Customer') 
-          : (m.senderName || 'Simly Support');
+          : (m.senderName || 'SimlyTel Support');
         const timeStr = m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
         return `
@@ -3764,6 +3788,11 @@
 
     async function handleClaimCurrentTicket() {
       if (!activeSupportUserId) return;
+      const btn = document.getElementById('btnClaimTicket');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Joining...';
+      }
       try {
         const res = await adminFetch('/api/admin/support/claim', {
           method: 'POST',
@@ -3773,9 +3802,18 @@
           await loadSupportQueue();
           switchQueueFilter('my_chats');
           selectSupportTicket(activeSupportUserId);
+          const input = document.getElementById('replyTextInput');
+          if (input) {
+            input.disabled = false;
+            input.focus();
+          }
         }
       } catch (err) {
         alert(err.message);
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-hand"></i> <span>Pick Up / Claim</span>';
+        }
       }
     }
 
@@ -3850,8 +3888,19 @@
 
     async function handleSendSupportReply(e) {
       e.preventDefault();
-      if (!activeSupportUserId) {
+      if (!activeSupportUserId || !activeTicketData) {
         alert('Please select a customer thread first.');
+        return;
+      }
+
+      // Strict check: Must be claimed first!
+      if (activeTicketData.status === 'unassigned' || !activeTicketData.assignedStaffId) {
+        alert('⚠️ You must click "Pick Up / Claim" first to join this conversation before replying to customer!');
+        return;
+      }
+
+      if (activeTicketData.isLockedByOther && CURRENT_STAFF?.role !== 'super_admin') {
+        alert(`⚠️ This conversation is currently handled by ${activeTicketData.assignedStaffName || 'another agent'}.`);
         return;
       }
 

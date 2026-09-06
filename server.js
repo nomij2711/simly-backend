@@ -936,7 +936,7 @@ app.delete('/api/numbers/cancel', async (req, res) => {
 // 4. Endpoint: Send Outbound SMS Message (1.5x Telnyx wholesale billing)
 app.post('/api/sms/send', async (req, res) => {
   try {
-    const { fromNumber, toNumber, text } = req.body;
+    const { fromNumber, toNumber, text, userId } = req.body;
     if (!fromNumber || !toNumber || !text) {
       return res.status(400).json({ success: false, error: 'fromNumber, toNumber, and text are required.' });
     }
@@ -944,21 +944,42 @@ app.post('/api/sms/send', async (req, res) => {
     const cleanFrom = normalizePhone(fromNumber);
     const cleanTo = normalizePhone(toNumber);
 
+    // Verify virtual line ownership and active status
     const lineOwner = await prisma.purchasedNumber.findFirst({
-      where: { phoneNumber: cleanFrom }
+      where: { phoneNumber: cleanFrom, status: 'active' }
     });
 
-    let user = null;
-    if (lineOwner) {
-      user = await prisma.user.findUnique({ where: { id: lineOwner.userId } });
+    if (!lineOwner) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have an active line for this number. Outbound SMS requires an active virtual line.'
+      });
+    }
+
+    let user = await prisma.user.findUnique({ where: { id: lineOwner.userId } });
+    if (!user && userId) {
+      const cleanUid = userId.toString().trim();
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { id: cleanUid },
+            { email: cleanUid.toLowerCase() },
+            { email: `${cleanUid.toLowerCase()}@simlytel.com` }
+          ]
+        }
+      });
+    }
+
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'User account not found.' });
     }
 
     // Blocked / Suspended User Check
-    if (user && (!user.isVerified || user.isBanned || user.isDeleted)) {
+    if (!user.isVerified || user.isBanned || user.isDeleted) {
       return res.status(403).json({
         success: false,
         isBlocked: true,
-        error: 'Your account has been blocked by administrator. Outbound SMS is disabled. Please contact support.'
+        error: 'Your account has been restricted by administrator. Outbound SMS is disabled. Please contact support.'
       });
     }
 
@@ -969,30 +990,29 @@ app.post('/api/sms/send', async (req, res) => {
     else if (cleanTo.startsWith('+92')) wholesaleSms = 0.025;
     const smsPrice = parseFloat((wholesaleSms * NUMBER_RETAIL_MULTIPLIER).toFixed(3));
 
-    if (user) {
-      if (user.walletBalance < smsPrice) {
-        return res.status(402).json({
-          success: false,
-          error: `Insufficient wallet balance. Sending SMS requires $${smsPrice.toFixed(3)}, but your balance is $${user.walletBalance.toFixed(2)}. Please top up your wallet.`,
-          requiredAmount: smsPrice,
-          currentBalance: user.walletBalance
-        });
-      }
-
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { walletBalance: { decrement: smsPrice } }
-      });
-
-      await prisma.transaction.create({
-        data: {
-          userId: user.id,
-          type: 'sms',
-          amount: -smsPrice,
-          description: `Outbound SMS to ${cleanTo}`
-        }
+    // STRICT WALLET BALANCE CHECK
+    if (user.walletBalance < smsPrice || user.walletBalance <= 0) {
+      return res.status(402).json({
+        success: false,
+        error: `Insufficient wallet balance. Sending SMS requires $${smsPrice.toFixed(3)}, but your balance is $${user.walletBalance.toFixed(2)}. Please top up your wallet.`,
+        requiredAmount: smsPrice,
+        currentBalance: user.walletBalance
       });
     }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { walletBalance: { decrement: smsPrice } }
+    });
+
+    await prisma.transaction.create({
+      data: {
+        userId: user.id,
+        type: 'sms',
+        amount: -smsPrice,
+        description: `Outbound SMS to ${cleanTo}`
+      }
+    });
 
     let telnyxMessageId = null;
     try {
@@ -1003,7 +1023,7 @@ app.post('/api/sms/send', async (req, res) => {
       });
       telnyxMessageId = telnyxRes?.data?.id || null;
     } catch (carrierErr) {
-      console.warn('[SIMLY SMS] Carrier dispatch notice:', carrierErr.message);
+      console.warn('[SIMLYTEL SMS] Carrier dispatch notice:', carrierErr.message);
     }
 
     const savedMessage = await prisma.message.create({
@@ -1017,15 +1037,16 @@ app.post('/api/sms/send', async (req, res) => {
       }
     });
 
-    console.log(`💬 [BILLING - SMS] Deducted $${smsPrice} for SMS to ${cleanTo}`);
+    console.log(`💬 [BILLING - SMS] Deducted $${smsPrice} for SMS to ${cleanTo} (User: ${user.email}, New Balance: $${updatedUser.walletBalance.toFixed(2)})`);
 
     res.json({
       success: true,
       costDeducted: smsPrice,
+      newBalance: updatedUser.walletBalance,
       message: savedMessage
     });
   } catch (error) {
-    console.error('[SIMLY ERROR] Failed to send SMS:', error);
+    console.error('[SIMLYTEL ERROR] Failed to send SMS:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1129,7 +1150,7 @@ app.get('/api/sms/conversations', async (req, res) => {
       conversations: Array.from(threadsMap.values())
     });
   } catch (error) {
-    console.error('[SIMLY ERROR] Failed to get conversations:', error);
+    console.error('[SIMLYTEL ERROR] Failed to get conversations:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1177,7 +1198,7 @@ app.get('/api/sms/thread', async (req, res) => {
       messages
     });
   } catch (error) {
-    console.error('[SIMLY ERROR] Failed to get message thread:', error);
+    console.error('[SIMLYTEL ERROR] Failed to get message thread:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1208,7 +1229,7 @@ app.post('/api/sms/simulate-inbound', async (req, res) => {
       message: saved
     });
   } catch (error) {
-    console.error('[SIMLY ERROR] Failed to simulate inbound SMS:', error);
+    console.error('[SIMLYTEL ERROR] Failed to simulate inbound SMS:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1239,7 +1260,7 @@ app.post('/api/telnyx/webhook', async (req, res) => {
       }
     }
   } catch (err) {
-    console.error('[SIMLY WEBHOOK ERROR]', err.message);
+    console.error('[SIMLYTEL WEBHOOK ERROR]', err.message);
   }
   res.sendStatus(200);
 });
@@ -1253,8 +1274,7 @@ app.post('/api/calls/log', async (req, res) => {
       direction = 'outbound',
       status = 'completed',
       durationSeconds = 0,
-      hasRecording = false,
-      recordingUrl = null
+      userId
     } = req.body;
 
     if (!myNumber || !contactNumber) {
@@ -1267,18 +1287,37 @@ app.post('/api/calls/log', async (req, res) => {
 
     // Outbound Call Billing (2.5x Wholesale Multiplier)
     let callCost = 0.0;
-    if (direction === 'outbound' && durSec > 0) {
+    if (direction === 'outbound') {
       const lineOwner = await prisma.purchasedNumber.findFirst({
-        where: { phoneNumber: cleanMyNumber }
+        where: { phoneNumber: cleanMyNumber, status: 'active' }
       });
 
       let user = null;
       if (lineOwner) {
         user = await prisma.user.findUnique({ where: { id: lineOwner.userId } });
       }
+      if (!user && userId) {
+        const cleanUid = userId.toString().trim();
+        user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { id: cleanUid },
+              { email: cleanUid.toLowerCase() },
+              { email: `${cleanUid.toLowerCase()}@simlytel.com` }
+            ]
+          }
+        });
+      }
+
+      if (!user) {
+        return res.status(403).json({
+          success: false,
+          error: 'You do not have an active virtual line assigned to make outbound calls.'
+        });
+      }
 
       // Blocked / Suspended User Check
-      if (user && (!user.isVerified || user.isBanned || user.isDeleted)) {
+      if (!user.isVerified || user.isBanned || user.isDeleted) {
         return res.status(403).json({
           success: false,
           isBlocked: true,
@@ -1286,7 +1325,7 @@ app.post('/api/calls/log', async (req, res) => {
         });
       }
 
-      const minutes = Math.ceil(durSec / 60);
+      const minutes = durSec > 0 ? Math.ceil(durSec / 60) : 1;
       let baseCallRate = 0.020;
       for (const r of baseRates) {
         if (cleanContact.startsWith(r.dialCode)) {
@@ -1297,11 +1336,11 @@ app.post('/api/calls/log', async (req, res) => {
       const ratePerMin = parseFloat((baseCallRate * CALLING_RETAIL_MULTIPLIER).toFixed(3));
       callCost = parseFloat((minutes * ratePerMin).toFixed(2));
 
-      if (user) {
-        if (user.walletBalance < callCost) {
+      if (durSec > 0) {
+        if (user.walletBalance < callCost || user.walletBalance <= 0) {
           return res.status(402).json({
             success: false,
-            error: `Insufficient wallet balance. Call duration (${durSec}s) cost $${callCost.toFixed(2)}, but balance is $${user.walletBalance.toFixed(2)}. Please top up.`,
+            error: `Insufficient wallet balance. Call duration (${durSec}s) cost $${callCost.toFixed(2)}, but balance is $${user.walletBalance.toFixed(2)}. Please top up your wallet.`,
             requiredAmount: callCost,
             currentBalance: user.walletBalance
           });
@@ -1321,7 +1360,7 @@ app.post('/api/calls/log', async (req, res) => {
           }
         });
 
-        console.log(`📞 [BILLING - CALL] Deducted $${callCost.toFixed(2)} from ${user.email}`);
+        console.log(`📞 [BILLING - CALL] Deducted $${callCost.toFixed(2)} from ${user.email} (Remaining Balance: $${(user.walletBalance - callCost).toFixed(2)})`);
       }
     }
 
@@ -1343,7 +1382,7 @@ app.post('/api/calls/log', async (req, res) => {
       call: saved
     });
   } catch (error) {
-    console.error('[SIMLY ERROR] Failed to log call:', error);
+    console.error('[SIMLYTEL ERROR] Failed to log call:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -2040,13 +2079,52 @@ app.post('/api/support/messages', async (req, res) => {
 // 16. Endpoint: WebRTC & SIP Credentials for In-App VoIP Calling (React Native / Flutter Client Engine)
 app.post('/api/calls/webrtc-token', async (req, res) => {
   try {
-    const { userId = 'user_demo_1', callerNumber } = req.body;
-    const sessionToken = `webrtc_simly_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    const sipUsername = `simly_user_${userId.replace(/[^a-zA-Z0-9]/g, '')}`;
+    const { userId, callerNumber } = req.body;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'User authentication required for calling.' });
+    }
+
+    const cleanUserId = userId.toString().trim();
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: cleanUserId },
+          { email: cleanUserId.toLowerCase() },
+          { email: `${cleanUserId.toLowerCase()}@simlytel.com` },
+          { email: `${cleanUserId.toLowerCase()}@simly.app` }
+        ]
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User account not found.' });
+    }
+
+    if (!user.isVerified || user.isBanned || user.isDeleted) {
+      return res.status(403).json({
+        success: false,
+        isBlocked: true,
+        error: 'Your account has been restricted by administrator. Calling is disabled. Please contact support.'
+      });
+    }
+
+    // Minimum balance requirement: Must have at least $0.020 to initiate calling
+    if (user.walletBalance < 0.02 || user.walletBalance <= 0) {
+      return res.status(402).json({
+        success: false,
+        error: `Insufficient wallet balance ($${user.walletBalance.toFixed(2)}). Minimum $0.020 is required to initiate a call. Please top up your wallet.`,
+        currentBalance: user.walletBalance,
+        requiredAmount: 0.020
+      });
+    }
+
+    const sessionToken = `webrtc_simlytel_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const sipUsername = `simly_user_${user.id.replace(/[^a-zA-Z0-9]/g, '')}`;
 
     res.json({
       success: true,
       token: sessionToken,
+      walletBalance: user.walletBalance,
       sipConfig: {
         username: sipUsername,
         domain: 'sip.telnyx.com',
@@ -2066,7 +2144,7 @@ app.post('/api/calls/webrtc-token', async (req, res) => {
       expiresIn: 3600
     });
   } catch (error) {
-    console.error('[SIMLY ERROR] Failed to generate WebRTC token:', error);
+    console.error('[SIMLYTEL ERROR] Failed to generate WebRTC token:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

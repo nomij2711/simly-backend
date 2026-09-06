@@ -1963,7 +1963,7 @@
 
       // 3. Check clean hash tab names
       const cleanHash = hash.replace(/^#tab=/, '').replace(/^#/, '');
-      const validTabs = ['overview', 'users', 'numbers', 'cdr', 'transactions', 'support', 'announcements', 'pricing', 'team', 'audit'];
+      const validTabs = ['overview', 'users', 'numbers', 'cdr', 'transactions', 'support', 'announcements', 'pricing', 'team', 'audit', 'blacklist', 'config'];
       if (validTabs.includes(cleanHash)) {
         switchTab(cleanHash, true);
         return;
@@ -2112,18 +2112,23 @@
     }
 
     function refreshActiveTab() {
-      if (currentActiveTab === 'overview') loadOverview();
+      if (currentActiveTab === 'overview') {
+        loadOverview();
+        fetchCarrierHealth();
+        fetchFinanceMargins();
+      }
       else if (currentActiveTab === 'users') loadUsers();
       else if (currentActiveTab === 'user-detail' && currentInspectedUserId) inspectUserDossier(currentInspectedUserId);
       else if (currentActiveTab === 'numbers') loadNumbers();
       else if (currentActiveTab === 'cdr') loadCalls();
       else if (currentActiveTab === 'transactions') loadTransactions();
-      else if (currentActiveTab === 'support') loadSupport();
-      else if (currentActiveTab === 'announcements') loadAnnouncements();
-      else if (currentActiveTab === 'team') loadTeam();
-      else if (currentActiveTab === 'audit') loadAuditLogs();
       else if (currentActiveTab === 'support') loadSupportQueue();
+      else if (currentActiveTab === 'announcements') loadAnnouncements();
+      else if (currentActiveTab === 'team') loadTeamMembers();
+      else if (currentActiveTab === 'audit') loadAuditLogs();
       else if (currentActiveTab === 'pricing') loadPricing();
+      else if (currentActiveTab === 'blacklist') loadBlacklist();
+      else if (currentActiveTab === 'config') loadRemoteConfig();
     }
 
     async function adminFetch(endpoint, options = {}) {

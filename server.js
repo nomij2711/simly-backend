@@ -48,6 +48,14 @@ app.post('/api/auth/signup', async (req, res) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1';
+    
+    // Security Blacklist Shield
+    const blMatch = await isBlacklisted(clientIp, cleanEmail, req.body.deviceId, phone);
+    if (blMatch) {
+      return res.status(403).json({ success: false, error: `Access denied by security shield: ${blMatch.reason}` });
+    }
+
     const existing = await prisma.user.findUnique({ where: { email: cleanEmail } });
     if (existing) {
       return res.status(400).json({ success: false, error: 'An account with this email already exists' });
@@ -2353,6 +2361,72 @@ async function logAuditEvent({ staffId, staffName, staffEmail, staffRole, action
 }
 
 // 2. Dynamic Staff Authentication & Permission Guard
+
+// === ENTERPRISE SECURITY & FRAUD RADAR HELPERS ===
+async function isBlacklisted(ip, email, deviceId, phone) {
+  try {
+    const conditions = [];
+    if (email && email.trim()) conditions.push({ type: 'EMAIL', value: email.toLowerCase().trim(), isActive: true });
+    if (ip && ip !== '127.0.0.1' && ip !== '::1' && ip.trim()) conditions.push({ type: 'IP', value: ip.trim(), isActive: true });
+    if (deviceId && deviceId.trim()) conditions.push({ type: 'DEVICE_ID', value: deviceId.trim(), isActive: true });
+    if (phone && phone.trim()) conditions.push({ type: 'PHONE', value: phone.trim(), isActive: true });
+    
+    if (conditions.length === 0) return null;
+    return await prisma.blacklist.findFirst({
+      where: { OR: conditions }
+    });
+  } catch (err) {
+    console.error('[SECURITY BLACKLIST CHECK ERROR]', err);
+    return null;
+  }
+}
+
+async function calculateUserRiskScore(user) {
+  try {
+    let score = user.riskScore || 0;
+    let reasons = [];
+
+    if (user.isBanned) {
+      return { score: 100, level: 'HIGH', reasons: [user.banReason || 'Account manually banned by security admin'] };
+    }
+
+    // Check blacklisted IP/email/device matches
+    const blMatch = await isBlacklisted(user.lastLoginIp, user.email, user.deviceId, user.phone);
+    if (blMatch) {
+      score += 75;
+      reasons.push(`Blacklist Match: ${blMatch.type} (${blMatch.reason})`);
+    }
+
+    // Check multiple accounts on same device
+    if (user.deviceId) {
+      const sameDeviceCount = await prisma.user.count({ where: { deviceId: user.deviceId, id: { not: user.id } } });
+      if (sameDeviceCount >= 3) {
+        score += 35;
+        reasons.push(`Multiple Accounts: ${sameDeviceCount} other accounts on same hardware`);
+      } else if (sameDeviceCount >= 1) {
+        score += 15;
+        reasons.push(`Shared Device: ${sameDeviceCount} other account`);
+      }
+    }
+
+    // Check rapid transaction patterns
+    const txCount = await prisma.transaction.count({ where: { userId: user.id } });
+    if (txCount >= 15 && user.walletBalance <= 0.5) {
+      score += 20;
+      reasons.push('High transaction velocity with low residual balance');
+    }
+
+    score = Math.min(100, Math.max(0, score));
+    let level = 'LOW';
+    if (score >= 70) level = 'HIGH';
+    else if (score >= 30) level = 'MEDIUM';
+
+    return { score, level, reasons };
+  } catch (err) {
+    return { score: 0, level: 'LOW', reasons: [] };
+  }
+}
+
 const requireStaffPermission = (requiredPermission = null) => {
   return async (req, res, next) => {
     try {
@@ -2593,7 +2667,7 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
       })
     ]);
 
-    // Attach number counts & display status for each user
+        // Attach number counts & display status for each user
     const usersWithMeta = await Promise.all(
       users.map(async (u) => {
         const [activeNumbersCount, totalNumbersCount] = await Promise.all([
@@ -2615,17 +2689,27 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
             statusLabel = 'DELETED (ADMIN) 🗑️';
             statusColor = 'rose';
           }
+        } else if (u.isBanned) {
+          displayStatus = 'banned';
+          statusLabel = 'BANNED 🛑';
+          statusColor = 'rose';
         } else if (!u.isVerified) {
           displayStatus = 'blocked';
           statusLabel = 'BLOCKED 🔴';
           statusColor = 'rose';
         }
 
+        // Live Risk Assessment
+        const riskData = await calculateUserRiskScore(u);
+
         return {
           ...u,
           displayStatus,
           statusLabel,
           statusColor,
+          riskScore: riskData.score,
+          riskLevel: riskData.level,
+          riskReasons: riskData.reasons,
           numbersCount: activeNumbersCount,
           totalNumbersCount
         };
@@ -4237,3 +4321,835 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
 }
 
 module.exports = app;
+
+
+// ==========================================
+// 🛡️ ENTERPRISE SECURITY & BLACKLIST ENDPOINTS
+// ==========================================
+
+// Get All Blacklisted Entries
+app.get('/api/admin/security/blacklist', requireAdmin, async (req, res) => {
+  try {
+    const list = await prisma.blacklist.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ success: true, count: list.length, blacklist: list });
+  } catch (error) {
+    console.error('[BLACKLIST GET ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Add Entry to Blacklist
+app.post('/api/admin/security/blacklist', requireAdmin, async (req, res) => {
+  try {
+    const { type, value, reason } = req.body;
+    if (!type || !value) {
+      return res.status(400).json({ success: false, error: 'Type (EMAIL, IP, DEVICE_ID, PHONE) and value are required.' });
+    }
+
+    const cleanVal = type.toUpperCase() === 'EMAIL' ? value.toLowerCase().trim() : value.trim();
+
+    // Check if already exists
+    const existing = await prisma.blacklist.findFirst({
+      where: { type: type.toUpperCase(), value: cleanVal }
+    });
+
+    if (existing) {
+      const updated = await prisma.blacklist.update({
+        where: { id: existing.id },
+        data: { isActive: true, reason: reason || existing.reason }
+      });
+      await logAuditEvent(req, 'ADD_BLACKLIST', updated.id, 'blacklist', `Re-activated blacklist for ${type}: ${cleanVal}`);
+      return res.json({ success: true, message: 'Blacklist entry updated', entry: updated });
+    }
+
+    const created = await prisma.blacklist.create({
+      data: {
+        type: type.toUpperCase(),
+        value: cleanVal,
+        reason: reason || 'Manual security block by admin',
+        createdBy: req.staffUser?.name || 'Super Admin',
+        isActive: true
+      }
+    });
+
+    await logAuditEvent(req, 'ADD_BLACKLIST', created.id, 'blacklist', `Blocked ${type}: ${cleanVal} - Reason: ${reason || 'Security'}`);
+    res.json({ success: true, message: 'Security block added successfully', entry: created });
+  } catch (error) {
+    console.error('[BLACKLIST POST ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Remove / Whitelist Entry from Blacklist
+app.delete('/api/admin/security/blacklist/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const entry = await prisma.blacklist.findUnique({ where: { id } });
+    if (!entry) return res.status(404).json({ success: false, error: 'Blacklist entry not found.' });
+
+    await prisma.blacklist.delete({ where: { id } });
+    await logAuditEvent(req, 'REMOVE_BLACKLIST', id, 'blacklist', `Removed ${entry.type}: ${entry.value} from blacklist`);
+
+    res.json({ success: true, message: 'Removed from security blocklist' });
+  } catch (error) {
+    console.error('[BLACKLIST DELETE ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 1-Click Ban User & Shield System
+app.post('/api/admin/users/:id/ban', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, blacklistIp, blacklistEmail, blacklistDevice } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return res.status(404).json({ success: false, error: 'User not found.' });
+
+    const banReasonStr = reason || 'Suspicious / fraudulent activity detected';
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        isBanned: true,
+        riskScore: 100,
+        riskLevel: 'HIGH',
+        banReason: banReasonStr,
+        isVerified: false
+      }
+    });
+
+    // Optionally auto-add to Blacklist
+    if (blacklistEmail && user.email) {
+      await prisma.blacklist.create({
+        data: {
+          type: 'EMAIL',
+          value: user.email.toLowerCase().trim(),
+          reason: `User Banned: ${banReasonStr}`,
+          createdBy: req.staffUser?.name || 'Super Admin'
+        }
+      }).catch(() => {});
+    }
+
+    if (blacklistIp && user.lastLoginIp) {
+      await prisma.blacklist.create({
+        data: {
+          type: 'IP',
+          value: user.lastLoginIp.trim(),
+          reason: `User Banned: ${banReasonStr}`,
+          createdBy: req.staffUser?.name || 'Super Admin'
+        }
+      }).catch(() => {});
+    }
+
+    if (blacklistDevice && user.deviceId) {
+      await prisma.blacklist.create({
+        data: {
+          type: 'DEVICE_ID',
+          value: user.deviceId.trim(),
+          reason: `User Banned: ${banReasonStr}`,
+          createdBy: req.staffUser?.name || 'Super Admin'
+        }
+      }).catch(() => {});
+    }
+
+    // Auto-suspend active numbers
+    await prisma.purchasedNumber.updateMany({
+      where: { userId: id, status: 'active' },
+      data: { status: 'suspended' }
+    }).catch(() => {});
+
+    await logAuditEvent(req, 'BAN_USER', id, 'user', `Permanently banned user ${user.email} (${user.name}) - Reason: ${banReasonStr}`);
+
+    res.json({
+      success: true,
+      message: `User ${user.name} (${user.email}) has been permanently banned and isolated.`,
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error('[BAN USER ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 1-Click Unban User
+app.post('/api/admin/users/:id/unban', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return res.status(404).json({ success: false, error: 'User not found.' });
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        isBanned: false,
+        riskScore: 0,
+        riskLevel: 'LOW',
+        banReason: null,
+        isVerified: true
+      }
+    });
+
+    // Re-activate suspended numbers
+    await prisma.purchasedNumber.updateMany({
+      where: { userId: id, status: 'suspended' },
+      data: { status: 'active' }
+    }).catch(() => {});
+
+    await logAuditEvent(req, 'UNBAN_USER', id, 'user', `Unbanned user ${user.email} and restored account access`);
+
+    res.json({
+      success: true,
+      message: `User ${user.name} (${user.email}) has been unbanned and restored.`,
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error('[UNBAN USER ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+
+// ==========================================
+// 📡 CARRIER HEALTH & NET PROFIT MARGINS (STEP 3)
+// ==========================================
+
+// Helper to fetch live Telnyx balance
+async function getTelnyxLiveBalance() {
+  const https = require('https');
+  const apiKey = process.env.TELNYX_API_KEY;
+  if (!apiKey) return { balance: 0, currency: 'USD', creditLimit: '0.00', status: 'NO_API_KEY' };
+
+  return new Promise((resolve) => {
+    const options = {
+      hostname: 'api.telnyx.com',
+      path: '/v2/balance',
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Accept': 'application/json'
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          if (data.data) {
+            resolve({
+              balance: parseFloat(data.data.balance || 0),
+              currency: data.data.currency || 'USD',
+              creditLimit: data.data.credit_limit || '0.00',
+              status: 'OK'
+            });
+          } else {
+            resolve({ balance: 0, currency: 'USD', creditLimit: '0.00', status: 'ERROR', raw: data });
+          }
+        } catch (e) {
+          resolve({ balance: 0, currency: 'USD', creditLimit: '0.00', status: 'PARSE_ERROR' });
+        }
+      });
+    });
+
+    req.on('error', (e) => resolve({ balance: 0, currency: 'USD', creditLimit: '0.00', status: 'NETWORK_ERROR' }));
+    req.end();
+  });
+}
+
+// 1. Telecom Carrier Health & Live Balance
+app.get('/api/admin/telecom/carrier-health', requireAdmin, async (req, res) => {
+  try {
+    const telnyxInfo = await getTelnyxLiveBalance();
+    const balanceVal = telnyxInfo.balance || 0;
+
+    let healthStatus = 'HEALTHY 🟢';
+    let healthColor = 'emerald';
+    let warningMessage = null;
+
+    if (balanceVal <= 5) {
+      healthStatus = 'CRITICAL 🔴';
+      healthColor = 'rose';
+      warningMessage = 'Telnyx balance is critically low. Calls may fail soon if not refilled.';
+    } else if (balanceVal < 30) {
+      healthStatus = 'LOW BALANCE 🟡';
+      healthColor = 'amber';
+      warningMessage = 'Telnyx balance is low. Consider topping up to prevent call interruption.';
+    }
+
+    const [activeNumbers, todayCalls, todayMessages] = await Promise.all([
+      prisma.purchasedNumber.count({ where: { status: 'active' } }),
+      prisma.callLog.count({
+        where: {
+          createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+        }
+      }),
+      prisma.message.count({
+        where: {
+          createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+        }
+      })
+    ]);
+
+    res.json({
+      success: true,
+      carrier: 'Telnyx Wholesale Telecom',
+      balance: balanceVal,
+      currency: telnyxInfo.currency,
+      creditLimit: telnyxInfo.creditLimit,
+      healthStatus,
+      healthColor,
+      warningMessage,
+      activeNumbers,
+      todayCalls,
+      todayMessages,
+      lastChecked: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[CARRIER HEALTH ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 2. Real-Time Net Profit Margins & Cost Analytics
+app.get('/api/admin/finance/margins', requireAdmin, async (req, res) => {
+  try {
+    // 1. Gross Revenue (from user deposits)
+    const topupTx = await prisma.transaction.aggregate({
+      _sum: { amount: true },
+      where: { type: 'topup' }
+    });
+    const grossDeposits = topupTx._sum.amount || 0;
+
+    // 2. Retail charges breakdown
+    const [lineTx, callTx, smsTx] = await Promise.all([
+      prisma.transaction.aggregate({ _sum: { amount: true }, where: { type: 'number_purchase' } }),
+      prisma.transaction.aggregate({ _sum: { amount: true }, where: { type: 'call_charge' } }),
+      prisma.transaction.aggregate({ _sum: { amount: true }, where: { type: 'sms_charge' } })
+    ]);
+
+    const retailLineRevenue = lineTx._sum.amount || 0;
+    const retailCallRevenue = callTx._sum.amount || 0;
+    const retailSmsRevenue = smsTx._sum.amount || 0;
+
+    // 3. Wholesale Carrier Costs Estimation
+    const [activeNumbersCount, allCalls, allSmsOutbound] = await Promise.all([
+      prisma.purchasedNumber.count({ where: { status: 'active' } }),
+      prisma.callLog.findMany({ select: { durationSeconds: true, status: true } }),
+      prisma.message.count({ where: { direction: 'outbound' } })
+    ]);
+
+    const totalCallSeconds = allCalls.reduce((acc, c) => acc + (c.durationSeconds || 0), 0);
+    const totalCallMinutes = Math.ceil(totalCallSeconds / 60);
+
+    // Realistic Telnyx wholesale benchmarks
+    const wholesaleNumberCost = activeNumbersCount * 1.00; // ~$1.00 / month per DID
+    const wholesaleCallCost = totalCallMinutes * 0.009;   // ~$0.009 / min termination
+    const wholesaleSmsCost = allSmsOutbound * 0.0075;     // ~$0.0075 / SMS
+    const totalWholesaleCost = wholesaleNumberCost + wholesaleCallCost + wholesaleSmsCost;
+
+    const netProfit = grossDeposits - totalWholesaleCost;
+    const marginPercent = grossDeposits > 0 ? ((netProfit / grossDeposits) * 100).toFixed(1) : '100.0';
+
+    res.json({
+      success: true,
+      data: {
+        grossDeposits: parseFloat(grossDeposits.toFixed(2)),
+        retailLineRevenue: parseFloat(retailLineRevenue.toFixed(2)),
+        retailCallRevenue: parseFloat(retailCallRevenue.toFixed(2)),
+        retailSmsRevenue: parseFloat(retailSmsRevenue.toFixed(2)),
+        wholesaleNumberCost: parseFloat(wholesaleNumberCost.toFixed(2)),
+        wholesaleCallCost: parseFloat(wholesaleCallCost.toFixed(2)),
+        wholesaleSmsCost: parseFloat(wholesaleSmsCost.toFixed(2)),
+        totalWholesaleCost: parseFloat(totalWholesaleCost.toFixed(2)),
+        netProfit: parseFloat(netProfit.toFixed(2)),
+        marginPercent: parseFloat(marginPercent),
+        totalCallMinutes,
+        totalSmsSent: allSmsOutbound,
+        activeNumbers: activeNumbersCount
+      }
+    });
+  } catch (error) {
+    console.error('[FINANCE MARGINS ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+
+// ==========================================
+// ⚙️ CLOUD REMOTE CONFIG & APP KILL-SWITCHES (STEP 4)
+// ==========================================
+
+const DEFAULT_SYSTEM_CONFIGS = {
+  maintenance_mode: { value: 'false', desc: 'Global app maintenance mode (true = locked, false = live)' },
+  maintenance_message: { value: 'SimlyTel is currently undergoing scheduled network maintenance. We will be back online shortly!', desc: 'Maintenance message shown to users' },
+  min_app_version: { value: '1.0.0', desc: 'Minimum required mobile app version before force update popup' },
+  force_update_title: { value: 'Update Required', desc: 'Title on force update modal' },
+  force_update_message: { value: 'A new secure version of SimlyTel is available. Please update to continue.', desc: 'Message on force update modal' },
+  store_url_android: { value: 'https://play.google.com/store/apps/details?id=com.simlytel.app', desc: 'Google Play Store URL' },
+  store_url_ios: { value: 'https://apps.apple.com/app/simlytel/id123456789', desc: 'Apple App Store URL' },
+  allow_outbound_calls: { value: 'true', desc: 'Emergency VoIP calling switch (true = enabled, false = kill switch)' },
+  allow_sms: { value: 'true', desc: 'Emergency SMS sending switch' },
+  allow_deposits: { value: 'true', desc: 'Emergency wallet recharge & payments switch' },
+  support_email: { value: 'support@simlytel.com', desc: 'Official customer support email' },
+  support_phone: { value: '+1 (800) 555-SIMLY', desc: 'Official customer support phone' }
+};
+
+// Helper to get all configs with defaults
+async function getSystemConfigsMap() {
+  const configs = await prisma.systemConfig.findMany();
+  const configMap = {};
+
+  // Populate defaults
+  for (const [key, item] of Object.entries(DEFAULT_SYSTEM_CONFIGS)) {
+    configMap[key] = item.value;
+  }
+
+  // Override with database values
+  for (const c of configs) {
+    configMap[c.key] = c.value;
+  }
+
+  return configMap;
+}
+
+// Simple semver compare helper (e.g. "1.0.1" vs "1.1.0")
+function isVersionOlder(clientVersion, minRequiredVersion) {
+  if (!clientVersion || !minRequiredVersion) return false;
+  const cParts = clientVersion.split('.').map(n => parseInt(n, 10) || 0);
+  const mParts = minRequiredVersion.split('.').map(n => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) {
+    const c = cParts[i] || 0;
+    const m = mParts[i] || 0;
+    if (c < m) return true;
+    if (c > m) return false;
+  }
+  return false;
+}
+
+// 1. Mobile App Public Config Polling Route
+app.get('/api/app/config', async (req, res) => {
+  try {
+    const clientAppVersion = req.query.version || req.headers['x-app-version'] || '1.0.0';
+    const configMap = await getSystemConfigsMap();
+
+    const isMaintenance = configMap.maintenance_mode === 'true';
+    const minVersion = configMap.min_app_version || '1.0.0';
+    const requiresUpdate = isVersionOlder(clientAppVersion, minVersion);
+
+    res.json({
+      success: true,
+      maintenance: {
+        active: isMaintenance,
+        message: configMap.maintenance_message
+      },
+      update: {
+        required: requiresUpdate,
+        minVersion: minVersion,
+        title: configMap.force_update_title,
+        message: configMap.force_update_message,
+        androidUrl: configMap.store_url_android,
+        iosUrl: configMap.store_url_ios
+      },
+      features: {
+        callsEnabled: configMap.allow_outbound_calls === 'true',
+        smsEnabled: configMap.allow_sms === 'true',
+        depositsEnabled: configMap.allow_deposits === 'true'
+      },
+      support: {
+        email: configMap.support_email,
+        phone: configMap.support_phone
+      },
+      serverTime: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[APP CONFIG ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 2. Admin Fetch Full Remote Configuration
+app.get('/api/admin/config', requireAdmin, async (req, res) => {
+  try {
+    const configs = await prisma.systemConfig.findMany();
+    const result = [];
+
+    for (const [key, item] of Object.entries(DEFAULT_SYSTEM_CONFIGS)) {
+      const dbEntry = configs.find(c => c.key === key);
+      result.push({
+        key,
+        value: dbEntry ? dbEntry.value : item.value,
+        description: item.desc,
+        updatedBy: dbEntry?.updatedBy || 'System Default',
+        updatedAt: dbEntry?.updatedAt || new Date()
+      });
+    }
+
+    res.json({ success: true, configs: result });
+  } catch (error) {
+    console.error('[ADMIN CONFIG GET ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3. Admin Update Remote Configuration Keys
+app.post('/api/admin/config', requireAdmin, async (req, res) => {
+  try {
+    const updates = req.body; // e.g. { maintenance_mode: 'true', min_app_version: '1.2.0' }
+    if (!updates || typeof updates !== 'object') {
+      return res.status(400).json({ success: false, error: 'Invalid config payload.' });
+    }
+
+    const changedKeys = [];
+    for (const [k, v] of Object.entries(updates)) {
+      const strVal = String(v);
+      const existing = await prisma.systemConfig.findUnique({ where: { key: k } });
+
+      if (existing) {
+        await prisma.systemConfig.update({
+          where: { key: k },
+          data: {
+            value: strVal,
+            updatedBy: req.staffUser?.name || 'Super Admin'
+          }
+        });
+      } else {
+        await prisma.systemConfig.create({
+          data: {
+            key: k,
+            value: strVal,
+            description: DEFAULT_SYSTEM_CONFIGS[k]?.desc || 'Custom Configuration',
+            updatedBy: req.staffUser?.name || 'Super Admin'
+          }
+        });
+      }
+      changedKeys.push(`${k}=${strVal}`);
+    }
+
+    await logAuditEvent(req, 'UPDATE_CONFIG', 'system_config', 'config', `Updated remote config keys: ${changedKeys.join(', ')}`);
+
+    res.json({
+      success: true,
+      message: 'System configuration updated successfully!',
+      updatedKeys: changedKeys
+    });
+  } catch (error) {
+    console.error('[ADMIN CONFIG POST ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+
+// ==========================================
+// 📊 CSV DATA EXPORTS ENGINE (STEP 5)
+// ==========================================
+
+function escapeCsvField(val) {
+  if (val === null || val === undefined) return '""';
+  const str = String(val).replace(/"/g, '""');
+  return `"${str}"`;
+}
+
+// 1. Export Transactions CSV
+app.get('/api/admin/export/transactions', requireAdmin, async (req, res) => {
+  try {
+    const transactions = await prisma.transaction.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const userIds = [...new Set(transactions.map(t => t.userId))];
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, email: true }
+    });
+    const userMap = {};
+    users.forEach(u => { userMap[u.id] = u; });
+
+    const headers = ['Transaction ID', 'User Email', 'User Name', 'Type', 'Amount ($)', 'Description', 'Timestamp'];
+    const rows = transactions.map(t => {
+      const u = userMap[t.userId] || { email: t.userId, name: 'Customer' };
+      return [
+        escapeCsvField(t.id),
+        escapeCsvField(u.email),
+        escapeCsvField(u.name),
+        escapeCsvField(t.type),
+        escapeCsvField(t.amount.toFixed(2)),
+        escapeCsvField(t.description),
+        escapeCsvField(new Date(t.createdAt).toISOString())
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const filename = `simlytel-transactions-${Date.now()}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csvContent);
+  } catch (error) {
+    console.error('[EXPORT TRANSACTIONS ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 2. Export Users Database CSV
+app.get('/api/admin/export/users', requireAdmin, async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const headers = ['User ID', 'Name', 'Email', 'Phone', 'Wallet Balance ($)', 'Risk Score', 'Risk Level', 'Is Banned', 'Status', 'Registered At'];
+    const rows = users.map(u => {
+      let status = u.isBanned ? 'BANNED' : (u.isDeleted ? 'DELETED' : (u.isVerified ? 'ACTIVE' : 'UNVERIFIED'));
+      return [
+        escapeCsvField(u.id),
+        escapeCsvField(u.name),
+        escapeCsvField(u.email),
+        escapeCsvField(u.phone || 'N/A'),
+        escapeCsvField(u.walletBalance.toFixed(2)),
+        escapeCsvField(u.riskScore || 0),
+        escapeCsvField(u.riskLevel || 'LOW'),
+        escapeCsvField(u.isBanned ? 'YES' : 'NO'),
+        escapeCsvField(status),
+        escapeCsvField(new Date(u.createdAt).toISOString())
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const filename = `simlytel-users-${Date.now()}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csvContent);
+  } catch (error) {
+    console.error('[EXPORT USERS ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3. Export CDR (Call Detail Records) CSV
+app.get('/api/admin/export/cdr', requireAdmin, async (req, res) => {
+  try {
+    const calls = await prisma.callLog.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const headers = ['Call ID', 'SimlyTel Number', 'Contact Number', 'Direction', 'Status', 'Duration (Seconds)', 'Duration (Minutes)', 'Timestamp'];
+    const rows = calls.map(c => [
+      escapeCsvField(c.id),
+      escapeCsvField(c.myNumber),
+      escapeCsvField(c.contactNumber),
+      escapeCsvField(c.direction),
+      escapeCsvField(c.status),
+      escapeCsvField(c.durationSeconds),
+      escapeCsvField((c.durationSeconds / 60).toFixed(2)),
+      escapeCsvField(new Date(c.createdAt).toISOString())
+    ].join(','));
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const filename = `simlytel-cdr-${Date.now()}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csvContent);
+  } catch (error) {
+    console.error('[EXPORT CDR ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4. Export Audit Trail CSV
+app.get('/api/admin/export/audit-logs', requireAdmin, async (req, res) => {
+  try {
+    const logs = await prisma.auditLog.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const headers = ['Log ID', 'Staff Name', 'Staff Email', 'Staff Role', 'Action', 'Target ID', 'Target Type', 'Details', 'IP Address', 'Timestamp'];
+    const rows = logs.map(l => [
+      escapeCsvField(l.id),
+      escapeCsvField(l.staffName),
+      escapeCsvField(l.staffEmail),
+      escapeCsvField(l.staffRole),
+      escapeCsvField(l.action),
+      escapeCsvField(l.targetId || 'N/A'),
+      escapeCsvField(l.targetType || 'N/A'),
+      escapeCsvField(l.details),
+      escapeCsvField(l.ipAddress || '127.0.0.1'),
+      escapeCsvField(new Date(l.createdAt).toISOString())
+    ].join(','));
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const filename = `simlytel-audit-trail-${Date.now()}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csvContent);
+  } catch (error) {
+    console.error('[EXPORT AUDIT LOGS ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ==========================================
+// 🔔 MULTI-CHANNEL OWNER ALERTS ENGINE (STEP 6)
+// ==========================================
+
+async function getAlertSettings() {
+  let settings = await prisma.adminAlertSetting.findFirst();
+  if (!settings) {
+    settings = await prisma.adminAlertSetting.create({
+      data: {
+        primaryChannel: 'EMAIL',
+        ownerEmail: 'admin@simlytel.com',
+        notifyOnLargeDeposit: true,
+        notifyOnLowCarrierBalance: true,
+        notifyOnHighRiskFraud: true,
+        notifyOnUnassignedTicket: true,
+        isEnabled: true
+      }
+    });
+  }
+  return settings;
+}
+
+// Universal Alert Dispatcher Helper
+async function dispatchOwnerAlert(alertType, payload) {
+  try {
+    const settings = await getAlertSettings();
+    if (!settings || !settings.isEnabled) return { dispatched: false, reason: 'ALERTS_DISABLED' };
+
+    let shouldNotify = false;
+    let title = 'SimlyTel System Notification';
+    let body = '';
+
+    if (alertType === 'LARGE_DEPOSIT' && settings.notifyOnLargeDeposit) {
+      shouldNotify = true;
+      title = `💰 [BIG DEPOSIT] $${payload.amount?.toFixed(2)} Top-Up`;
+      body = `User ${payload.userName || payload.userEmail} just added $${payload.amount?.toFixed(2)} to their wallet.`;
+    } else if (alertType === 'LOW_CARRIER_BALANCE' && settings.notifyOnLowCarrierBalance) {
+      shouldNotify = true;
+      title = `🚨 [CARRIER ALERT] Low Telnyx Balance: $${payload.balance?.toFixed(2)}`;
+      body = `Telnyx wholesale balance is low ($${payload.balance?.toFixed(2)}). Please refill to avoid call disruption.`;
+    } else if (alertType === 'HIGH_RISK_FRAUD' && settings.notifyOnHighRiskFraud) {
+      shouldNotify = true;
+      title = `🛡️ [FRAUD RADAR ALERT] High Risk User Flagged (${payload.riskScore}/100)`;
+      body = `User ${payload.userEmail} flagged as ${payload.riskLevel}. Reasons: ${(payload.reasons || []).join(', ')}`;
+    } else if (alertType === 'TEST_ALERT') {
+      shouldNotify = true;
+      title = '🔔 [SIMLYTEL TEST ALERT] Everything is Operational!';
+      body = 'This is a test notification confirming your Admin Alert channel is active and receiving alerts.';
+    }
+
+    if (!shouldNotify) return { dispatched: false, reason: 'EVENT_MUTED' };
+
+    console.log(`🔔 [OWNER ALERT DISPATCH] Channel: ${settings.primaryChannel} | ${title} | ${body}`);
+
+    // Channel 1: Webhook (Discord / Slack)
+    if (settings.primaryChannel === 'DISCORD' || settings.primaryChannel === 'WEBHOOK') {
+      if (settings.webhookUrl) {
+        const https = require('https');
+        const url = new URL(settings.webhookUrl);
+        const data = JSON.stringify({ content: `**${title}**\n${body}` });
+        const req = https.request({
+          hostname: url.hostname,
+          path: url.pathname + url.search,
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) }
+        });
+        req.on('error', () => {});
+        req.write(data);
+        req.end();
+      }
+    }
+
+    // Channel 2: Telegram Bot
+    if (settings.primaryChannel === 'TELEGRAM' && settings.telegramBotToken && settings.telegramChatId) {
+      const https = require('https');
+      const text = encodeURIComponent(`${title}\n\n${body}`);
+      https.get(`https://api.telegram.org/bot${settings.telegramBotToken}/sendMessage?chat_id=${settings.telegramChatId}&text=${text}&parse_mode=HTML`).on('error', () => {});
+    }
+
+    return { dispatched: true, title, body, channel: settings.primaryChannel };
+  } catch (err) {
+    console.error('[DISPATCH ALERT ERROR]', err);
+    return { dispatched: false, error: err.message };
+  }
+}
+
+// 1. Get Owner Alert Settings
+app.get('/api/admin/alerts/settings', requireAdmin, async (req, res) => {
+  try {
+    const settings = await getAlertSettings();
+    res.json({ success: true, settings });
+  } catch (error) {
+    console.error('[GET ALERT SETTINGS ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 2. Save Owner Alert Settings
+app.post('/api/admin/alerts/settings', requireAdmin, async (req, res) => {
+  try {
+    const {
+      primaryChannel,
+      ownerEmail,
+      ownerPhone,
+      webhookUrl,
+      telegramBotToken,
+      telegramChatId,
+      notifyOnLargeDeposit,
+      notifyOnLowCarrierBalance,
+      notifyOnHighRiskFraud,
+      notifyOnUnassignedTicket,
+      isEnabled
+    } = req.body;
+
+    const current = await getAlertSettings();
+    const updated = await prisma.adminAlertSetting.update({
+      where: { id: current.id },
+      data: {
+        primaryChannel: primaryChannel || current.primaryChannel,
+        ownerEmail: ownerEmail !== undefined ? ownerEmail : current.ownerEmail,
+        ownerPhone: ownerPhone !== undefined ? ownerPhone : current.ownerPhone,
+        webhookUrl: webhookUrl !== undefined ? webhookUrl : current.webhookUrl,
+        telegramBotToken: telegramBotToken !== undefined ? telegramBotToken : current.telegramBotToken,
+        telegramChatId: telegramChatId !== undefined ? telegramChatId : current.telegramChatId,
+        notifyOnLargeDeposit: notifyOnLargeDeposit !== undefined ? !!notifyOnLargeDeposit : current.notifyOnLargeDeposit,
+        notifyOnLowCarrierBalance: notifyOnLowCarrierBalance !== undefined ? !!notifyOnLowCarrierBalance : current.notifyOnLowCarrierBalance,
+        notifyOnHighRiskFraud: notifyOnHighRiskFraud !== undefined ? !!notifyOnHighRiskFraud : current.notifyOnHighRiskFraud,
+        notifyOnUnassignedTicket: notifyOnUnassignedTicket !== undefined ? !!notifyOnUnassignedTicket : current.notifyOnUnassignedTicket,
+        isEnabled: isEnabled !== undefined ? !!isEnabled : current.isEnabled
+      }
+    });
+
+    await logAuditEvent(req, 'UPDATE_ALERTS', updated.id, 'config', `Updated owner alert preferences (Channel: ${updated.primaryChannel})`);
+
+    res.json({
+      success: true,
+      message: 'Admin alert preferences saved successfully!',
+      settings: updated
+    });
+  } catch (error) {
+    console.error('[POST ALERT SETTINGS ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3. Send Test Alert
+app.post('/api/admin/alerts/test', requireAdmin, async (req, res) => {
+  try {
+    const result = await dispatchOwnerAlert('TEST_ALERT', {});
+    res.json({
+      success: true,
+      message: `Test alert triggered successfully via ${result.channel || 'System'}`,
+      details: result
+    });
+  } catch (error) {
+    console.error('[TEST ALERT ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});

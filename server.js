@@ -1926,8 +1926,8 @@ app.get('/api/support/messages', async (req, res) => {
         data: {
           userId,
           sender: 'agent',
-          senderName: 'Sarah (VIP Support)',
-          text: 'Hi there! 👋 Welcome to Simly VIP Support. How can we help with your virtual lines, WhatsApp OTP, or top-up today?'
+          senderName: 'Sarah (SimlyTel VIP Support)',
+          text: 'Hi there! 👋 Welcome to SimlyTel VIP Support. How can we help with your virtual lines, WhatsApp OTP, or top-up today?'
         }
       });
       messages = [welcomeMsg];
@@ -2003,10 +2003,10 @@ app.post('/api/support/messages', async (req, res) => {
     // ONLY send automated bot acknowledgement if ticket is NOT currently handled by a live human agent
     if (!isLiveAgentAssigned) {
       const lower = text.toLowerCase();
-      let replyText = 'Thank you for contacting Simly Support! Our specialist team has queued your ticket. A live telecom engineer is reviewing your line right now.';
+      let replyText = 'Thank you for contacting SimlyTel Support! Our specialist team has queued your ticket. A live telecom engineer is reviewing your line right now.';
 
       if (lower.includes('whatsapp') || lower.includes('otp') || lower.includes('code') || lower.includes('telegram')) {
-        replyText = 'For WhatsApp/Telegram OTPs:\n1. Make sure you entered the correct country code (+1 or +44).\n2. If the SMS is delayed, tap "Call Me" in WhatsApp to receive the voice verification code directly on your line!\n3. Check your Simly "Messages" tab.';
+        replyText = 'For WhatsApp/Telegram OTPs:\n1. Make sure you entered the correct country code (+1 or +44).\n2. If the SMS is delayed, tap "Call Me" in WhatsApp to receive the voice verification code directly on your line!\n3. Check your SimlyTel "Messages" tab.';
       } else if (lower.includes('rate') || lower.includes('call') || lower.includes('dial') || lower.includes('minute')) {
         replyText = 'All calls are billed in real-time per minute from your wallet balance. As soon as you dial any country code (e.g. +92, +1, +44, +65), your rate and remaining minutes show directly above the keypad.';
       } else if (lower.includes('topup') || lower.includes('balance') || lower.includes('money') || lower.includes('wallet')) {
@@ -2019,7 +2019,7 @@ app.post('/api/support/messages', async (req, res) => {
         data: {
           userId,
           sender: 'agent',
-          senderName: 'Sarah (VIP Support)',
+          senderName: 'Sarah (SimlyTel VIP Support)',
           text: replyText
         }
       });
@@ -3948,7 +3948,7 @@ app.post('/api/admin/support/claim', requireStaffPermission('can_handle_support'
       data: {
         userId,
         sender: 'system',
-        senderName: 'Simly Support',
+        senderName: 'SimlyTel Support',
         text: `🎧 ${agentDisplayName} (Support Agent) has joined the chat to assist you.`
       }
     });
@@ -4040,7 +4040,7 @@ app.post('/api/admin/support/resolve', requireStaffPermission('can_handle_suppor
       data: {
         userId,
         sender: 'system',
-        senderName: 'Simly Support',
+        senderName: 'SimlyTel Support',
         text: `✅ This support ticket has been resolved by ${agentDisplayName}. Please rate your experience below! ⭐`
       }
     });
@@ -4093,7 +4093,7 @@ app.post('/api/support/rate', async (req, res) => {
       data: {
         userId,
         sender: 'system',
-        senderName: 'Simly Support',
+        senderName: 'SimlyTel Support',
         text: `🌟 Customer Rated ${starCount}/5 Stars ${starsEmoji}${feedback.trim() ? `\nReview: "${feedback.trim()}"` : ''}`
       }
     });
@@ -4189,11 +4189,33 @@ app.post('/api/admin/support/reply', requireStaffPermission('can_handle_support'
       return res.status(400).json({ success: false, error: 'User ID and message text are required.' });
     }
 
-    const agentName = req.staff ? `${req.staff.name} (Simly Support)` : 'Sarah (Simly VIP Support)';
+    const cleanUserId = userId.toString().trim();
+    const existingTicket = await prisma.supportTicket.findUnique({ where: { userId: cleanUserId } });
+
+    const isSuperAdmin = req.staff?.role === 'super_admin' || req.staff?.id === 'root_super_admin';
+    const currentStaffId = req.staff?.id;
+    const currentStaffName = req.staff?.name || 'Support Specialist';
+
+    // 🔒 STRICT CLAIM ENFORCEMENT: Agent must pick up/claim ticket first before messaging!
+    if (!existingTicket || existingTicket.status === 'unassigned' || !existingTicket.assignedStaffId) {
+      return res.status(403).json({
+        success: false,
+        error: '⚠️ Ticket is not claimed! Please click "Pick Up / Claim" first to join this conversation before replying.'
+      });
+    }
+
+    if (existingTicket.assignedStaffId !== currentStaffId && !isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: `⚠️ This ticket is currently assigned to ${existingTicket.assignedStaffName || 'another agent'}. You cannot reply.`
+      });
+    }
+
+    const agentName = `${currentStaffName} (SimlyTel Support)`;
 
     const saved = await prisma.supportMessage.create({
       data: {
-        userId,
+        userId: cleanUserId,
         sender: 'agent',
         senderName: agentName,
         text: text.trim()
@@ -4201,26 +4223,13 @@ app.post('/api/admin/support/reply', requireStaffPermission('can_handle_support'
     });
 
     // Update ticket status
-    await prisma.supportTicket.upsert({
-      where: { userId },
-      update: {
-        status: 'in_progress',
-        assignedStaffId: req.staff?.id,
-        assignedStaffName: req.staff?.name,
+    await prisma.supportTicket.update({
+      where: { userId: cleanUserId },
+      data: {
         lastMessageText: text.trim(),
         lastMessageSender: 'agent',
         lastMessageAt: new Date(),
         unreadUserCount: { increment: 1 }
-      },
-      create: {
-        userId,
-        status: 'in_progress',
-        assignedStaffId: req.staff?.id,
-        assignedStaffName: req.staff?.name,
-        lastMessageText: text.trim(),
-        lastMessageSender: 'agent',
-        lastMessageAt: new Date(),
-        unreadUserCount: 1
       }
     });
 
@@ -4230,9 +4239,9 @@ app.post('/api/admin/support/reply', requireStaffPermission('can_handle_support'
       staffEmail: req.staff?.email,
       staffRole: req.staff?.role,
       action: 'REPLY_SUPPORT',
-      targetId: userId,
+      targetId: cleanUserId,
       targetType: 'ticket',
-      details: `Replied to customer '${userId}': "${text.slice(0, 50)}..."`,
+      details: `Replied to customer '${cleanUserId}': "${text.slice(0, 50)}..."`,
       req
     });
 

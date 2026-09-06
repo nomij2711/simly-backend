@@ -2154,11 +2154,26 @@
       else if (currentActiveTab === 'transactions') loadTransactions();
       else if (currentActiveTab === 'support') loadSupportQueue();
       else if (currentActiveTab === 'announcements') loadAnnouncements();
-      else if (currentActiveTab === 'team') loadTeamMembers();
+      else if (currentActiveTab === 'team') loadTeam();
       else if (currentActiveTab === 'audit') loadAuditLogs();
       else if (currentActiveTab === 'pricing') loadPricing();
       else if (currentActiveTab === 'blacklist') loadBlacklist();
       else if (currentActiveTab === 'config') loadRemoteConfig();
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+    window.escapeHtml = escapeHtml;
+
+    function loadTeamMembers() {
+      return loadTeam();
     }
 
     function formatUSD8(val) {
@@ -3522,6 +3537,17 @@
         if (myChatsBadge) myChatsBadge.innerText = res.stats?.myChatsCount || 0;
 
         renderQueueThreads();
+
+        // If a customer chat is currently open, refresh its messages live
+        if (activeSupportUserId) {
+          const freshTicket = (res.allChats || []).find(x => x.userId === activeSupportUserId) || 
+                              (res.unassigned || []).find(x => x.userId === activeSupportUserId) || 
+                              (res.myChats || []).find(x => x.userId === activeSupportUserId);
+          if (freshTicket) {
+            activeTicketData = freshTicket;
+            renderChatMessages(freshTicket.messages || []);
+          }
+        }
       } catch (err) {
         console.error('Queue load error:', err);
       }
@@ -3660,7 +3686,7 @@
           bannerEl.classList.remove('hidden');
         }
         if (bannerText) bannerText.innerHTML = `<i class="fa-solid fa-lock mr-1.5 text-amber-400"></i> Assigned to ${ticket.assignedStaffName || 'another agent'}.`;
-        if (bannerSub) bannerSub.innerText = 'Collision Lock: Replies disabled';
+        if (bannerSub) bannerSub.innerText = CURRENT_STAFF?.role === 'super_admin' ? 'Master Admin View (Full Chat Access)' : 'Collision Lock: Replies disabled';
         if (btnClaim) {
           if (CURRENT_STAFF?.role === 'super_admin') {
             btnClaim.classList.remove('hidden');
@@ -3669,9 +3695,20 @@
             btnClaim.classList.add('hidden');
           }
         }
-        if (btnTransfer) btnTransfer.classList.add('hidden');
-        if (btnResolve) btnResolve.classList.add('hidden');
-        if (replyInput) replyInput.placeholder = 'Locked: Another agent is currently handling this chat.';
+        if (btnTransfer) btnTransfer.classList.toggle('hidden', CURRENT_STAFF?.role !== 'super_admin');
+        if (btnResolve) btnResolve.classList.toggle('hidden', CURRENT_STAFF?.role !== 'super_admin');
+        if (replyInput) {
+          if (CURRENT_STAFF?.role === 'super_admin') {
+            replyInput.placeholder = 'Super Admin Mode: You can send reply or Force Takeover...';
+            replyInput.disabled = false;
+          } else {
+            replyInput.placeholder = 'Locked: Another agent is currently handling this chat.';
+            replyInput.disabled = true;
+          }
+        }
+        if (btnSend) {
+          btnSend.disabled = (CURRENT_STAFF?.role !== 'super_admin' && !ticket.isMine);
+        }
       } else if (ticket.status === 'resolved') {
         if (bannerEl) {
           bannerEl.className = 'my-2 px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 flex items-center justify-between';
@@ -3695,23 +3732,28 @@
       const body = document.getElementById('chatMessagesBody');
       if (!body) return;
 
-      if (messages.length === 0) {
+      if (!messages || messages.length === 0) {
         body.innerHTML = '<div class="text-center text-slate-500 text-xs py-12">No messages in this conversation yet.</div>';
         return;
       }
 
       body.innerHTML = messages.map(m => {
         const isUser = m.sender === 'user';
+        const senderLabel = isUser 
+          ? (activeTicketData?.userName || 'Customer') 
+          : (m.senderName || 'Simly Support');
+        const timeStr = m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
         return `
           <div class="flex flex-col ${isUser ? 'items-start' : 'items-end'}">
             <div class="flex items-center gap-1.5 mb-1 px-1">
               <span class="text-[10px] font-bold ${isUser ? 'text-indigo-400' : 'text-emerald-400'}">
-                ${isUser ? (activeTicketData?.userName || 'Customer') : (m.senderName || 'Simly Support')}
+                ${escapeHtml(senderLabel)}
               </span>
-              <span class="text-[9px] text-slate-500">${new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <span class="text-[9px] text-slate-500">${escapeHtml(timeStr)}</span>
             </div>
-            <div class="max-w-[80%] rounded-2xl px-4 py-2.5 text-xs ${isUser ? 'bg-slate-950 text-slate-200 border border-slate-800 rounded-tl-sm' : 'bg-indigo-600 text-white rounded-tr-sm shadow-md'}">
-              ${escapeHtml(m.text)}
+            <div class="max-w-[80%] rounded-2xl px-4 py-2.5 text-xs whitespace-pre-wrap break-words ${isUser ? 'bg-slate-950 text-slate-200 border border-slate-800 rounded-tl-sm' : 'bg-indigo-600 text-white rounded-tr-sm shadow-md'}">
+              ${escapeHtml(m.text || '')}
             </div>
           </div>
         `;
@@ -4476,6 +4518,13 @@ function exportData(type) {
 setInterval(fetchCarrierHealth, 60000);
 setTimeout(fetchCarrierHealth, 1000);
 setTimeout(fetchFinanceMargins, 1500);
+
+// Auto-poll live support chat messages every 3s
+setInterval(() => {
+  if (currentActiveTab === 'support' && ADMIN_TOKEN) {
+    loadSupportQueue();
+  }
+}, 3000);
 
 </script>
 

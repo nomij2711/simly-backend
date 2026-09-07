@@ -2045,12 +2045,15 @@ app.post('/api/support/messages', async (req, res) => {
 
     const existingTicket = await prisma.supportTicket.findUnique({ where: { userId } });
     
-    // Strict block: If ticket is resolved, prevent posting and require new chat
+    // Auto-seamless: If ticket is resolved, automatically start new inquiry session
     if (existingTicket && existingTicket.status === 'resolved') {
-      return res.status(400).json({
-        success: false,
-        error: 'This support ticket has been resolved and closed. Please tap "Start New Support Chat" to open a new inquiry.',
-        isResolved: true
+      await prisma.supportMessage.create({
+        data: {
+          userId,
+          sender: 'system',
+          senderName: 'SimlyTel Support',
+          text: '━━━━━━━━━━━━━━━━━━━━━━\n🆕 New Support Conversation Started\n━━━━━━━━━━━━━━━━━━━━━━'
+        }
       });
     }
 

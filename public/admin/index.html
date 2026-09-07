@@ -83,9 +83,12 @@
           <i class="fa-solid fa-chart-pie w-5 text-center text-indigo-400"></i>
           <span>Dashboard Overview</span>
         </button>
-        <button onclick="switchTab('users')" id="tab-btn-users" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
-          <i class="fa-solid fa-users w-5 text-center text-emerald-400"></i>
-          <span>Users CRM</span>
+        <button onclick="switchTab('users')" id="tab-btn-users" class="nav-tab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-users w-5 text-center text-emerald-400"></i>
+            <span>Users CRM</span>
+          </div>
+          <span id="sidebarUsersBadge" class="hidden px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold text-[10px]">0</span>
         </button>
         <button onclick="switchTab('numbers')" id="tab-btn-numbers" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
           <i class="fa-solid fa-phone-volume w-5 text-center text-cyan-400"></i>
@@ -99,9 +102,12 @@
           <i class="fa-solid fa-wallet w-5 text-center text-rose-400"></i>
           <span>Financial Ledger</span>
         </button>
-        <button onclick="switchTab('support')" id="tab-btn-support" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
-          <i class="fa-solid fa-headset w-5 text-center text-violet-400"></i>
-          <span>Support Desk</span>
+        <button onclick="switchTab('support')" id="tab-btn-support" class="nav-tab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-headset w-5 text-center text-violet-400"></i>
+            <span>Support Desk</span>
+          </div>
+          <span id="sidebarSupportBadge" class="hidden px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px] animate-pulse">0</span>
         </button>
         <button onclick="switchTab('announcements')" id="tab-btn-announcements" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
           <i class="fa-solid fa-bullhorn w-5 text-center text-amber-400"></i>
@@ -172,7 +178,11 @@
             <span id="alertBellDot" class="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full"></span>
           </button>
 
-          <button onclick="refreshActiveTab()" title="Refresh Live Data" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+          <div id="liveSyncBadge" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-semibold">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="hidden md:inline">Live Auto-Sync Active</span>
+          </div>
+          <button onclick="refreshActiveTab()" title="Manual Refresh Live Data" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
             <i class="fa-solid fa-arrows-rotate text-sm"></i>
           </button>
           <div class="flex items-center gap-2.5 pl-3 border-l border-slate-800">
@@ -2030,6 +2040,9 @@
       // Load Current Staff Profile
       await syncStaffProfile();
       restoreStateFromHashOrStorage();
+
+      // Launch Real-Time Live Sync Engine
+      startRealTimeLiveSyncEngine();
     }
 
     async function syncStaffProfile() {
@@ -2103,6 +2116,7 @@
     }
 
     function handleAdminLogout() {
+      stopRealTimeLiveSyncEngine();
       ADMIN_TOKEN = '';
       localStorage.removeItem('simly_admin_token');
       localStorage.removeItem('simly_active_tab');
@@ -2202,6 +2216,376 @@
         throw new Error('Session expired.');
       }
       return res.json();
+    }
+
+    
+    // ============================================================
+    // 🔊 AUDIO CHIME & FLOATING REAL-TIME NOTIFICATION ENGINE
+    // ============================================================
+    let audioCtx = null;
+    function playNotificationChime(pitch = 'high') {
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        if (!audioCtx) {
+          audioCtx = new AudioContextClass();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const now = audioCtx.currentTime;
+        const baseFreq = pitch === 'soft' ? 440 : pitch === 'user' ? 523.25 : 587.33; // A4, C5, D5
+        const targetFreq = pitch === 'soft' ? 659.25 : pitch === 'user' ? 783.99 : 880; // E5, G5, A5
+
+        // Primary Chime Tone
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(baseFreq, now);
+        osc1.frequency.exponentialRampToValueAtTime(targetFreq, now + 0.12);
+        gain1.gain.setValueAtTime(0.18, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.38);
+
+        // Harmonic Resonance Tone
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(targetFreq, now + 0.08);
+        osc2.frequency.exponentialRampToValueAtTime(targetFreq * 1.334, now + 0.25);
+        gain2.gain.setValueAtTime(0.1, now + 0.08);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.start(now + 0.08);
+        osc2.stop(now + 0.45);
+      } catch (err) {
+        console.warn('Audio chime warning:', err);
+      }
+    }
+    window.playNotificationChime = playNotificationChime;
+
+    function showLiveToast(title, message, icon = 'bell', color = 'indigo', onClick = null) {
+      let container = document.getElementById('liveToastContainer');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'liveToastContainer';
+        container.className = 'fixed top-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm pointer-events-none';
+        document.body.appendChild(container);
+      }
+
+      const toast = document.createElement('div');
+      toast.className = 'pointer-events-auto flex items-start gap-3 p-3.5 rounded-2xl bg-slate-900/95 border shadow-2xl backdrop-blur-md text-white text-xs transform transition-all duration-300 translate-x-full opacity-0 cursor-pointer ' + 
+        (color === 'emerald' ? 'border-emerald-500/40 hover:border-emerald-400' :
+         color === 'amber' ? 'border-amber-500/40 hover:border-amber-400' :
+         color === 'rose' ? 'border-rose-500/40 hover:border-rose-400' :
+         'border-indigo-500/40 hover:border-indigo-400');
+      
+      const iconColorClass = color === 'emerald' ? 'text-emerald-400 bg-emerald-500/10' :
+                             color === 'amber' ? 'text-amber-400 bg-amber-500/10' :
+                             color === 'rose' ? 'text-rose-400 bg-rose-500/10' :
+                             'text-indigo-400 bg-indigo-500/10';
+
+      toast.innerHTML = `
+        <div class="w-8 h-8 rounded-xl ${iconColorClass} flex items-center justify-center shrink-0 text-sm">
+          <i class="fa-solid fa-${escapeHtml(icon)}"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="font-bold text-white text-xs truncate">${escapeHtml(title)}</div>
+          <div class="text-[11px] text-slate-300 truncate mt-0.5">${escapeHtml(message)}</div>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white text-xs ml-1 shrink-0">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      `;
+
+      if (onClick) {
+        toast.onclick = (e) => {
+          if (e.target.closest('button')) return;
+          onClick();
+          toast.remove();
+        };
+      }
+
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-x-full', 'opacity-0');
+        toast.classList.add('translate-x-0', 'opacity-100');
+      });
+
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.classList.add('translate-x-full', 'opacity-0');
+          setTimeout(() => toast.remove(), 300);
+        }
+      }, 4500);
+    }
+
+    function showToast(msg, type = 'info') {
+      const iconMap = { success: 'circle-check', error: 'circle-exclamation', warning: 'triangle-exclamation', info: 'circle-info' };
+      const colorMap = { success: 'emerald', error: 'rose', warning: 'amber', info: 'indigo' };
+      showLiveToast(type === 'error' ? 'Security / System Alert' : type === 'success' ? 'Action Completed' : 'Notification', msg, iconMap[type] || 'bell', colorMap[type] || 'indigo');
+    }
+    window.showToast = showToast;
+    window.showLiveToast = showLiveToast;
+
+    // ============================================================
+    // ⚡ REAL-TIME LIVE SYNC ENGINE (ZERO MANUAL REFRESH NEEDED)
+    // ============================================================
+    let liveSyncTimer = null;
+    let lastKnownUnassignedCount = null;
+    let lastKnownActiveChatMsgCount = 0;
+    let lastKnownTotalUsers = null;
+    let liveSyncCycleCount = 0;
+    let isFirstLiveSyncRun = true;
+    let lastRenderedMessageHash = '';
+
+    function startRealTimeLiveSyncEngine() {
+      if (liveSyncTimer) clearInterval(liveSyncTimer);
+      isFirstLiveSyncRun = true;
+      lastKnownUnassignedCount = null;
+      lastKnownActiveChatMsgCount = 0;
+      lastKnownTotalUsers = null;
+
+      // High-Frequency Background Poller (every 2.5 seconds)
+      liveSyncTimer = setInterval(async () => {
+        if (!ADMIN_TOKEN) return;
+        liveSyncCycleCount++;
+
+        try {
+          // 1. High-Frequency: Support queue and live chats
+          await pollSupportQueueLive();
+
+          // 2. Medium-Frequency: Users CRM (every 5 seconds)
+          if (liveSyncCycleCount % 2 === 0) {
+            await pollUsersLive();
+          }
+
+          // 3. Normal-Frequency: Dashboard overview (every 10 seconds)
+          if (liveSyncCycleCount % 4 === 0) {
+            await pollOverviewLive();
+          }
+        } catch (e) {
+          console.warn('Live sync poller error:', e);
+        }
+      }, 2500);
+    }
+
+    function stopRealTimeLiveSyncEngine() {
+      if (liveSyncTimer) {
+        clearInterval(liveSyncTimer);
+        liveSyncTimer = null;
+      }
+    }
+
+    async function pollSupportQueueLive() {
+      // Check support permission
+      if (CURRENT_STAFF && CURRENT_STAFF.role !== 'super_admin' && !CURRENT_STAFF.permissions?.includes('can_handle_support') && !CURRENT_STAFF.permissions?.includes('all')) {
+        return;
+      }
+
+      const res = await adminFetch('/api/admin/support/queue');
+      if (!res || !res.success) return;
+
+      const newUnassigned = res.stats?.unassignedCount || 0;
+      const myChats = res.stats?.myChatsCount || 0;
+
+      // Update Sidebar & Desk Badges
+      const sidebarSupportBadge = document.getElementById('sidebarSupportBadge');
+      if (sidebarSupportBadge) {
+        if (newUnassigned > 0) {
+          sidebarSupportBadge.innerText = newUnassigned;
+          sidebarSupportBadge.classList.remove('hidden');
+        } else {
+          sidebarSupportBadge.classList.add('hidden');
+        }
+      }
+
+      const unassignedBadge = document.getElementById('badgeUnassignedCount');
+      const myChatsBadge = document.getElementById('badgeMyChatsCount');
+      if (unassignedBadge) unassignedBadge.innerText = newUnassigned;
+      if (myChatsBadge) myChatsBadge.innerText = myChats;
+
+      // Detect incoming unassigned ticket from user
+      if (!isFirstLiveSyncRun && lastKnownUnassignedCount !== null && newUnassigned > lastKnownUnassignedCount) {
+        const diff = newUnassigned - lastKnownUnassignedCount;
+        playNotificationChime('high');
+        showLiveToast(
+          '🔔 New Customer in Support Queue!',
+          `${diff} customer${diff > 1 ? 's are' : ' is'} waiting for assistance.`,
+          'headset',
+          'amber',
+          () => switchTab('support')
+        );
+      }
+
+      // Detect incoming user messages in currently open chat
+      if (activeSupportUserId) {
+        const freshTicket = (res.allChats || []).find(x => x.userId === activeSupportUserId) || 
+                            (res.unassigned || []).find(x => x.userId === activeSupportUserId) || 
+                            (res.myChats || []).find(x => x.userId === activeSupportUserId);
+        
+        if (freshTicket) {
+          const msgCount = (freshTicket.messages || []).length;
+          if (!isFirstLiveSyncRun && lastKnownActiveChatMsgCount > 0 && msgCount > lastKnownActiveChatMsgCount) {
+            const lastMsg = freshTicket.messages[freshTicket.messages.length - 1];
+            if (lastMsg && lastMsg.sender === 'user') {
+              playNotificationChime('high');
+              showLiveToast(
+                `💬 ${freshTicket.userName || 'Customer'}`,
+                lastMsg.text || 'Sent a new message',
+                'comment-dots',
+                'indigo'
+              );
+            }
+          }
+          lastKnownActiveChatMsgCount = msgCount;
+          activeTicketData = freshTicket;
+          
+          if (currentActiveTab === 'support') {
+            renderChatMessages(freshTicket.messages || [], false);
+          }
+        }
+      }
+
+      rawQueueData = res;
+      lastKnownUnassignedCount = newUnassigned;
+
+      if (currentActiveTab === 'support') {
+        renderQueueThreads();
+      }
+
+      isFirstLiveSyncRun = false;
+    }
+
+    async function pollUsersLive() {
+      // Background sync users count for sidebar & CRM tab
+      const searchInput = document.getElementById('userSearchInput');
+      const isSearchFocused = searchInput && document.activeElement === searchInput;
+      const isTyping = searchInput && searchInput.value.trim().length > 0;
+      const hasSelectedUsers = selectedUserIds && selectedUserIds.size > 0;
+
+      // If user is searching or selecting, do NOT re-render table to avoid disruption
+      if (currentActiveTab === 'users' && (isSearchFocused || hasSelectedUsers)) {
+        return;
+      }
+
+      const search = searchInput ? searchInput.value : '';
+      const data = await adminFetch(`/api/admin/users?search=${encodeURIComponent(search)}&filter=${currentUserFilter}`);
+      if (!data || !data.success) return;
+
+      const newTotal = data.counts?.total || data.total || 0;
+      
+      if (!isFirstLiveSyncRun && lastKnownTotalUsers !== null && newTotal > lastKnownTotalUsers) {
+        const diff = newTotal - lastKnownTotalUsers;
+        playNotificationChime('user');
+        showLiveToast(
+          '👤 New User Registered!',
+          `${diff} new user${diff > 1 ? 's' : ''} just joined SimlyTel. Total: ${newTotal}`,
+          'user-plus',
+          'emerald',
+          () => switchTab('users')
+        );
+      }
+      lastKnownTotalUsers = newTotal;
+
+      const sidebarUsersBadge = document.getElementById('sidebarUsersBadge');
+      if (sidebarUsersBadge) {
+        sidebarUsersBadge.innerText = newTotal;
+        sidebarUsersBadge.classList.remove('hidden');
+      }
+
+      if (currentActiveTab === 'users') {
+        const c = data.counts || {};
+        if (document.getElementById('crmTotalUsersBadge')) document.getElementById('crmTotalUsersBadge').innerText = c.total || newTotal;
+        if (document.getElementById('filterCountAll')) document.getElementById('filterCountAll').innerText = `(${c.total || 0})`;
+        if (document.getElementById('filterCountActive')) document.getElementById('filterCountActive').innerText = `(${c.active || 0})`;
+        if (document.getElementById('filterCountBlocked')) document.getElementById('filterCountBlocked').innerText = `(${c.blocked || 0})`;
+        if (document.getElementById('filterCountErased')) document.getElementById('filterCountErased').innerText = `(${c.erased || 0})`;
+
+        const tbody = document.getElementById('usersTableBody');
+        if (tbody) {
+          tbody.innerHTML = (data.users || []).map(u => {
+            const isSel = selectedUserIds.has(u.id);
+            const isErased = u.isDeleted;
+            let badgeHTML = '';
+            if (u.displayStatus === 'self_erased') {
+              badgeHTML = `<span title="Erased by user on ${u.deletedAt ? new Date(u.deletedAt).toLocaleDateString() : ''}" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1 w-fit"><i class="fa-solid fa-triangle-exclamation text-[9px]"></i> SELF-ERASED</span>`;
+            } else if (u.displayStatus === 'admin_deleted') {
+              badgeHTML = `<span title="Archived by admin" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1 w-fit"><i class="fa-solid fa-box-archive text-[9px]"></i> DELETED</span>`;
+            } else if (u.displayStatus === 'blocked') {
+              badgeHTML = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 w-fit">BLOCKED 🔴</span>`;
+            } else {
+              badgeHTML = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 w-fit">ACTIVE 🟢</span>`;
+            }
+
+            return `
+            <tr class="hover:bg-slate-800/40 transition-all cursor-pointer group ${isSel ? 'bg-indigo-950/20' : ''}">
+              <td class="py-3 px-4 text-center" onclick="event.stopPropagation()">
+                <input type="checkbox" class="user-row-checkbox rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4" value="${u.id}" ${isSel ? 'checked' : ''} onchange="toggleUserSelection('${u.id}', this.checked, event)">
+              </td>
+              <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr ${isErased ? 'from-amber-500/20 to-rose-500/20 text-amber-400 border-amber-500/30' : 'from-indigo-500/20 to-purple-500/20 text-indigo-400 border-indigo-500/30'} flex items-center justify-center font-bold text-xs border group-hover:scale-105 transition-all">
+                  ${(u.name || 'U')[0]}
+                </div>
+                <div>
+                  <div class="font-bold text-white text-xs group-hover:text-indigo-300 flex items-center gap-1.5">
+                    <span>${escapeHtml(u.name || 'SimlyTel User')}</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[9px] text-slate-500 group-hover:text-indigo-400"></i>
+                  </div>
+                  <div class="text-[11px] text-slate-400 font-mono">${escapeHtml(u.email)}</div>
+                </div>
+              </td>
+              <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4 font-mono font-bold text-emerald-400">${formatUSD8(u.walletBalance)}</td>
+              <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  ${u.numbersCount || 0} Lines
+                </span>
+              </td>
+              <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4">
+                ${badgeHTML}
+              </td>
+              <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4 text-slate-400 text-[11px]">${new Date(u.createdAt).toLocaleDateString()}</td>
+              <td class="py-3 px-4 text-right space-x-1" onclick="event.stopPropagation()">
+                <button onclick="inspectUserDossier('${u.id}')" title="Inspect Full Telecom & Financial Dossier" class="p-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 transition-all text-xs">
+                  <i class="fa-solid fa-id-card"></i>
+                </button>
+                <button onclick="openBanUserModal('${u.id}', '${escapeHtml(u.name || '')}', '${escapeHtml(u.email || '')}')" title="Ban User" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-all text-xs">
+                  <i class="fa-solid fa-ban"></i>
+                </button>
+                ${isErased ? `
+                  <button onclick="restoreUser('${u.id}')" title="Restore Account" class="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-all text-xs">
+                    <i class="fa-solid fa-trash-can-arrow-up"></i>
+                  </button>
+                ` : `
+                  <button onclick="softDeleteUser('${u.id}', '${escapeHtml(u.email || '')}')" title="Archive / Soft Delete" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-rose-400 transition-all text-xs">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                `}
+              </td>
+            </tr>
+            `;
+          }).join('') || '<tr><td colspan="7" class="py-8 text-center text-slate-500">No users found.</td></tr>';
+        }
+      }
+    }
+
+    async function pollOverviewLive() {
+      if (currentActiveTab === 'overview') {
+        await loadOverview();
+        await fetchCarrierHealth();
+        await fetchFinanceMargins();
+      } else if (currentActiveTab === 'cdr') {
+        await loadCalls();
+      } else if (currentActiveTab === 'transactions') {
+        await loadTransactions();
+      } else if (currentActiveTab === 'numbers') {
+        await loadNumbers();
+      }
     }
 
     async function loadOverview() {
@@ -3151,26 +3535,7 @@
       msgsBody.scrollTop = msgsBody.scrollHeight;
     }
 
-    async function handleSendSupportReply(e) {
-      e.preventDefault();
-      if (!selectedSupportUserId) return alert('Select a user conversation first.');
-      const input = document.getElementById('replyTextInput');
-      const text = input.value.trim();
-      if (!text) return;
-
-      try {
-        const res = await adminFetch('/api/admin/support/reply', {
-          method: 'POST',
-          body: JSON.stringify({ userId: selectedSupportUserId, text })
-        });
-        if (res.success) {
-          input.value = '';
-          openSupportThread(selectedSupportUserId, '', '');
-        }
-      } catch (err) {
-        alert(err.message);
-      }
-    }
+    // (Legacy handleSendSupportReply removed; multi-agent handler is active)
 
     // 7. PRICING & PROMOS
     async function loadPricing() {
@@ -3776,9 +4141,17 @@
       renderChatMessages(ticket.messages || []);
     }
 
-    function renderChatMessages(messages) {
+    function renderChatMessages(messages, forceScroll = false) {
       const body = document.getElementById('chatMessagesBody');
       if (!body) return;
+
+      const currentHash = (messages || []).map(m => `${m.id || ''}_${m.createdAt || ''}_${m.sender || ''}_${m.text || ''}`).join('|');
+      if (lastRenderedMessageHash === currentHash && !forceScroll) {
+        return; // No message change, do not wipe DOM to prevent scroll twitching
+      }
+      lastRenderedMessageHash = currentHash;
+
+      const isNearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 120;
 
       if (!messages || messages.length === 0) {
         body.innerHTML = '<div class="text-center text-slate-500 text-xs py-12">No messages in this conversation yet.</div>';
@@ -3807,7 +4180,9 @@
         `;
       }).join('');
 
-      body.scrollTop = body.scrollHeight;
+      if (forceScroll || isNearBottom) {
+        body.scrollTop = body.scrollHeight;
+      }
     }
 
     async function handleClaimCurrentTicket() {
@@ -5290,5 +5665,7 @@ setInterval(() => {
     </div>
   </div>
 
+  <!-- 🔔 FLOATING REAL-TIME TOAST CONTAINER -->
+  <div id="liveToastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm pointer-events-none"></div>
 </body>
 </html>

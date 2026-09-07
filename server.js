@@ -2974,12 +2974,19 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
       if (u.email) userMap[u.email.toLowerCase()] = u;
     });
 
+    // Fetch all number purchase transactions to get exact historical billed price
+    const purchaseTransactions = await prisma.transaction.findMany({
+      where: { type: { in: ['number_purchase', 'renewal', 'number_renewal'] } },
+      orderBy: { createdAt: 'desc' }
+    });
+
     const numbersDetailed = numbers.map(n => {
       const cc = (n.countryCode || 'US').toUpperCase();
       const plan = n.planType || '30_days';
       
-      // Calculate exact official retail price (identical to mobile app)
-      const retail = calculateNumberPrice(cc, plan, plan === '7_days' ? 7 : plan === '365_days' ? 365 : 30, n.phoneNumber);
+      // Look for the exact purchase transaction of this number
+      const matchedTx = purchaseTransactions.find(t => t.description && t.description.includes(n.phoneNumber));
+      const retail = matchedTx ? Math.abs(matchedTx.amount) : calculateNumberPrice(cc, plan, plan === '7_days' ? 7 : plan === '365_days' ? 365 : 30, n.phoneNumber);
       
       // Calculate exact carrier wholesale base cost
       const wholesale = calculateNumberWholesaleCost(cc, plan);

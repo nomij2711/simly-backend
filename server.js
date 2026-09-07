@@ -2003,7 +2003,7 @@ app.get('/api/support/messages', async (req, res) => {
           userId,
           sender: 'agent',
           senderName: 'Sarah (SimlyTel VIP Support)',
-          text: 'Hi there! 👋 Welcome to SimlyTel VIP Support. How can we help with your virtual lines, WhatsApp OTP, or top-up today?'
+          text: 'Hi there! 👋 Welcome to SimlyTel Support.\n\nSelect a quick topic below or tap "👤 Speak with Live Agent" to connect with our support team.'
         }
       });
       finalMessages = [welcomeMsg];
@@ -2015,7 +2015,7 @@ app.get('/api/support/messages', async (req, res) => {
       success: true,
       count: finalMessages.length,
       isResolved,
-      status: ticket?.status || 'unassigned',
+      status: ticket?.status || 'bot',
       canReply: !isResolved,
       ticket: ticket ? {
         id: ticket.id,
@@ -2040,13 +2040,16 @@ app.post('/api/support/messages', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Message text is required' });
     }
 
+    const cleanText = text.trim();
+    const lower = cleanText.toLowerCase();
+
     const existingTicket = await prisma.supportTicket.findUnique({ where: { userId } });
     
     // Strict block: If ticket is resolved, prevent posting and require new chat
     if (existingTicket && existingTicket.status === 'resolved') {
       return res.status(400).json({
         success: false,
-        error: 'This support ticket has been resolved and closed. Please click "Start New Support Chat" to open a new inquiry.',
+        error: 'This support ticket has been resolved and closed. Please tap "Start New Support Chat" to open a new inquiry.',
         isResolved: true
       });
     }
@@ -2066,51 +2069,68 @@ app.post('/api/support/messages', async (req, res) => {
       data: {
         userId,
         sender: 'user',
-        text: text.trim()
+        text: cleanText
       }
     });
 
-    // Auto-update or Create Support Ticket in Incoming Queue
-    const isLiveAgentAssigned = existingTicket && (existingTicket.status === 'in_progress' || Boolean(existingTicket.assignedStaffId));
-    const ticketStatus = isLiveAgentAssigned ? 'in_progress' : 'unassigned';
+    // Check if user is asking for a live human agent
+    const isRequestingHuman = lower.includes('speak with live agent') || 
+                              lower.includes('speak with agent') || 
+                              lower.includes('live agent') || 
+                              lower.includes('human') || 
+                              lower.includes('agent') ||
+                              lower.includes('support person') ||
+                              lower.includes('representative') || 
+                              lower.includes('real person') ||
+                              lower.includes('talk to agent');
+
+    // Smart Queue Admission Logic:
+    // 1. If currently in live active session ('in_progress') -> stay 'in_progress'
+    // 2. If user explicitly requests human agent -> 'unassigned' (enters Admin Incoming Queue)
+    // 3. Otherwise -> 'bot' (self-service automated bot handles it, does NOT pollute agent queue)
+    let newTicketStatus = 'bot';
+    if (existingTicket && existingTicket.status === 'in_progress' && existingTicket.assignedStaffId) {
+      newTicketStatus = 'in_progress';
+    } else if (isRequestingHuman || existingTicket?.status === 'unassigned') {
+      newTicketStatus = 'unassigned';
+    }
 
     await prisma.supportTicket.upsert({
       where: { userId },
       update: {
         userName: senderUser?.name || existingTicket?.userName || (userId.includes('@') ? userId.split('@')[0] : 'SimlyTel Customer'),
         userEmail: senderUser?.email || existingTicket?.userEmail || (userId.includes('@') ? userId : null),
-        status: ticketStatus,
-        lastMessageText: text.trim(),
+        status: newTicketStatus,
+        lastMessageText: cleanText,
         lastMessageSender: 'user',
         lastMessageAt: new Date(),
-        unreadStaffCount: { increment: 1 }
+        unreadStaffCount: newTicketStatus === 'unassigned' || newTicketStatus === 'in_progress' ? { increment: 1 } : 0
       },
       create: {
         userId,
         userName: senderUser?.name || (userId.includes('@') ? userId.split('@')[0] : 'SimlyTel Customer'),
         userEmail: senderUser?.email || (userId.includes('@') ? userId : null),
-        status: 'unassigned',
-        lastMessageText: text.trim(),
+        status: newTicketStatus,
+        lastMessageText: cleanText,
         lastMessageSender: 'user',
         lastMessageAt: new Date(),
-        unreadStaffCount: 1
+        unreadStaffCount: newTicketStatus === 'unassigned' ? 1 : 0
       }
     });
 
     let agentMsg = null;
-    // ONLY send automated bot acknowledgement if ticket is NOT currently handled by a live human agent
-    if (!isLiveAgentAssigned) {
-      const lower = text.toLowerCase();
-      let replyText = 'Thank you for contacting SimlyTel Support! Our specialist team has queued your ticket. A live telecom engineer is reviewing your line right now.';
+    // If not in a live human session, provide instant automated response
+    if (newTicketStatus !== 'in_progress') {
+      let replyText = 'Thank you for reaching out to SimlyTel Support! How can we assist you with virtual lines, calling, or top-up today?\n\n💡 Tap "👤 Speak with Live Agent" below if you would like to connect with a support specialist.';
 
-      if (lower.includes('whatsapp') || lower.includes('otp') || lower.includes('code') || lower.includes('telegram')) {
-        replyText = 'For WhatsApp/Telegram OTPs:\n1. Make sure you entered the correct country code (+1 or +44).\n2. If the SMS is delayed, tap "Call Me" in WhatsApp to receive the voice verification code directly on your line!\n3. Check your SimlyTel "Messages" tab.';
+      if (isRequestingHuman) {
+        replyText = 'Connecting you with a live telecom support specialist. 🎧 You are now in the priority queue. An agent will join shortly, please stay on this screen.';
+      } else if (lower.includes('whatsapp') || lower.includes('otp') || lower.includes('code') || lower.includes('telegram')) {
+        replyText = 'For WhatsApp/Telegram OTPs:\n1. Make sure you entered the correct country code (+1 or +44).\n2. If the SMS is delayed, tap "Call Me" in WhatsApp to receive the voice verification code directly on your line!\n3. Check your SimlyTel "Messages" tab.\n\n💡 Tap "👤 Speak with Live Agent" below if you need manual assistance.';
       } else if (lower.includes('rate') || lower.includes('call') || lower.includes('dial') || lower.includes('minute')) {
-        replyText = 'All calls are billed in real-time per minute from your wallet balance. As soon as you dial any country code (e.g. +92, +1, +44, +65), your rate and remaining minutes show directly above the keypad.';
+        replyText = 'All calls are billed in real-time per minute from your wallet balance. As soon as you dial any country code (e.g. +92, +1, +44, +65), your rate and remaining minutes show directly above the keypad.\n\n💡 Tap "👤 Speak with Live Agent" below if you need manual assistance.';
       } else if (lower.includes('topup') || lower.includes('balance') || lower.includes('money') || lower.includes('wallet')) {
-        replyText = 'You can top up any custom amount in the "Wallet" section. Credits are applied instantly and never expire!';
-      } else if (lower.includes('human') || lower.includes('agent') || lower.includes('live')) {
-        replyText = 'You are in queue for a senior telecom agent. Current wait time is under 2 minutes. Please stay on this screen.';
+        replyText = 'You can top up any custom amount in the "Wallet" section. Credits are applied instantly and never expire!\n\n💡 Tap "👤 Speak with Live Agent" below if you need manual assistance.';
       }
 
       agentMsg = await prisma.supportMessage.create({
@@ -2121,13 +2141,14 @@ app.post('/api/support/messages', async (req, res) => {
           text: replyText
         }
       });
-      console.log(`💬 [SUPPORT BOT] Sent auto-ack to unassigned User: "${replyText.substring(0, 40)}..."`);
     }
 
     res.json({
       success: true,
       userMessage: userMsg,
-      agentMessage: agentMsg
+      agentMessage: agentMsg,
+      ticketStatus: newTicketStatus,
+      isLiveAgentRequested: isRequestingHuman
     });
   } catch (error) {
     console.error('[SIMLY ERROR] Failed to send support message:', error);
@@ -2159,17 +2180,17 @@ app.post('/api/support/start-new-chat', async (req, res) => {
         userId,
         sender: 'system',
         senderName: 'SimlyTel Support',
-        text: '━━━━━━━━━━━━━━━━━━━━━━\n🆕 New Support Conversation Started\n━━━━━━━━━━━━━━━━━━━━━━\nA live telecom support specialist will join shortly. How can we assist you?'
+        text: '━━━━━━━━━━━━━━━━━━━━━━\n🆕 New Support Conversation Started\n━━━━━━━━━━━━━━━━━━━━━━\nWelcome back! Select a quick topic below or tap "👤 Speak with Live Agent" to connect with support.'
       }
     });
 
-    // Reset ticket to unassigned fresh ticket in Incoming Queue
+    // Reset ticket to bot status (NOT unassigned in agent queue until user requests live agent)
     const ticket = await prisma.supportTicket.upsert({
       where: { userId },
       update: {
         userName: senderUser?.name || (userId.includes('@') ? userId.split('@')[0] : 'SimlyTel Customer'),
         userEmail: senderUser?.email || (userId.includes('@') ? userId : null),
-        status: 'unassigned',
+        status: 'bot',
         assignedStaffId: null,
         assignedStaffName: null,
         claimedAt: null,
@@ -2177,26 +2198,26 @@ app.post('/api/support/start-new-chat', async (req, res) => {
         lastMessageText: 'New support conversation started',
         lastMessageSender: 'system',
         lastMessageAt: new Date(),
-        unreadStaffCount: 1,
+        unreadStaffCount: 0,
         unreadUserCount: 0
       },
       create: {
         userId,
         userName: senderUser?.name || (userId.includes('@') ? userId.split('@')[0] : 'SimlyTel Customer'),
         userEmail: senderUser?.email || (userId.includes('@') ? userId : null),
-        status: 'unassigned',
+        status: 'bot',
         lastMessageText: 'New support conversation started',
         lastMessageSender: 'system',
         lastMessageAt: new Date(),
-        unreadStaffCount: 1
+        unreadStaffCount: 0
       }
     });
 
     res.json({
       success: true,
-      message: 'New support ticket started successfully!',
+      message: 'New support session started successfully!',
       isResolved: false,
-      status: 'unassigned',
+      status: 'bot',
       dividerMessage: dividerMsg,
       ticket
     });
@@ -4105,34 +4126,8 @@ app.get('/api/admin/support/queue', requireStaffPermission('can_handle_support')
       userMessagesMap[m.userId].push(m);
     }
 
-    // 2. Fetch existing tickets and ensure all users with messages have tickets
+    // 2. Fetch existing tickets (Only tickets where human agent is requested or assigned or resolved)
     const existingTickets = await prisma.supportTicket.findMany();
-    const existingTicketMap = new Map(existingTickets.map(t => [t.userId, t]));
-
-    for (const [uid, msgs] of Object.entries(userMessagesMap)) {
-      if (!existingTicketMap.has(uid) && msgs.length > 0) {
-        const lastMsg = msgs[0]; // newest
-        const userObj = await prisma.user.findFirst({
-          where: { OR: [{ id: uid }, { email: uid.toLowerCase() }] },
-          select: { name: true, email: true }
-        });
-
-        const newTicket = await prisma.supportTicket.create({
-          data: {
-            userId: uid,
-            userName: userObj?.name || (uid.includes('@') ? uid.split('@')[0] : 'SimlyTel Customer'),
-            userEmail: userObj?.email || (uid.includes('@') ? uid : null),
-            status: 'unassigned',
-            lastMessageText: lastMsg.text,
-            lastMessageSender: lastMsg.sender,
-            lastMessageAt: lastMsg.createdAt,
-            unreadStaffCount: msgs.filter(m => m.sender === 'user').length
-          }
-        });
-        existingTickets.push(newTicket);
-        existingTicketMap.set(uid, newTicket);
-      }
-    }
 
     // 3. Sort tickets by lastMessageAt descending
     existingTickets.sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));

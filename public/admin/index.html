@@ -413,14 +413,14 @@
             <div>
               <h2 class="text-xl font-bold text-white tracking-tight flex items-center gap-2">
                 <span>Users CRM Management</span>
-                <span id="crmTotalUsersBadge" class="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-semibold">32</span>
+                <span id="crmTotalUsersBadge" class="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-semibold">0</span>
               </h2>
               <p class="text-xs text-slate-400">Manage individual or multiple users in bulk. Erased accounts retain all telecom & ledger records permanently.</p>
             </div>
             <div class="flex items-center gap-2">
               <div class="relative">
                 <i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-500 text-xs"></i>
-                <input type="text" id="userSearchInput" oninput="debounceLoadUsers()" placeholder="Search email, name, ID..." class="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-48 sm:w-64">
+                <input type="text" id="userSearchInput" oninput="debounceLoadUsers()" placeholder="Search name, email, phone, virtual line number..." class="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-48 sm:w-80">
               </div>
               <button onclick="loadUsers()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition-all">
                 <i class="fa-solid fa-rotate-right mr-1"></i> Refresh
@@ -432,16 +432,16 @@
           <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/60 p-2 rounded-2xl border border-slate-800/80">
             <div class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
               <button onclick="setUserFilter('all')" id="filter-btn-all" class="crm-filter-btn active px-3 py-1.5 rounded-xl text-xs font-semibold transition-all bg-slate-800 text-white">
-                All Users <span id="filterCountAll" class="ml-1 opacity-70">(32)</span>
+                All Users <span id="filterCountAll" class="ml-1 opacity-70">(0)</span>
               </button>
               <button onclick="setUserFilter('active')" id="filter-btn-active" class="crm-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800/40">
-                🟢 Active <span id="filterCountActive" class="ml-1 opacity-70">(30)</span>
+                🟢 Active <span id="filterCountActive" class="ml-1 opacity-70">(0)</span>
               </button>
               <button onclick="setUserFilter('blocked')" id="filter-btn-blocked" class="crm-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800/40">
-                🔴 Blocked <span id="filterCountBlocked" class="ml-1 opacity-70">(1)</span>
+                🔴 Blocked <span id="filterCountBlocked" class="ml-1 opacity-70">(0)</span>
               </button>
               <button onclick="setUserFilter('erased')" id="filter-btn-erased" class="crm-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800/40">
-                ⚠️ Self-Erased & Archived <span id="filterCountErased" class="ml-1 opacity-70">(1)</span>
+                ⚠️ Self-Erased & Archived <span id="filterCountErased" class="ml-1 opacity-70">(0)</span>
               </button>
             </div>
           </div>
@@ -2078,22 +2078,25 @@
         announcements: document.getElementById('tab-btn-announcements'),
         pricing: document.getElementById('tab-btn-pricing'),
         team: document.getElementById('tab-btn-team'),
-        audit: document.getElementById('tab-btn-audit')
+        audit: document.getElementById('tab-btn-audit'),
+        blacklist: document.getElementById('tab-btn-blacklist'),
+        config: document.getElementById('tab-btn-config')
       };
 
       // Reset all to visible first
       Object.values(allTabBtns).forEach(btn => { if (btn) btn.classList.remove('hidden'); });
 
-      if (staff.role === 'support_agent') {
-        ['overview', 'numbers', 'transactions', 'announcements', 'pricing', 'team', 'audit'].forEach(t => {
+      if (staff.role === 'support_agent' || staff.role === 'deposit_supporter') {
+        // STRICT REQUIREMENT: ONLY 2 BUTTONS VISIBLE (Users CRM and Support Desk)
+        ['overview', 'numbers', 'cdr', 'transactions', 'announcements', 'pricing', 'team', 'audit', 'blacklist', 'config'].forEach(t => {
           if (allTabBtns[t]) allTabBtns[t].classList.add('hidden');
         });
       } else if (staff.role === 'operations_manager') {
-        ['transactions', 'pricing', 'team', 'audit'].forEach(t => {
+        ['overview', 'transactions', 'pricing', 'team', 'audit', 'blacklist', 'config'].forEach(t => {
           if (allTabBtns[t]) allTabBtns[t].classList.add('hidden');
         });
       } else if (staff.role === 'finance_manager') {
-        ['numbers', 'cdr', 'support', 'announcements', 'pricing', 'team', 'audit'].forEach(t => {
+        ['numbers', 'cdr', 'support', 'announcements', 'pricing', 'team', 'audit', 'blacklist', 'config'].forEach(t => {
           if (allTabBtns[t]) allTabBtns[t].classList.add('hidden');
         });
       }
@@ -2571,6 +2574,8 @@
         updateBulkActionBar();
       } catch (err) {
         console.error(err);
+        const tbody = document.getElementById('usersTableBody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-rose-400 text-xs"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i> ${escapeHtml(err.message || 'Error loading users database.')}</td></tr>`;
       }
     }
 

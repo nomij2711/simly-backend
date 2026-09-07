@@ -4473,17 +4473,19 @@
     }
 
 
+
     // ============================================================
-    // 🛒 DYNAMIC VIRTUAL NUMBER PURCHASING ENGINE FOR SUPPORT
+    // 🛒 STEP-BY-STEP VIRTUAL NUMBER PURCHASING CONTROLLER
     // ============================================================
-    const SIMLY_CATALOG_COUNTRIES = [
-      { country: "United States", code: "US", dialCode: "+1", flag: "🇺🇸", price30: "$1.50" },
-      { country: "Canada", code: "CA", dialCode: "+1", flag: "🇨🇦", price30: "$1.50" },
-      { country: "United Kingdom", code: "GB", dialCode: "+44", flag: "🇬🇧", price30: "$3.00" },
-      { country: "Australia", code: "AU", dialCode: "+61", flag: "🇦🇺", price30: "$7.00" }
+    const SIMLY_ACTIVE_COUNTRIES = [
+      { country: "United States", code: "US", dialCode: "+1", flag: "🇺🇸" },
+      { country: "Canada", code: "CA", dialCode: "+1", flag: "🇨🇦" },
+      { country: "United Kingdom", code: "GB", dialCode: "+44", flag: "🇬🇧" },
+      { country: "Australia", code: "AU", dialCode: "+61", flag: "🇦🇺" }
     ];
     let currentLoadedAvailableNumbers = [];
     let agentSelectedPhoneNumber = null;
+    let selectedAgentPlanType = '30_days';
 
     function calculateNumberPrice(countryCode, planType) {
       const cc = (countryCode || 'US').toUpperCase();
@@ -4525,7 +4527,7 @@
         };
       }
 
-      // Fetch fresh balance if needed
+      // Fetch fresh balance from server
       try {
         const res = await adminFetch('/api/admin/support/user-dossier/' + encodeURIComponent(targetUid));
         if (res && res.success && res.user) {
@@ -4542,28 +4544,32 @@
       if (nameEl) nameEl.innerText = u?.name || 'Customer';
       if (emailEl) emailEl.innerText = u?.email || targetUid;
       if (avatarEl) avatarEl.innerText = (u?.name || u?.email || 'U')[0].toUpperCase();
-      if (balEl) balEl.innerText = `${(u?.walletBalance || 0).toFixed(2)}`;
+      if (balEl) balEl.innerText = `$${(u?.walletBalance || 0).toFixed(2)}`;
 
-      // Populate Country Dropdown from Full Catalog
+      // Populate Country Dropdown
       const countrySelect = document.getElementById('agentBuyCountrySelect');
       if (countrySelect) {
-        countrySelect.innerHTML = SIMLY_CATALOG_COUNTRIES.map(c => `
-          <option value="${c.code}">${c.flag} ${c.country} (${c.dialCode}) — ${c.price30} / mo</option>
+        countrySelect.innerHTML = SIMLY_ACTIVE_COUNTRIES.map(c => `
+          <option value="${c.code}">${c.flag} ${c.country} (${c.dialCode})</option>
         `).join('');
         countrySelect.value = 'US';
       }
 
-      // Reset Search & Custom input
+      // Reset selection state
+      selectedAgentPlanType = '30_days';
       agentSelectedPhoneNumber = null;
       document.getElementById('agentBuyNumberFilterInput').value = '';
       document.getElementById('agentBuyCustomPhoneInput').value = '';
       document.getElementById('agentCustomNumberContainer')?.classList.add('hidden');
-      document.getElementById('agentSelectedNumberDisplay').innerText = 'Loading available numbers...';
+      document.getElementById('agentSelectedNumberDisplay').innerText = 'None Selected (Click a number below)';
+
+      selectAgentPlanDuration('30_days', false);
 
       document.getElementById('buyNumberForUserModal')?.classList.remove('hidden');
 
-      // Load Available Numbers for Default Country (US)
+      // Step 2: Fetch available numbers for US
       await loadAvailableNumbersForAgent('US');
+      updatePlanPricesUI();
       updateAgentBuyPricePreview();
     }
 
@@ -4576,6 +4582,9 @@
       agentSelectedPhoneNumber = null;
       document.getElementById('agentBuyNumberFilterInput').value = '';
       document.getElementById('agentBuyCustomPhoneInput').value = '';
+      document.getElementById('agentSelectedNumberDisplay').innerText = 'Loading numbers...';
+      
+      updatePlanPricesUI();
       await loadAvailableNumbersForAgent(country);
       updateAgentBuyPricePreview();
     }
@@ -4588,7 +4597,7 @@
       grid.innerHTML = `
         <div class="col-span-2 text-center text-slate-400 py-6 text-xs flex items-center justify-center gap-2">
           <i class="fa-solid fa-spinner fa-spin text-indigo-400"></i>
-          <span>Fetching real available ${country} numbers...</span>
+          <span>Loading available numbers for ${country}...</span>
         </div>
       `;
 
@@ -4598,14 +4607,14 @@
           currentLoadedAvailableNumbers = res.numbers;
           renderAvailableNumbersGrid(res.numbers);
 
-          // Auto-select first number by default
+          // Auto-select first number
           if (!agentSelectedPhoneNumber && res.numbers[0]) {
             selectNumberCard(res.numbers[0].phoneNumber, res.numbers[0].region?.region_name || country);
           }
         } else {
           grid.innerHTML = `
             <div class="col-span-2 text-center text-slate-500 py-6 text-xs">
-              No numbers returned from carrier. You can type a custom number below.
+              No numbers currently in pool. Click "Custom Input" to enter a number.
             </div>
           `;
         }
@@ -4623,27 +4632,26 @@
       if (!grid) return;
 
       if (!numbers || numbers.length === 0) {
-        grid.innerHTML = '<div class="col-span-2 text-center text-slate-500 py-6 text-xs">No numbers matching filter.</div>';
+        grid.innerHTML = '<div class="col-span-2 text-center text-slate-500 py-6 text-xs">No numbers match your search.</div>';
         return;
       }
 
       grid.innerHTML = numbers.map(num => {
         const isSelected = agentSelectedPhoneNumber === num.phoneNumber;
         const region = num.region?.region_name || 'Virtual Line';
-        const formattedCost = num.cost?.monthly_cost ? `${num.cost.monthly_cost}/mo` : '';
 
         return `
-          <div onclick="selectNumberCard('${num.phoneNumber}', '${escapeHtml(region)}')" class="p-2.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between group ${isSelected ? 'bg-indigo-600/20 border-indigo-500 shadow-md text-white' : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300'}">
-            <div class="flex items-center gap-2">
-              <div class="w-6 h-6 rounded-lg ${isSelected ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-400 group-hover:text-white'} flex items-center justify-center text-[10px]">
+          <div onclick="selectNumberCard('${num.phoneNumber}', '${escapeHtml(region)}')" class="p-2.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between group ${isSelected ? 'bg-indigo-600/20 border-indigo-500 shadow-md text-white ring-1 ring-indigo-500' : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300'}">
+            <div class="flex items-center gap-2.5">
+              <div class="w-6 h-6 rounded-lg ${isSelected ? 'bg-indigo-500 text-white shadow-sm' : 'bg-slate-800 text-slate-400 group-hover:text-white'} flex items-center justify-center text-[10px] transition-all">
                 <i class="fa-solid ${isSelected ? 'fa-check' : 'fa-phone'}"></i>
               </div>
               <div>
                 <div class="font-mono font-bold text-xs ${isSelected ? 'text-indigo-300' : 'text-white'}">${escapeHtml(num.phoneNumber)}</div>
-                <div class="text-[10px] text-slate-400 truncate max-w-[120px]">${escapeHtml(region)}</div>
+                <div class="text-[10px] text-slate-400 truncate max-w-[140px]">${escapeHtml(region)}</div>
               </div>
             </div>
-            <span class="text-[10px] font-semibold text-emerald-400 font-mono">${formattedCost}</span>
+            ${isSelected ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/30 text-indigo-300 border border-indigo-500/40">SELECTED</span>' : ''}
           </div>
         `;
       }).join('');
@@ -4665,11 +4673,12 @@
     function selectNumberCard(phoneNumber, regionName) {
       agentSelectedPhoneNumber = phoneNumber;
       document.getElementById('agentSelectedNumberDisplay').innerHTML = `
-        <span class="text-indigo-300 font-mono font-bold">${escapeHtml(phoneNumber)}</span> 
-        <span class="text-[10px] text-slate-400">(${escapeHtml(regionName)})</span>
+        <span class="text-indigo-300 font-mono font-bold text-sm">${escapeHtml(phoneNumber)}</span> 
+        <span class="text-[10px] text-slate-400 font-normal">(${escapeHtml(regionName)})</span>
       `;
       document.getElementById('agentBuyCustomPhoneInput').value = phoneNumber;
       renderAvailableNumbersGrid(currentLoadedAvailableNumbers);
+      updateAgentBuyPricePreview();
     }
 
     function toggleCustomNumberInput() {
@@ -4690,15 +4699,48 @@
       agentSelectedPhoneNumber = val.trim();
       const display = document.getElementById('agentSelectedNumberDisplay');
       if (display) {
-        display.innerHTML = val.trim() ? `<span class="text-indigo-300 font-mono font-bold">${escapeHtml(val.trim())}</span> <span class="text-[10px] text-amber-400">(Custom Typed)</span>` : 'None Selected';
+        display.innerHTML = val.trim() ? `<span class="text-indigo-300 font-mono font-bold text-sm">${escapeHtml(val.trim())}</span> <span class="text-[10px] text-amber-400 font-normal">(Custom Line)</span>` : 'None Selected';
       }
+      updateAgentBuyPricePreview();
+    }
+
+    function selectAgentPlanDuration(planType, triggerUpdate = true) {
+      selectedAgentPlanType = planType;
+      
+      const plans = ['7_days', '30_days', '365_days'];
+      plans.forEach(p => {
+        const card = document.getElementById('planCard_' + p);
+        const radioDot = document.getElementById('planDot_' + p);
+        if (card) {
+          if (p === planType) {
+            card.className = 'p-3 rounded-2xl border-2 border-indigo-500 bg-indigo-600/15 cursor-pointer transition-all relative flex flex-col justify-between shadow-lg shadow-indigo-500/10';
+            if (radioDot) radioDot.className = 'w-4 h-4 rounded-full border-2 border-indigo-400 bg-indigo-500 flex items-center justify-center text-[8px] text-white';
+          } else {
+            card.className = 'p-3 rounded-2xl border border-slate-800 bg-slate-950 hover:bg-slate-900/80 hover:border-slate-700 cursor-pointer transition-all relative flex flex-col justify-between';
+            if (radioDot) radioDot.className = 'w-4 h-4 rounded-full border border-slate-700 bg-slate-900 flex items-center justify-center text-[8px] text-transparent';
+          }
+        }
+      });
+
+      if (triggerUpdate) {
+        updateAgentBuyPricePreview();
+      }
+    }
+
+    function updatePlanPricesUI() {
+      const country = document.getElementById('agentBuyCountrySelect')?.value || 'US';
+      const p7 = calculateNumberPrice(country, '7_days');
+      const p30 = calculateNumberPrice(country, '30_days');
+      const p365 = calculateNumberPrice(country, '365_days');
+
+      if (document.getElementById('planPrice_7_days')) document.getElementById('planPrice_7_days').innerText = `$${p7.toFixed(2)}`;
+      if (document.getElementById('planPrice_30_days')) document.getElementById('planPrice_30_days').innerText = `$${p30.toFixed(2)}`;
+      if (document.getElementById('planPrice_365_days')) document.getElementById('planPrice_365_days').innerText = `$${p365.toFixed(2)}`;
     }
 
     function updateAgentBuyPricePreview() {
       const country = document.getElementById('agentBuyCountrySelect')?.value || 'US';
-      const plan = document.getElementById('agentBuyPlanSelect')?.value || '30_days';
-
-      const price = calculateNumberPrice(country, plan);
+      const price = calculateNumberPrice(country, selectedAgentPlanType);
       const bal = currentDossierData?.user?.walletBalance || 0;
       const remaining = bal - price;
 
@@ -4707,31 +4749,33 @@
       const statusNotice = document.getElementById('agentBuyBalanceStatusNotice');
       const btnSubmit = document.getElementById('btnExecuteBuyNumber');
 
-      if (previewEl) previewEl.innerText = `${price.toFixed(2)}`;
+      const planNameMap = { '7_days': '7 Days Plan', '30_days': '30 Days Standard Plan', '365_days': '1 Year Annual Plan' };
+
+      if (previewEl) previewEl.innerText = `$${price.toFixed(2)}`;
       if (remEl) {
-        remEl.innerText = `${remaining.toFixed(2)}`;
+        remEl.innerText = `$${remaining.toFixed(2)}`;
         remEl.className = remaining >= 0 ? 'font-mono font-bold text-emerald-400' : 'font-mono font-bold text-rose-400';
       }
 
       if (bal < price) {
         if (statusNotice) {
           statusNotice.className = 'text-[11px] font-semibold text-rose-400 flex items-center gap-1.5 pt-1';
-          statusNotice.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <span>Insufficient Balance: Customer needs ${(price - bal).toFixed(2)} more. Advise deposit.</span>`;
+          statusNotice.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <span>Insufficient Balance: Customer needs $${(price - bal).toFixed(2)} more. Advise top-up.</span>`;
         }
         if (btnSubmit) {
           btnSubmit.disabled = true;
-          btnSubmit.classList.add('opacity-50', 'cursor-not-allowed');
-          btnSubmit.innerHTML = `<i class="fa-solid fa-ban"></i> <span>Insufficient Balance (${price.toFixed(2)})</span>`;
+          btnSubmit.className = 'px-5 py-2.5 bg-slate-800 text-slate-500 font-bold rounded-xl text-xs cursor-not-allowed flex items-center gap-1.5 opacity-60';
+          btnSubmit.innerHTML = `<i class="fa-solid fa-ban"></i> <span>Insufficient Balance ($${price.toFixed(2)})</span>`;
         }
       } else {
         if (statusNotice) {
           statusNotice.className = 'text-[11px] font-semibold text-emerald-400 flex items-center gap-1.5 pt-1';
-          statusNotice.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>Customer has sufficient balance (${bal.toFixed(2)} available).</span>`;
+          statusNotice.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>Wallet balance verified ($${bal.toFixed(2)} available).</span>`;
         }
         if (btnSubmit) {
           btnSubmit.disabled = false;
-          btnSubmit.classList.remove('opacity-50', 'cursor-not-allowed');
-          btnSubmit.innerHTML = `<i class="fa-solid fa-bolt"></i> <span>Confirm & Activate Line (${price.toFixed(2)})</span>`;
+          btnSubmit.className = 'px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer';
+          btnSubmit.innerHTML = `<i class="fa-solid fa-bolt"></i> <span>Confirm & Activate Line ($${price.toFixed(2)})</span>`;
         }
       }
     }
@@ -4740,18 +4784,18 @@
       e.preventDefault();
       const userId = document.getElementById('agentBuyUserId')?.value;
       const countryCode = document.getElementById('agentBuyCountrySelect')?.value;
-      const planType = document.getElementById('agentBuyPlanSelect')?.value;
+      const planType = selectedAgentPlanType;
       const customPhoneNumber = agentSelectedPhoneNumber || document.getElementById('agentBuyCustomPhoneInput')?.value.trim();
       const btn = document.getElementById('btnExecuteBuyNumber');
 
       if (!userId) return alert('User ID is missing');
       if (!customPhoneNumber) {
-        return alert('Please select an available number from the list or type a custom number.');
+        return alert('Please select an available number from the list or enter a custom number.');
       }
 
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Activating Line for User...';
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Activating Line for Customer...';
       }
 
       try {
@@ -4764,7 +4808,6 @@
           showLiveToast('Line Activated!', res.message, 'circle-check', 'emerald');
           closeBuyNumberForUserModal();
           
-          // Refresh Dossier & Queue
           if (currentDossierUserId === userId) {
             await openInChatUserDossier(userId);
           }
@@ -4782,7 +4825,7 @@
     }
 
 
-    async function handleExecuteRenewForUser(numberId, userId) {
+        async function handleExecuteRenewForUser(numberId, userId) {
       if (!confirm('Are you sure you want to renew this virtual line for the customer? Cost will be deducted from their wallet balance.')) return;
 
       try {
@@ -5843,9 +5886,9 @@ setInterval(() => {
     </div>
   </div>
 
-  <!-- 🛒 MODAL: BUY VIRTUAL NUMBER FOR CUSTOMER -->
+  <!-- 🛒 MODAL: BUY VIRTUAL NUMBER FOR CUSTOMER (STEP-BY-STEP FLOW) -->
   <div id="buyNumberForUserModal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up max-h-[92vh] flex flex-col">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up max-h-[94vh] flex flex-col">
       <!-- Modal Header -->
       <div class="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
         <div>
@@ -5853,7 +5896,7 @@ setInterval(() => {
             <i class="fa-solid fa-cart-shopping text-amber-400"></i>
             <span>Buy Virtual Number for Customer</span>
           </h3>
-          <p class="text-[11px] text-slate-400 mt-0.5">Activate a virtual line directly into customer's account with wallet balance deduction.</p>
+          <p class="text-[11px] text-slate-400 mt-0.5">Select country, pick an available number, choose duration, and activate directly.</p>
         </div>
         <button onclick="closeBuyNumberForUserModal()" class="text-slate-400 hover:text-white text-lg p-1">
           <i class="fa-solid fa-xmark"></i>
@@ -5878,33 +5921,25 @@ setInterval(() => {
           </div>
         </div>
 
-        <!-- Country & Plan Duration -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Select Country (Active App Catalog) *</label>
-            <select id="agentBuyCountrySelect" onchange="onAgentBuyCountryChange()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500">
-              <option value="US">🇺🇸 United States (+1) — $1.50 / mo</option>
-              <option value="CA">🇨🇦 Canada (+1) — $1.50 / mo</option>
-              <option value="GB">🇬🇧 United Kingdom (+44) — $3.00 / mo</option>
-              <option value="AU">🇦🇺 Australia (+61) — $7.00 / mo</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Plan Duration *</label>
-            <select id="agentBuyPlanSelect" onchange="updateAgentBuyPricePreview()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500">
-              <option value="30_days">30 Days (Standard 1 Month)</option>
-              <option value="7_days">7 Days (Short Trial Plan)</option>
-              <option value="365_days">365 Days (1 Year Annual)</option>
-            </select>
-          </div>
+        <!-- 🌍 STEP 1: SELECT COUNTRY -->
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+            <span class="w-4 h-4 rounded-full bg-indigo-600 text-white text-[9px] font-bold flex items-center justify-center">1</span>
+            <span>Select Country (Active In-App Lines) *</span>
+          </label>
+          <select id="agentBuyCountrySelect" onchange="onAgentBuyCountryChange()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white text-xs font-medium focus:outline-none focus:border-indigo-500">
+            <option value="US">🇺🇸 United States (+1)</option>
+            <option value="CA">🇨🇦 Canada (+1)</option>
+            <option value="GB">🇬🇧 United Kingdom (+44)</option>
+            <option value="AU">🇦🇺 Australia (+61)</option>
+          </select>
         </div>
 
-        <!-- Live Available Numbers Section -->
+        <!-- 🔢 STEP 2: CHOOSE NUMBER FROM LIVE POOL -->
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <label class="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
-              <i class="fa-solid fa-list-ol text-cyan-400"></i>
+              <span class="w-4 h-4 rounded-full bg-indigo-600 text-white text-[9px] font-bold flex items-center justify-center">2</span>
               <span>Choose Available Number from Live Pool *</span>
             </label>
             <button type="button" onclick="loadAvailableNumbersForAgent()" class="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold">
@@ -5919,7 +5954,7 @@ setInterval(() => {
           </div>
 
           <!-- Number Tiles Grid -->
-          <div id="agentAvailableNumbersGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto custom-scrollbar p-1.5 bg-slate-950/70 border border-slate-800/80 rounded-2xl">
+          <div id="agentAvailableNumbersGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto custom-scrollbar p-1.5 bg-slate-950/70 border border-slate-800/80 rounded-2xl">
             <div class="col-span-2 text-center text-slate-500 py-6 text-xs flex items-center justify-center gap-2">
               <i class="fa-solid fa-spinner fa-spin text-indigo-400"></i>
               <span>Loading available numbers...</span>
@@ -5929,7 +5964,7 @@ setInterval(() => {
           <!-- Selected Number Display & Custom Input Toggle -->
           <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
             <div>
-              <div class="text-[10px] text-slate-400">Selected Line to Activate:</div>
+              <div class="text-[10px] text-slate-400">Selected Line:</div>
               <div id="agentSelectedNumberDisplay" class="font-mono font-bold text-white text-xs mt-0.5">None Selected</div>
             </div>
             <button type="button" onclick="toggleCustomNumberInput()" id="btnToggleCustomNum" class="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all">
@@ -5944,25 +5979,71 @@ setInterval(() => {
           </div>
         </div>
 
-        <!-- Financial Summary Bar -->
+        <!-- ⏱️ STEP 3: SELECT PLAN DURATION & RATES (IN-APP CARDS) -->
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
+            <span class="w-4 h-4 rounded-full bg-indigo-600 text-white text-[9px] font-bold flex items-center justify-center">3</span>
+            <span>Select Plan Duration & Pricing *</span>
+          </label>
+
+          <div class="grid grid-cols-3 gap-2.5">
+            <!-- 7 Days Card -->
+            <div id="planCard_7_days" onclick="selectAgentPlanDuration('7_days')" class="p-3 rounded-2xl border border-slate-800 bg-slate-950 hover:bg-slate-900/80 cursor-pointer transition-all flex flex-col justify-between">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[11px] font-bold text-white">7 Days</span>
+                <div id="planDot_7_days" class="w-4 h-4 rounded-full border border-slate-700 bg-slate-900 flex items-center justify-center text-[8px] text-transparent">
+                  <i class="fa-solid fa-check"></i>
+                </div>
+              </div>
+              <div class="text-[10px] text-slate-400">Trial Plan</div>
+              <div id="planPrice_7_days" class="text-sm font-bold font-mono text-emerald-400 mt-2">$0.50</div>
+            </div>
+
+            <!-- 30 Days Card (Standard) -->
+            <div id="planCard_30_days" onclick="selectAgentPlanDuration('30_days')" class="p-3 rounded-2xl border-2 border-indigo-500 bg-indigo-600/15 cursor-pointer transition-all flex flex-col justify-between shadow-lg shadow-indigo-500/10">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[11px] font-bold text-white">30 Days</span>
+                <div id="planDot_30_days" class="w-4 h-4 rounded-full border-2 border-indigo-400 bg-indigo-500 flex items-center justify-center text-[8px] text-white">
+                  <i class="fa-solid fa-check"></i>
+                </div>
+              </div>
+              <div class="text-[10px] text-indigo-300 font-semibold">Standard Monthly</div>
+              <div id="planPrice_30_days" class="text-sm font-bold font-mono text-emerald-400 mt-2">$1.50</div>
+            </div>
+
+            <!-- 365 Days Card (Annual) -->
+            <div id="planCard_365_days" onclick="selectAgentPlanDuration('365_days')" class="p-3 rounded-2xl border border-slate-800 bg-slate-950 hover:bg-slate-900/80 cursor-pointer transition-all flex flex-col justify-between">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[11px] font-bold text-white">1 Year</span>
+                <div id="planDot_365_days" class="w-4 h-4 rounded-full border border-slate-700 bg-slate-900 flex items-center justify-center text-[8px] text-transparent">
+                  <i class="fa-solid fa-check"></i>
+                </div>
+              </div>
+              <div class="text-[10px] text-slate-400">Annual Plan</div>
+              <div id="planPrice_365_days" class="text-sm font-bold font-mono text-emerald-400 mt-2">$15.00</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 💳 STEP 4: FINANCIAL SUMMARY BOX -->
         <div id="agentBuySummaryBox" class="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl space-y-2">
           <div class="flex items-center justify-between text-xs">
-            <span class="text-slate-400">Plan Retail Cost:</span>
+            <span class="text-slate-400">Plan Retail Price:</span>
             <span id="agentBuyPricePreview" class="text-emerald-400 font-mono font-bold text-sm">$1.50</span>
           </div>
           <div class="flex items-center justify-between text-xs pt-1.5 border-t border-slate-800/80">
-            <span class="text-slate-400">Remaining Balance After Purchase:</span>
+            <span class="text-slate-400">Remaining Customer Balance:</span>
             <span id="agentBuyRemainingBalance" class="font-mono font-bold text-emerald-400">$6.51</span>
           </div>
           <div id="agentBuyBalanceStatusNotice" class="text-[11px] font-semibold text-emerald-400 flex items-center gap-1.5 pt-1">
-            <i class="fa-solid fa-circle-check"></i> <span>Customer has sufficient wallet balance for this purchase.</span>
+            <i class="fa-solid fa-circle-check"></i> <span>Customer has sufficient wallet balance.</span>
           </div>
         </div>
 
         <!-- Action Buttons -->
         <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800 shrink-0">
           <button type="button" onclick="closeBuyNumberForUserModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-all">Cancel</button>
-          <button type="submit" id="btnExecuteBuyNumber" class="px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5">
+          <button type="submit" id="btnExecuteBuyNumber" class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5">
             <i class="fa-solid fa-bolt"></i> <span>Confirm & Activate Line</span>
           </button>
         </div>

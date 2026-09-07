@@ -5725,6 +5725,491 @@ function exportData(type) {
   window.open('/api/admin/export/' + type + '?adminToken=' + encodeURIComponent(ADMIN_TOKEN), '_blank');
 }
 
+
+    // ============================================================================
+    // 📊 MASTER INTERACTIVE KPI BREAKDOWN CONTROLLER
+    // ============================================================================
+    let currentKpiBreakdownType = 'net_profit';
+    let kpiBreakdownDataCache = null;
+    let kpiCurrentTableFilter = 'all';
+
+    window.openKpiBreakdown = async function(type) {
+      currentKpiBreakdownType = type;
+      kpiCurrentTableFilter = 'all';
+      const modal = document.getElementById('kpiBreakdownModal');
+      if (!modal) {
+        console.error('kpiBreakdownModal element not found');
+        return;
+      }
+      modal.classList.remove('hidden');
+
+      const titleEl = document.getElementById('kpiModalTitle');
+      const subtitleEl = document.getElementById('kpiModalSubtitle');
+      const iconBoxEl = document.getElementById('kpiModalIconBox');
+      const iconEl = document.getElementById('kpiModalIcon');
+      const badgeEl = document.getElementById('kpiModalBadge');
+
+      if (type === 'net_profit') {
+        titleEl.innerText = 'Net Real Profit Ledger & Margins';
+        subtitleEl.innerText = 'Itemized breakdown of wholesale carrier cost vs retail billed price on each line subscription, voice call, and SMS.';
+        iconBoxEl.className = 'w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg shadow-md';
+        iconEl.className = 'fa-solid fa-arrow-trend-up';
+        badgeEl.className = 'text-xs px-2.5 py-0.5 rounded-full font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        badgeEl.innerText = 'Net Profit & Margins';
+      } else if (type === 'wholesale_cost') {
+        titleEl.innerText = 'Wholesale Telecom Carrier Costs (Telnyx Direct)';
+        subtitleEl.innerText = 'Carrier wholesale expenses for leased DIDs (7 Days, 30 Days, 365 Days), call termination minutes, and SMS fees.';
+        iconBoxEl.className = 'w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-lg shadow-md';
+        iconEl.className = 'fa-solid fa-server';
+        badgeEl.className = 'text-xs px-2.5 py-0.5 rounded-full font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20';
+        badgeEl.innerText = 'Carrier Expenses';
+      } else if (type === 'retail_revenue') {
+        titleEl.innerText = 'Realized Retail Revenue Ledger';
+        subtitleEl.innerText = 'Total revenue billed directly from customers for virtual numbers, renewals, calls & SMS.';
+        iconBoxEl.className = 'w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-lg shadow-md';
+        iconEl.className = 'fa-solid fa-receipt';
+        badgeEl.className = 'text-xs px-2.5 py-0.5 rounded-full font-mono font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20';
+        badgeEl.innerText = 'Gross Retail Revenue';
+      } else if (type === 'customer_deposits') {
+        titleEl.innerText = 'Customer Wallet Deposits & Escrow Liability';
+        subtitleEl.innerText = 'Prepaid top-ups loaded by customers vs outstanding wallet balance currently held in escrow.';
+        iconBoxEl.className = 'w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg shadow-md';
+        iconEl.className = 'fa-solid fa-wallet';
+        badgeEl.className = 'text-xs px-2.5 py-0.5 rounded-full font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20';
+        badgeEl.innerText = 'Deposits & Balances';
+      } else if (type === 'total_users') {
+        closeKpiBreakdownModal();
+        switchTab('users');
+        return;
+      } else if (type === 'active_lines') {
+        closeKpiBreakdownModal();
+        switchTab('numbers');
+        return;
+      } else if (type === 'total_calls') {
+        closeKpiBreakdownModal();
+        switchTab('cdr');
+        return;
+      } else if (type === 'outbound_sms') {
+        titleEl.innerText = 'Outbound SMS Transmission Ledger';
+        subtitleEl.innerText = 'Real-time carrier delivery logs, recipient numbers, text previews and carrier charges.';
+        iconBoxEl.className = 'w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center text-lg shadow-md';
+        iconEl.className = 'fa-solid fa-comment-dots';
+        badgeEl.className = 'text-xs px-2.5 py-0.5 rounded-full font-mono font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20';
+        badgeEl.innerText = 'SMS Traffic';
+      }
+
+      await loadKpiBreakdownData();
+    };
+
+    window.closeKpiBreakdownModal = function() {
+      const modal = document.getElementById('kpiBreakdownModal');
+      if (modal) modal.classList.add('hidden');
+    };
+
+    window.refreshKpiBreakdown = async function() {
+      await loadKpiBreakdownData();
+    };
+
+    async function loadKpiBreakdownData() {
+      const tbody = document.getElementById('kpiModalTableBody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading live breakdown data...</td></tr>';
+
+      try {
+        const res = await adminFetch('/api/admin/financials/breakdown');
+        if (!res || !res.success) {
+          if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-rose-400">Failed to load breakdown: ' + (res?.error || 'Server error') + '</td></tr>';
+          return;
+        }
+
+        kpiBreakdownDataCache = res;
+        renderKpiBreakdownView();
+      } catch (err) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-rose-400">Failed to load breakdown: ' + err.message + '</td></tr>';
+      }
+    }
+
+    function renderKpiBreakdownView() {
+      if (!kpiBreakdownDataCache) return;
+      const data = kpiBreakdownDataCache;
+      const fin = data.financials || {};
+
+      const summaryRow = document.getElementById('kpiModalSummaryRow');
+      const tabsRow = document.getElementById('kpiModalFilterTabs');
+      const thead = document.getElementById('kpiModalTableHead');
+      const tbody = document.getElementById('kpiModalTableBody');
+      const footerCount = document.getElementById('kpiModalFooterCount');
+
+      const type = currentKpiBreakdownType;
+
+      // 1. NET PROFIT
+      if (type === 'net_profit') {
+        summaryRow.innerHTML = `
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Net Real Profit</span>
+            <div class="text-base font-bold font-mono text-emerald-400 mt-1">${formatUSD8(fin.netProfit)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Overall Margin %</span>
+            <div class="text-base font-bold font-mono text-emerald-400 mt-1">${(fin.marginPercent || 0).toFixed(2)}%</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Gross Retail Revenue</span>
+            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(fin.totalRetailRevenue)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Wholesale Carrier Cost</span>
+            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(fin.totalWholesaleCost)}</div>
+          </div>
+        `;
+
+        tabsRow.innerHTML = `
+          <button onclick="setKpiFilter('all')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'all' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">All Records</button>
+          <button onclick="setKpiFilter('numbers')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'numbers' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">📞 Number Subscriptions (${data.numbers.length})</button>
+          <button onclick="setKpiFilter('calls')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'calls' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">🎧 VoIP Calls (${data.calls.length})</button>
+          <button onclick="setKpiFilter('sms')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'sms' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">💬 SMS (${data.sms.length})</button>
+        `;
+
+        thead.innerHTML = `
+          <tr>
+            <th class="p-3">Resource / Item</th>
+            <th class="p-3">Customer Profile</th>
+            <th class="p-3">Subscription Plan</th>
+            <th class="p-3 text-right">Retail Billed</th>
+            <th class="p-3 text-right">Wholesale Cost</th>
+            <th class="p-3 text-right">Net Profit</th>
+            <th class="p-3 text-right">Margin %</th>
+          </tr>
+        `;
+
+        let rows = [];
+        if (kpiCurrentTableFilter === 'all' || kpiCurrentTableFilter === 'numbers') {
+          data.numbers.forEach(n => {
+            rows.push(`
+              <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="p-3 flex items-center gap-2">
+                  <span class="w-6 h-6 rounded bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs"><i class="fa-solid fa-phone"></i></span>
+                  <div>
+                    <div class="font-bold text-white font-mono">${n.phoneNumber}</div>
+                    <div class="text-[10px] text-slate-500">${n.countryCode} Line</div>
+                  </div>
+                </td>
+                <td class="p-3">
+                  <div class="font-semibold text-slate-200">${n.userName}</div>
+                  <div class="text-[10px] text-slate-500">${n.userEmail}</div>
+                </td>
+                <td class="p-3">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">${n.planDaysLabel}</span>
+                  <div class="text-[10px] text-slate-500 mt-0.5">${new Date(n.createdAt).toLocaleDateString()}</div>
+                </td>
+                <td class="p-3 text-right font-mono font-bold text-indigo-400">${formatUSD8(n.retailPrice)}</td>
+                <td class="p-3 text-right font-mono font-bold text-cyan-400">${formatUSD8(n.wholesaleCost)}</td>
+                <td class="p-3 text-right font-mono font-bold text-emerald-400">+${formatUSD8(n.netProfit)}</td>
+                <td class="p-3 text-right font-mono font-bold text-emerald-400">${n.marginPercent}%</td>
+              </tr>
+            `);
+          });
+        }
+
+        if (kpiCurrentTableFilter === 'all' || kpiCurrentTableFilter === 'calls') {
+          data.calls.forEach(c => {
+            rows.push(`
+              <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="p-3 flex items-center gap-2">
+                  <span class="w-6 h-6 rounded bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs"><i class="fa-solid fa-phone-flip"></i></span>
+                  <div>
+                    <div class="font-bold text-white font-mono">${c.myNumber || 'VoIP Call'} &rarr; ${c.contactNumber}</div>
+                    <div class="text-[10px] text-slate-500">Outbound Call</div>
+                  </div>
+                </td>
+                <td class="p-3 text-slate-400">Simly Customer</td>
+                <td class="p-3">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400">${c.durationFormatted}</span>
+                </td>
+                <td class="p-3 text-right font-mono font-bold text-indigo-400">${formatUSD8(c.retailCharge)}</td>
+                <td class="p-3 text-right font-mono font-bold text-cyan-400">${formatUSD8(c.wholesaleCost)}</td>
+                <td class="p-3 text-right font-mono font-bold text-emerald-400">+${formatUSD8(c.netProfit)}</td>
+                <td class="p-3 text-right font-mono font-bold text-emerald-400">${c.retailCharge > 0 ? (((c.retailCharge - c.wholesaleCost) / c.retailCharge) * 100).toFixed(2) : '0.00'}%</td>
+              </tr>
+            `);
+          });
+        }
+
+        if (kpiCurrentTableFilter === 'all' || kpiCurrentTableFilter === 'sms') {
+          data.sms.forEach(m => {
+            rows.push(`
+              <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="p-3 flex items-center gap-2">
+                  <span class="w-6 h-6 rounded bg-rose-500/10 text-rose-400 flex items-center justify-center text-xs"><i class="fa-solid fa-comment-dots"></i></span>
+                  <div>
+                    <div class="font-bold text-white font-mono">${m.fromNumber} &rarr; ${m.toNumber}</div>
+                    <div class="text-[10px] text-slate-500 truncate max-w-[200px]">${m.text || 'SMS Message'}</div>
+                  </div>
+                </td>
+                <td class="p-3 text-slate-400">Simly Customer</td>
+                <td class="p-3 text-slate-500 text-[10px]">${new Date(m.createdAt).toLocaleTimeString()}</td>
+                <td class="p-3 text-right font-mono font-bold text-indigo-400">${formatUSD8(m.retailCharge)}</td>
+                <td class="p-3 text-right font-mono font-bold text-cyan-400">${formatUSD8(m.wholesaleCost)}</td>
+                <td class="p-3 text-right font-mono font-bold text-emerald-400">+${formatUSD8(m.netProfit)}</td>
+                <td class="p-3 text-right font-mono font-bold text-emerald-400">75.00%</td>
+              </tr>
+            `);
+          });
+        }
+
+        tbody.innerHTML = rows.join('') || '<tr><td colspan="7" class="p-8 text-center text-slate-500">No profit records found yet.</td></tr>';
+        footerCount.innerText = `Showing ${rows.length} profit transaction records`;
+
+      } else if (type === 'wholesale_cost') {
+        summaryRow.innerHTML = `
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Total Wholesale Cost</span>
+            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(fin.totalWholesaleCost)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Numbers Leased Base Cost</span>
+            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(fin.wholesaleNumberCost)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Carrier Call Termination</span>
+            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(fin.wholesaleCallCost)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Carrier SMS Routing</span>
+            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(fin.wholesaleSmsCost)}</div>
+          </div>
+        `;
+
+        tabsRow.innerHTML = `
+          <button onclick="setKpiFilter('all')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'all' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">All Leased Numbers (${data.numbers.length})</button>
+        `;
+
+        thead.innerHTML = `
+          <tr>
+            <th class="p-3">Carrier Leased DID</th>
+            <th class="p-3">Country Code</th>
+            <th class="p-3">Assigned User</th>
+            <th class="p-3">Subscription Duration</th>
+            <th class="p-3 text-right">Wholesale Base Cost</th>
+            <th class="p-3 text-right">Fleet Status</th>
+            <th class="p-3 text-right">Provisioned Date</th>
+          </tr>
+        `;
+
+        let rows = data.numbers.map(n => `
+          <tr class="hover:bg-slate-800/40 transition-colors">
+            <td class="p-3 flex items-center gap-2">
+              <span class="w-6 h-6 rounded bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-xs"><i class="fa-solid fa-server"></i></span>
+              <div>
+                <div class="font-bold text-white font-mono">${n.phoneNumber}</div>
+                <div class="text-[10px] text-slate-500">Telnyx Direct Leased Line</div>
+              </div>
+            </td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">${n.countryCode}</span>
+            </td>
+            <td class="p-3">
+              <div class="font-semibold text-slate-200">${n.userName}</div>
+              <div class="text-[10px] text-slate-500">${n.userEmail}</div>
+            </td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">${n.planDaysLabel}</span>
+            </td>
+            <td class="p-3 text-right font-mono font-bold text-cyan-400">${formatUSD8(n.wholesaleCost)}</td>
+            <td class="p-3 text-right">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase">${n.status}</span>
+            </td>
+            <td class="p-3 text-right text-slate-500 text-[10px]">${new Date(n.createdAt).toLocaleDateString()}</td>
+          </tr>
+        `);
+
+        tbody.innerHTML = rows.join('') || '<tr><td colspan="7" class="p-8 text-center text-slate-500">No wholesale carrier numbers yet.</td></tr>';
+        footerCount.innerText = `Showing ${rows.length} carrier leased lines`;
+
+      } else if (type === 'retail_revenue') {
+        summaryRow.innerHTML = `
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Total Retail Revenue</span>
+            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(fin.totalRetailRevenue)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Virtual Lines Billed</span>
+            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(fin.retailLineRevenue)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Voice Calls Billed</span>
+            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(fin.retailCallRevenue)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">SMS Messages Billed</span>
+            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(fin.retailSmsRevenue)}</div>
+          </div>
+        `;
+
+        tabsRow.innerHTML = `
+          <button class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white">All Retail Billed Transactions (${data.retailCharges.length})</button>
+        `;
+
+        thead.innerHTML = `
+          <tr>
+            <th class="p-3">Customer</th>
+            <th class="p-3">Service Description</th>
+            <th class="p-3">Billing Category</th>
+            <th class="p-3 text-right">Amount Billed</th>
+            <th class="p-3 text-right">Timestamp</th>
+          </tr>
+        `;
+
+        let rows = data.retailCharges.map(r => `
+          <tr class="hover:bg-slate-800/40 transition-colors">
+            <td class="p-3">
+              <div class="font-bold text-white">${r.userName}</div>
+              <div class="text-[10px] text-slate-500">${r.userEmail}</div>
+            </td>
+            <td class="p-3 font-medium text-slate-300">${r.description || 'Platform Service'}</td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400 uppercase">${r.type}</span>
+            </td>
+            <td class="p-3 text-right font-mono font-bold text-indigo-400">${formatUSD8(r.amount)}</td>
+            <td class="p-3 text-right text-slate-500 text-[10px]">${new Date(r.createdAt).toLocaleString()}</td>
+          </tr>
+        `);
+
+        tbody.innerHTML = rows.join('') || '<tr><td colspan="5" class="p-8 text-center text-slate-500">No retail billing transactions yet.</td></tr>';
+        footerCount.innerText = `Showing ${rows.length} retail billing transactions`;
+
+      } else if (type === 'customer_deposits') {
+        summaryRow.innerHTML = `
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Total Deposits</span>
+            <div class="text-base font-bold font-mono text-amber-400 mt-1">${formatUSD8(fin.totalCustomerDeposits)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Active Escrow Balances</span>
+            <div class="text-base font-bold font-mono text-emerald-400 mt-1">${formatUSD8(fin.totalUserBalance)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Realized Spent Usage</span>
+            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(fin.totalRetailRevenue)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Total Top-Ups</span>
+            <div class="text-base font-bold font-mono text-white mt-1">${data.deposits.length}</div>
+          </div>
+        `;
+
+        tabsRow.innerHTML = `
+          <button class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-600 text-white">Customer Deposit Transactions (${data.deposits.length})</button>
+        `;
+
+        thead.innerHTML = `
+          <tr>
+            <th class="p-3">Customer</th>
+            <th class="p-3">Deposit Method / Description</th>
+            <th class="p-3 text-right">Deposit Amount</th>
+            <th class="p-3 text-right">Customer Balance</th>
+            <th class="p-3 text-right">Timestamp</th>
+          </tr>
+        `;
+
+        let rows = data.deposits.map(d => `
+          <tr class="hover:bg-slate-800/40 transition-colors">
+            <td class="p-3">
+              <div class="font-bold text-white">${d.userName}</div>
+              <div class="text-[10px] text-slate-500">${d.userEmail}</div>
+            </td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 uppercase">${d.type}</span>
+              <div class="text-[10px] text-slate-500 mt-0.5">${d.description || 'Prepaid Wallet Top-Up'}</div>
+            </td>
+            <td class="p-3 text-right font-mono font-bold text-emerald-400">+${formatUSD8(d.amount)}</td>
+            <td class="p-3 text-right font-mono font-bold text-slate-200">${formatUSD8(d.userCurrentBalance || 0)}</td>
+            <td class="p-3 text-right text-slate-500 text-[10px]">${new Date(d.createdAt).toLocaleString()}</td>
+          </tr>
+        `);
+
+        tbody.innerHTML = rows.join('') || '<tr><td colspan="5" class="p-8 text-center text-slate-500">No deposit records found yet.</td></tr>';
+        footerCount.innerText = `Showing ${rows.length} deposit records`;
+
+      } else if (type === 'outbound_sms') {
+        summaryRow.innerHTML = `
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Total SMS Sent</span>
+            <div class="text-base font-bold font-mono text-rose-400 mt-1">${data.sms.length}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Carrier Route Cost</span>
+            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(fin.wholesaleSmsCost)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Retail SMS Billed</span>
+            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(fin.retailSmsRevenue)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Net SMS Profit</span>
+            <div class="text-base font-bold font-mono text-emerald-400 mt-1">${formatUSD8((fin.retailSmsRevenue || 0) - (fin.wholesaleSmsCost || 0))}</div>
+          </div>
+        `;
+
+        tabsRow.innerHTML = `
+          <button class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-600 text-white">Outbound SMS Logs (${data.sms.length})</button>
+        `;
+
+        thead.innerHTML = `
+          <tr>
+            <th class="p-3">Sender Line</th>
+            <th class="p-3">Recipient</th>
+            <th class="p-3">Message Snippet</th>
+            <th class="p-3 text-right">Carrier Cost</th>
+            <th class="p-3 text-right">Retail Billed</th>
+            <th class="p-3 text-right">Status</th>
+            <th class="p-3 text-right">Timestamp</th>
+          </tr>
+        `;
+
+        let rows = data.sms.map(m => `
+          <tr class="hover:bg-slate-800/40 transition-colors">
+            <td class="p-3 font-mono font-bold text-white">${m.fromNumber}</td>
+            <td class="p-3 font-mono font-semibold text-slate-300">${m.toNumber}</td>
+            <td class="p-3 text-slate-300 text-xs truncate max-w-[220px]">${m.text || 'SMS Message'}</td>
+            <td class="p-3 text-right font-mono font-bold text-cyan-400">${formatUSD8(m.wholesaleCost)}</td>
+            <td class="p-3 text-right font-mono font-bold text-indigo-400">${formatUSD8(m.retailCharge)}</td>
+            <td class="p-3 text-right">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase">${m.status || 'Delivered'}</span>
+            </td>
+            <td class="p-3 text-right text-slate-500 text-[10px]">${new Date(m.createdAt).toLocaleString()}</td>
+          </tr>
+        `);
+
+        tbody.innerHTML = rows.join('') || '<tr><td colspan="7" class="p-8 text-center text-slate-500">No outbound SMS messages found.</td></tr>';
+        footerCount.innerText = `Showing ${rows.length} SMS message records`;
+      }
+    }
+
+    window.setKpiFilter = function(filter) {
+      kpiCurrentTableFilter = filter;
+      renderKpiBreakdownView();
+    };
+
+    window.filterKpiModalTable = function(query) {
+      const q = query.trim().toLowerCase();
+      const tbody = document.getElementById('kpiModalTableBody');
+      if (!tbody) return;
+      const rows = tbody.getElementsByTagName('tr');
+      let visible = 0;
+      for (let r of rows) {
+        const text = r.innerText.toLowerCase();
+        if (text.includes(q)) {
+          r.style.display = '';
+          visible++;
+        } else {
+          r.style.display = 'none';
+        }
+      }
+      const footerCount = document.getElementById('kpiModalFooterCount');
+      if (footerCount) footerCount.innerText = `Showing ${visible} matching records`;
+    };
+
+
 // Auto-poll Carrier health every 60s
 setInterval(fetchCarrierHealth, 60000);
 setTimeout(fetchCarrierHealth, 1000);

@@ -2870,36 +2870,40 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
 // 3. Users CRM List, Search & Filter (with Erased & Soft-Deleted Support & Multi-Line Search)
 app.get('/api/admin/users', requireStaffPermission(['can_view_users', 'can_manage_users', 'can_handle_support', 'all']), async (req, res) => {
   try {
-    const query = req.query.search ? req.query.search.trim().toLowerCase() : '';
-    const filter = (req.query.filter || 'all').toLowerCase(); // 'all', 'active', 'blocked', 'erased'
+    const rawSearch = req.query.search ? req.query.search.trim() : '';
+    const query = rawSearch.toLowerCase();
+    const filter = (req.query.filter || 'all').toLowerCase();
     const page = parseInt(req.query.page || '1', 10);
     const limit = parseInt(req.query.limit || '100', 10);
     const skip = (page - 1) * limit;
 
-    // Build filter conditions
     const andConditions = [];
 
     if (query) {
-      const cleanDigits = query.replace(/[^0-9]/g, '');
-      // Powerful Virtual Line Search: Search active & expired numbers in PurchasedNumber
+      const cleanDigits = rawSearch.replace(/[^0-9]/g, '');
+
+      // 1. Search in Purchased Numbers (Virtual Lines)
       const matchingNumbers = await prisma.purchasedNumber.findMany({
         where: {
           OR: [
+            { phoneNumber: { contains: rawSearch } },
             { phoneNumber: { contains: query } },
-            ...(cleanDigits.length >= 3 ? [{ phoneNumber: { contains: cleanDigits } }] : [])
+            ...(cleanDigits.length >= 2 ? [{ phoneNumber: { contains: cleanDigits } }] : [])
           ]
         },
         select: { userId: true }
       });
-      const numberUserIds = matchingNumbers.map(n => n.userId).filter(Boolean);
+      const numberUserIds = [...new Set(matchingNumbers.map(n => n.userId).filter(Boolean))];
 
+      // 2. Comprehensive Search across User properties + Matched Virtual Number User IDs
       andConditions.push({
         OR: [
           { email: { contains: query } },
-          { name: { contains: query } },
-          { id: { contains: query } },
-          { phone: { contains: query } },
-          ...(cleanDigits.length >= 3 ? [{ phone: { contains: cleanDigits } }] : []),
+          { email: { contains: rawSearch } },
+          { name: { contains: rawSearch } },
+          { id: { contains: rawSearch } },
+          { phone: { contains: rawSearch } },
+          ...(cleanDigits.length >= 2 ? [{ phone: { contains: cleanDigits } }] : []),
           ...(numberUserIds.length > 0 ? [{ id: { in: numberUserIds } }] : [])
         ]
       });
@@ -2915,7 +2919,6 @@ app.get('/api/admin/users', requireStaffPermission(['can_view_users', 'can_manag
 
     const where = andConditions.length > 0 ? { AND: andConditions } : {};
 
-    // Get global counts for tabs
     const [totalUsers, activeCount, blockedCount, erasedCount] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { isDeleted: false, isVerified: true } }),
@@ -2933,13 +2936,30 @@ app.get('/api/admin/users', requireStaffPermission(['can_view_users', 'can_manag
       })
     ]);
 
-        // Attach number counts & display status for each user
+    const now = new Date();
     const usersWithMeta = await Promise.all(
       users.map(async (u) => {
-        const [activeNumbersCount, totalNumbersCount] = await Promise.all([
-          prisma.purchasedNumber.count({ where: { userId: u.id, status: 'active' } }),
-          prisma.purchasedNumber.count({ where: { userId: u.id } })
-        ]);
+        const userNumbers = await prisma.purchasedNumber.findMany({
+          where: { userId: u.id },
+          orderBy: { createdAt: 'desc' }
+        });
+
+        const formattedNumbers = userNumbers.map(n => {
+          const planDays = n.planType === '7_days' ? 7 : (n.planType === '365_days' ? 365 : 30);
+          const computedExpiry = n.expiresAt || new Date(new Date(n.createdAt).getTime() + planDays * 24 * 60 * 60 * 1000);
+          const isExpired = n.status === 'expired' || (computedExpiry && new Date(computedExpiry) < now);
+          return {
+            id: n.id,
+            phoneNumber: n.phoneNumber,
+            countryCode: n.countryCode,
+            planType: n.planType || '30_days',
+            status: isExpired ? 'expired' : (n.status || 'active'),
+            isExpired,
+            expiresAt: computedExpiry
+          };
+        });
+
+        const activeNumbersCount = formattedNumbers.filter(n => n.status === 'active').length;
 
         let displayStatus = 'active';
         let statusLabel = 'ACTIVE 🟢';
@@ -2965,7 +2985,6 @@ app.get('/api/admin/users', requireStaffPermission(['can_view_users', 'can_manag
           statusColor = 'rose';
         }
 
-        // Live Risk Assessment
         const riskData = await calculateUserRiskScore(u);
 
         return {
@@ -2977,7 +2996,8 @@ app.get('/api/admin/users', requireStaffPermission(['can_view_users', 'can_manag
           riskLevel: riskData.level,
           riskReasons: riskData.reasons,
           numbersCount: activeNumbersCount,
-          totalNumbersCount
+          totalNumbersCount: formattedNumbers.length,
+          virtualNumbers: formattedNumbers
         };
       })
     );
@@ -3056,11 +3076,14 @@ app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_u
       }
     }
 
-    // Mark displayStatus & isExpired
+    // Mark displayStatus, calculate accurate computed expiry if missing, & isExpired
     numbers = numbers.map(n => {
-      const isExpired = n.status === 'expired' || (n.expiresAt && new Date(n.expiresAt) < now);
+      const planDays = n.planType === '7_days' ? 7 : (n.planType === '365_days' ? 365 : 30);
+      const computedExpiry = n.expiresAt || new Date(new Date(n.createdAt).getTime() + planDays * 24 * 60 * 60 * 1000);
+      const isExpired = n.status === 'expired' || (computedExpiry && new Date(computedExpiry) < now);
       return {
         ...n,
+        expiresAt: computedExpiry,
         isExpired,
         displayStatus: isExpired ? 'expired' : (n.status || 'active')
       };
@@ -4444,7 +4467,10 @@ app.post('/api/admin/agent-actions/purchase-for-user', requireStaffPermission('c
       data: { walletBalance: { decrement: retailPrice } }
     });
 
-    // Create Virtual Number record (profileName is null so mobile app displays clean carrier country label)
+    // Calculate exact plan expiry date (7 days, 30 days, or 365 days)
+    const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+
+    // Create Virtual Number record with exact expiresAt date
     const newNumber = await prisma.purchasedNumber.create({
       data: {
         phoneNumber: assignedNumber,
@@ -4452,6 +4478,7 @@ app.post('/api/admin/agent-actions/purchase-for-user', requireStaffPermission('c
         countryCode: cCode,
         planType: planType || '30_days',
         status: 'active',
+        expiresAt: expiresAt,
         profileName: null
       }
     });
@@ -4565,10 +4592,14 @@ app.post('/api/admin/agent-actions/renew-for-user', requireStaffPermission('can_
       data: { walletBalance: { decrement: renewalPrice } }
     });
 
-    // Update number status
+    // Calculate new extended expiry date (+30 days from current expiry or now)
+    const currentExpiry = line.expiresAt ? new Date(line.expiresAt).getTime() : Date.now();
+    const newExpiresAt = new Date(Math.max(Date.now(), currentExpiry) + 30 * 24 * 60 * 60 * 1000);
+
+    // Update number status & extended expiry
     const updatedLine = await prisma.purchasedNumber.update({
       where: { id: line.id },
-      data: { status: 'active' }
+      data: { status: 'active', expiresAt: newExpiresAt }
     });
 
     // Create Transaction (clean customer billing statement)

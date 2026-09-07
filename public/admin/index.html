@@ -888,17 +888,23 @@
               <!-- Workstation Header -->
               <div id="chatHeader" class="pb-3 border-b border-slate-800 flex items-center justify-between flex-wrap gap-2">
                 <div class="flex items-center gap-3">
-                  <div id="chatUserAvatar" class="w-9 h-9 rounded-full bg-indigo-600/30 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-xs">
+                  <div id="chatUserAvatar" class="w-10 h-10 rounded-2xl bg-indigo-600/30 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-sm cursor-pointer hover:opacity-80" onclick="if(activeSupportUserId) openInChatUserDossier(activeSupportUserId)">
                     ?
                   </div>
                   <div>
-                    <div id="chatUserName" class="text-sm font-bold text-white">Select a Customer</div>
+                    <div class="flex items-center gap-2">
+                      <span id="chatUserName" class="text-sm font-bold text-white cursor-pointer hover:underline" onclick="if(activeSupportUserId) openInChatUserDossier(activeSupportUserId)">Select a Customer</span>
+                      <span id="chatUserBalanceBadge" class="hidden px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">$0.00</span>
+                    </div>
                     <div id="chatUserMeta" class="text-[11px] text-slate-400">Click any conversation from the list</div>
                   </div>
                 </div>
 
-                <!-- Ticket Action Controls (Claim / Transfer / Resolve) -->
-                <div id="ticketActionControls" class="flex items-center gap-2 hidden">
+                <!-- Ticket Action Controls (Claim / Transfer / Resolve / View Dossier) -->
+                <div id="ticketActionControls" class="flex items-center gap-2 hidden flex-wrap">
+                  <button id="btnViewDossierInChat" onclick="openInChatUserDossier(activeSupportUserId)" class="px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-address-card text-indigo-400"></i> <span>👤 View Dossier & Actions</span>
+                  </button>
                   <button id="btnClaimTicket" onclick="handleClaimCurrentTicket()" class="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-xl text-xs font-bold shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5">
                     <i class="fa-solid fa-hand"></i> <span>Pick Up / Claim</span>
                   </button>
@@ -3653,9 +3659,22 @@
       const btnSend = document.getElementById('btnSendReply');
 
       if (nameEl) nameEl.innerText = ticket.userName || ticket.userEmail || 'Customer';
-      if (metaEl) metaEl.innerText = `User ID: ${ticket.userId} • ${ticket.userEmail || 'No email'}`;
-      if (avatarEl) avatarEl.innerText = (ticket.userName || 'C')[0].toUpperCase();
+      if (metaEl) metaEl.innerText = `${ticket.userEmail || ticket.userId} • Click header to view full dossier`;
+      if (avatarEl) avatarEl.innerText = (ticket.userName || ticket.userEmail || 'C')[0].toUpperCase();
       if (controlsEl) controlsEl.classList.remove('hidden');
+
+      const balBadge = document.getElementById('chatUserBalanceBadge');
+      if (balBadge) {
+        balBadge.classList.remove('hidden');
+        balBadge.innerText = 'Checking...';
+        adminFetch(`/api/admin/support/user-dossier/${encodeURIComponent(userId)}`).then(res => {
+          if (res.success && res.user && activeSupportUserId === userId) {
+            balBadge.innerText = `$${(res.user.walletBalance || 0).toFixed(2)}`;
+          }
+        }).catch(() => {
+          if (balBadge) balBadge.classList.add('hidden');
+        });
+      }
 
       // Configure Action Buttons & Collision Lock Banner
       if (ticket.status === 'unassigned') {
@@ -3927,6 +3946,320 @@
     }
 
     // ============================================================
+    // 👤 IN-CHAT USER DOSSIER & AGENT ACTION CENTER CONTROLLER
+    // ============================================================
+    let currentDossierUserId = null;
+    let currentDossierData = null;
+
+    async function openInChatUserDossier(userId) {
+      if (!userId) return;
+      currentDossierUserId = userId;
+
+      document.getElementById('inChatUserDossierModal')?.classList.remove('hidden');
+
+      // Show Loading Placeholders
+      document.getElementById('dossierUserName').innerText = 'Loading Profile...';
+      document.getElementById('dossierUserMeta').innerText = 'Fetching user dossier...';
+      document.getElementById('dossierWalletBalance').innerText = '...';
+      document.getElementById('dossierActiveNumbersCount').innerText = '...';
+
+      try {
+        const res = await adminFetch(`/api/admin/support/user-dossier/${encodeURIComponent(userId)}`);
+        if (!res.success) throw new Error(res.error || 'Failed to load user dossier');
+
+        currentDossierData = res;
+        const u = res.user;
+
+        // 1. Header & Identity
+        document.getElementById('dossierUserName').innerText = u.name || 'SimlyTel User';
+        document.getElementById('dossierUserMeta').innerText = `${u.email} • ID: ${u.id.substring(0, 16)}... • Registered: ${new Date(u.createdAt).toLocaleDateString()}`;
+        document.getElementById('dossierUserAvatar').innerText = (u.name || u.email || 'U')[0].toUpperCase();
+
+        const statusBadge = document.getElementById('dossierUserStatusBadge');
+        if (statusBadge) {
+          if (u.isBanned) {
+            statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20';
+            statusBadge.innerText = '🔴 Restricted / Banned';
+          } else if (!u.isVerified) {
+            statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20';
+            statusBadge.innerText = '🟡 Pending Verification';
+          } else {
+            statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+            statusBadge.innerText = '🟢 Active Customer';
+          }
+        }
+
+        // 2. Financial Snapshot
+        document.getElementById('dossierWalletBalance').innerText = `$${(u.walletBalance || 0).toFixed(2)}`;
+        document.getElementById('dossierActiveNumbersCount').innerText = (res.numbers || []).filter(n => n.status === 'active').length;
+        document.getElementById('dossierRiskBadge').innerText = `${u.riskLevel === 'HIGH' ? '🔴 HIGH' : u.riskLevel === 'MEDIUM' ? '🟡 MEDIUM' : '🟢 LOW'} (Score: ${u.riskScore || 0}/100)`;
+        document.getElementById('dossierDeviceMeta').innerText = `IP: ${u.lastLoginIp || '127.0.0.1'} • Device: ${u.deviceId || 'Mobile App'}`;
+
+        // 3. Configure Action Buttons based on Agent Permissions
+        const perms = (CURRENT_STAFF?.permissions || '').split(',').map(p => p.trim());
+        const isMaster = CURRENT_STAFF?.role === 'super_admin' || CURRENT_STAFF?.permissions === 'all';
+
+        const canBuy = isMaster || perms.includes('can_purchase_for_user');
+        const canAdjust = isMaster || perms.includes('can_adjust_balance');
+        const canBlock = isMaster || perms.includes('can_block_users');
+        const canRenew = isMaster || perms.includes('can_renew_for_user');
+
+        const btnBuy = document.getElementById('dossierBtnBuyNumber');
+        const btnAdjust = document.getElementById('dossierBtnAdjustBalance');
+        const btnBlock = document.getElementById('dossierBtnBlockUser');
+        const blockText = document.getElementById('dossierBtnBlockText');
+
+        if (btnBuy) btnBuy.classList.toggle('hidden', !canBuy);
+        if (btnAdjust) btnAdjust.classList.toggle('hidden', !canAdjust);
+        if (btnBlock) {
+          btnBlock.classList.toggle('hidden', !canBlock);
+          if (blockText) blockText.innerText = u.isBanned ? 'Unblock User' : 'Block User';
+        }
+
+        // 4. Render Active Numbers List
+        const numTotalBadge = document.getElementById('dossierNumberTotalBadge');
+        if (numTotalBadge) numTotalBadge.innerText = `${(res.numbers || []).length} assigned`;
+
+        const numTable = document.getElementById('dossierNumbersTableBody');
+        if (numTable) {
+          if (!res.numbers || res.numbers.length === 0) {
+            numTable.innerHTML = '<div class="text-center text-slate-500 py-3 text-xs">No active virtual lines assigned to this user.</div>';
+          } else {
+            numTable.innerHTML = res.numbers.map(n => `
+              <div class="p-2.5 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                  <span class="text-base">${n.countryCode === 'GB' ? '🇬🇧' : n.countryCode === 'PK' ? '🇵🇰' : n.countryCode === 'CA' ? '🇨🇦' : '🇺🇸'}</span>
+                  <div>
+                    <div class="font-mono font-bold text-white text-xs">${escapeHtml(n.phoneNumber)}</div>
+                    <div class="text-[10px] text-slate-400">${escapeHtml(n.profileName || 'Virtual Line')} • ${n.planType} • ${n.status === 'active' ? '<span class="text-emerald-400 font-semibold">Active 🟢</span>' : '<span class="text-rose-400 font-semibold">Expired 🔴</span>'}</div>
+                  </div>
+                </div>
+                ${canRenew ? `
+                  <button onclick="handleExecuteRenewForUser('${n.id}', '${u.id}')" class="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all">
+                    <i class="fa-solid fa-rotate text-[10px]"></i> <span>Renew Line</span>
+                  </button>
+                ` : ''}
+              </div>
+            `).join('');
+          }
+        }
+
+        // 5. Render Transactions
+        const txBody = document.getElementById('dossierTxTableBody');
+        if (txBody) {
+          if (!res.transactions || res.transactions.length === 0) {
+            txBody.innerHTML = '<tr><td colspan="4" class="py-3 text-center text-slate-500">No transactions recorded.</td></tr>';
+          } else {
+            txBody.innerHTML = res.transactions.map(tx => `
+              <tr class="hover:bg-slate-900/50">
+                <td class="py-2 px-2 font-bold uppercase text-[10px] ${tx.amount > 0 ? 'text-emerald-400' : 'text-slate-300'}">${escapeHtml(tx.type || 'tx')}</td>
+                <td class="py-2 px-2 font-mono font-bold ${tx.amount > 0 ? 'text-emerald-400' : 'text-rose-400'}">${tx.amount > 0 ? '+' : ''}$${Math.abs(tx.amount).toFixed(2)}</td>
+                <td class="py-2 px-2 text-slate-300 max-w-[200px] truncate" title="${escapeHtml(tx.description)}">${escapeHtml(tx.description)}</td>
+                <td class="py-2 px-2 text-right text-slate-500">${new Date(tx.createdAt).toLocaleDateString()}</td>
+              </tr>
+            `).join('');
+          }
+        }
+
+        // 6. Render Calls
+        const callsBody = document.getElementById('dossierCallsTableBody');
+        if (callsBody) {
+          if (!res.calls || res.calls.length === 0) {
+            callsBody.innerHTML = '<tr><td colspan="5" class="py-3 text-center text-slate-500">No recent calls recorded.</td></tr>';
+          } else {
+            callsBody.innerHTML = res.calls.map(c => `
+              <tr class="hover:bg-slate-900/50 font-mono text-[10px]">
+                <td class="py-2 px-2 text-slate-300">${escapeHtml(c.myNumber || '-')}</td>
+                <td class="py-2 px-2 text-white font-bold">${escapeHtml(c.contactNumber || '-')}</td>
+                <td class="py-2 px-2 uppercase font-bold ${c.direction === 'inbound' ? 'text-cyan-400' : 'text-indigo-400'}">${c.direction || 'outbound'}</td>
+                <td class="py-2 px-2 text-slate-300">${c.durationSeconds || 0}s</td>
+                <td class="py-2 px-2 text-right text-slate-500">${new Date(c.createdAt).toLocaleDateString()}</td>
+              </tr>
+            `).join('');
+          }
+        }
+
+      } catch (err) {
+        alert(err.message);
+        closeInChatUserDossier();
+      }
+    }
+
+    function closeInChatUserDossier() {
+      document.getElementById('inChatUserDossierModal')?.classList.add('hidden');
+    }
+
+    function openBuyNumberForUserModal(userId) {
+      if (!userId && !currentDossierUserId) return;
+      const targetUid = userId || currentDossierUserId;
+      document.getElementById('agentBuyUserId').value = targetUid;
+      
+      const bal = currentDossierData?.user?.walletBalance || 0;
+      document.getElementById('agentBuyUserBalance').innerText = `$${bal.toFixed(2)}`;
+      
+      updateAgentBuyPricePreview();
+      document.getElementById('buyNumberForUserModal')?.classList.remove('hidden');
+    }
+
+    function closeBuyNumberForUserModal() {
+      document.getElementById('buyNumberForUserModal')?.classList.add('hidden');
+    }
+
+    function updateAgentBuyPricePreview() {
+      const country = document.getElementById('agentBuyCountrySelect')?.value || 'US';
+      const plan = document.getElementById('agentBuyPlanSelect')?.value || '30_days';
+
+      let basePrice = 1.99;
+      if (country === 'GB') basePrice = 4.99;
+      else if (country === 'PK') basePrice = 12.99;
+      else if (country === 'AU') basePrice = 5.99;
+
+      let multiplier = 1.0;
+      if (plan === '7_days') multiplier = 0.4;
+      else if (plan === '365_days') multiplier = 10.0;
+
+      const finalPrice = (basePrice * multiplier).toFixed(2);
+      const previewEl = document.getElementById('agentBuyPricePreview');
+      if (previewEl) previewEl.innerText = `$${finalPrice}`;
+    }
+
+    async function handleExecuteBuyNumberForUser(e) {
+      e.preventDefault();
+      const userId = document.getElementById('agentBuyUserId')?.value;
+      const countryCode = document.getElementById('agentBuyCountrySelect')?.value;
+      const planType = document.getElementById('agentBuyPlanSelect')?.value;
+      const customPhoneNumber = document.getElementById('agentBuyCustomPhoneInput')?.value.trim();
+      const btn = document.getElementById('btnExecuteBuyNumber');
+
+      if (!userId) return;
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Activating Line...';
+      }
+
+      try {
+        const res = await adminFetch('/api/admin/agent-actions/purchase-for-user', {
+          method: 'POST',
+          body: JSON.stringify({ userId, countryCode, planType, customPhoneNumber })
+        });
+
+        if (res.success) {
+          alert(`✅ ${res.message}`);
+          closeBuyNumberForUserModal();
+          // Refresh Dossier & Queue
+          if (currentDossierUserId === userId) {
+            await openInChatUserDossier(userId);
+          }
+          await loadSupportQueue();
+        }
+      } catch (err) {
+        alert(`❌ ${err.message}`);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = 'Confirm & Activate Line';
+        }
+      }
+    }
+
+    async function handleExecuteRenewForUser(numberId, userId) {
+      if (!confirm('Are you sure you want to renew this virtual line for the customer? Cost will be deducted from their wallet balance.')) return;
+
+      try {
+        const res = await adminFetch('/api/admin/agent-actions/renew-for-user', {
+          method: 'POST',
+          body: JSON.stringify({ numberId, userId })
+        });
+
+        if (res.success) {
+          alert(`✅ ${res.message}`);
+          await openInChatUserDossier(userId);
+          await loadSupportQueue();
+        }
+      } catch (err) {
+        alert(`❌ ${err.message}`);
+      }
+    }
+
+    async function handleAdjustBalanceFromDossier(userId) {
+      const currentBal = currentDossierData?.user?.walletBalance || 0;
+      const input = prompt(`Adjust Customer Wallet Balance (Current: $${currentBal.toFixed(2)}):\nEnter positive amount to credit (e.g. 5.00) or negative to deduct (e.g. -2.00):`);
+      if (!input) return;
+
+      const amount = parseFloat(input);
+      if (isNaN(amount) || amount === 0) {
+        alert('Invalid amount entered.');
+        return;
+      }
+
+      const reason = prompt('Enter reason / reference note for this balance adjustment:') || 'Support Agent Adjustment';
+
+      try {
+        const res = await adminFetch(`/api/admin/users/${userId}/adjust-balance`, {
+          method: 'POST',
+          body: JSON.stringify({ amount, reason })
+        });
+
+        if (res.success) {
+          alert(`✅ Wallet adjusted successfully! New Balance: $${res.newBalance.toFixed(2)}`);
+          await openInChatUserDossier(userId);
+          await loadSupportQueue();
+        }
+      } catch (err) {
+        alert(`❌ ${err.message}`);
+      }
+    }
+
+    async function handleToggleBlockFromDossier(userId) {
+      const isBanned = currentDossierData?.user?.isBanned;
+      const action = isBanned ? 'Unblock' : 'Block';
+      if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+
+      try {
+        const res = await adminFetch(`/api/admin/users/${userId}/toggle-block`, {
+          method: 'POST'
+        });
+
+        if (res.success) {
+          alert(`✅ User is now ${res.isBlocked ? 'Blocked 🔴' : 'Active 🟢'}`);
+          await openInChatUserDossier(userId);
+          await loadSupportQueue();
+        }
+      } catch (err) {
+        alert(`❌ ${err.message}`);
+      }
+    }
+
+    async function handleTransferToDepositSupport(userId) {
+      if (!userId) return;
+      if (!confirm('Reassign this ticket to the Deposit & Billing Support Queue?')) return;
+
+      try {
+        const agentsRes = await adminFetch('/api/admin/support/agents');
+        const depositAgent = (agentsRes.agents || []).find(a => a.role === 'deposit_supporter') || agentsRes.agents?.[0];
+
+        if (depositAgent) {
+          await adminFetch('/api/admin/support/transfer', {
+            method: 'POST',
+            body: JSON.stringify({
+              userId,
+              targetStaffId: depositAgent.id,
+              internalNotes: 'Routed to Deposit Specialist for payment verification.'
+            })
+          });
+          alert(`✅ Ticket successfully transferred to ${depositAgent.name} (Deposit Support)!`);
+          closeInChatUserDossier();
+          await loadSupportQueue();
+        } else {
+          alert('No dedicated Deposit Supporter account found. Please create one in the Team tab.');
+        }
+      } catch (err) {
+        alert(`❌ ${err.message}`);
+      }
+    }
+
+    // ============================================================
     // 👥 TEAM & STAFF MANAGEMENT (RBAC) LOGIC
     // ============================================================
     let teamList = [];
@@ -4002,6 +4335,23 @@
       }
     }
 
+    const ALL_STAFF_PERMS = [
+      'can_handle_support',
+      'can_transfer_tickets',
+      'can_view_users',
+      'can_edit_user_profile',
+      'can_block_users',
+      'can_view_wallet_balance',
+      'can_adjust_balance',
+      'can_view_transactions',
+      'can_view_numbers',
+      'can_purchase_for_user',
+      'can_renew_for_user',
+      'can_cancel_numbers',
+      'can_view_cdr',
+      'can_handle_deposits'
+    ];
+
     function openCreateStaffModal() {
       document.getElementById('staffEditId').value = '';
       document.getElementById('staffNameInput').value = '';
@@ -4027,11 +4377,11 @@
       document.getElementById('staffPasswordInput').value = '';
       document.getElementById('staffPasswordInput').required = false;
       document.getElementById('staffPasswordLabel').innerText = 'New Password (leave blank to keep existing)';
-      document.getElementById('staffRoleSelect').value = m.role;
+      document.getElementById('staffRoleSelect').value = m.role || 'support_agent';
 
       // Set Permissions Checkboxes
-      const perms = (m.permissions || '').split(',');
-      ['can_handle_support', 'can_manage_users', 'can_manage_numbers', 'can_view_cdr', 'can_view_transactions', 'can_adjust_balance'].forEach(p => {
+      const perms = (m.permissions || '').split(',').map(p => p.trim());
+      ALL_STAFF_PERMS.forEach(p => {
         const el = document.getElementById('perm_' + p);
         if (el) el.checked = m.permissions === 'all' || perms.includes(p);
       });
@@ -4049,15 +4399,34 @@
       const role = document.getElementById('staffRoleSelect')?.value;
       const isSuper = role === 'super_admin';
       const isSupport = role === 'support_agent';
+      const isDeposit = role === 'deposit_supporter';
       const isOps = role === 'operations_manager';
       const isFinance = role === 'finance_manager';
 
-      document.getElementById('perm_can_handle_support').checked = isSuper || isSupport || isOps;
-      document.getElementById('perm_can_manage_users').checked = isSuper || isSupport || isOps || isFinance;
-      document.getElementById('perm_can_manage_numbers').checked = isSuper || isOps;
-      document.getElementById('perm_can_view_cdr').checked = isSuper || isSupport || isOps;
-      document.getElementById('perm_can_view_transactions').checked = isSuper || isFinance;
-      document.getElementById('perm_can_adjust_balance').checked = isSuper;
+      // 1. Support & Chat
+      const setCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
+      setCheck('perm_can_handle_support', isSuper || isSupport || isDeposit || isOps);
+      setCheck('perm_can_transfer_tickets', isSuper || isSupport || isDeposit);
+
+      // 2. User CRM
+      setCheck('perm_can_view_users', isSuper || isSupport || isDeposit || isOps || isFinance);
+      setCheck('perm_can_edit_user_profile', isSuper || isOps);
+      setCheck('perm_can_block_users', isSuper);
+
+      // 3. Wallet
+      setCheck('perm_can_view_wallet_balance', isSuper || isSupport || isDeposit || isFinance);
+      setCheck('perm_can_adjust_balance', isSuper || isDeposit || isFinance);
+      setCheck('perm_can_view_transactions', isSuper || isDeposit || isFinance);
+
+      // 4. Numbers & Actions
+      setCheck('perm_can_view_numbers', isSuper || isSupport || isOps);
+      setCheck('perm_can_purchase_for_user', isSuper || isSupport || isOps);
+      setCheck('perm_can_renew_for_user', isSuper || isSupport || isOps);
+      setCheck('perm_can_cancel_numbers', isSuper || isOps);
+      setCheck('perm_can_view_cdr', isSuper || isSupport || isOps);
+
+      // 5. Deposit Specialist
+      setCheck('perm_can_handle_deposits', isSuper || isDeposit);
     }
 
     async function handleSaveStaff(e) {
@@ -4069,7 +4438,7 @@
       const role = document.getElementById('staffRoleSelect')?.value;
 
       const permsList = [];
-      ['can_handle_support', 'can_manage_users', 'can_manage_numbers', 'can_view_cdr', 'can_view_transactions', 'can_adjust_balance'].forEach(p => {
+      ALL_STAFF_PERMS.forEach(p => {
         if (document.getElementById('perm_' + p)?.checked) permsList.push(p);
       });
       const permissions = role === 'super_admin' ? 'all' : permsList.join(',');
@@ -4579,7 +4948,7 @@ setInterval(() => {
 
   <!-- 👥 CREATE / EDIT STAFF MEMBER MODAL -->
   <div id="staffModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up max-h-[90vh] flex flex-col">
       <div class="flex items-center justify-between pb-3 border-b border-slate-800">
         <h3 id="staffModalTitle" class="text-base font-bold text-white flex items-center gap-2">
           <i class="fa-solid fa-user-plus text-amber-400"></i>
@@ -4590,43 +4959,91 @@ setInterval(() => {
         </button>
       </div>
 
-      <form onsubmit="handleSaveStaff(event)" class="space-y-3.5 text-xs">
+      <form onsubmit="handleSaveStaff(event)" class="space-y-4 text-xs overflow-y-auto custom-scrollbar pr-1">
         <input type="hidden" id="staffEditId" value="">
 
-        <div>
-          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Full Name *</label>
-          <input type="text" id="staffNameInput" placeholder="e.g. Ali Raza" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Full Name *</label>
+            <input type="text" id="staffNameInput" placeholder="e.g. Hassan Support" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Work Email Address *</label>
+            <input type="email" id="staffEmailInput" placeholder="e.g. hassan@simlytel.com" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+          </div>
         </div>
 
-        <div>
-          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Work Email Address *</label>
-          <input type="email" id="staffEmailInput" placeholder="e.g. ali@simlytel.com" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label id="staffPasswordLabel" class="block text-[11px] font-semibold text-slate-400 mb-1">Account Password *</label>
+            <input type="password" id="staffPasswordInput" placeholder="Enter secure password" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Assigned Staff Role *</label>
+            <select id="staffRoleSelect" onchange="handleStaffRoleChange()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+              <option value="support_agent">🎧 General Support Specialist</option>
+              <option value="deposit_supporter">💳 Deposit & Billing Supporter</option>
+              <option value="operations_manager">📦 Operations Manager</option>
+              <option value="finance_manager">💼 Finance Lead</option>
+              <option value="super_admin">👑 Super Admin (Full Unrestricted Master)</option>
+            </select>
+          </div>
         </div>
 
-        <div>
-          <label id="staffPasswordLabel" class="block text-[11px] font-semibold text-slate-400 mb-1">Account Password *</label>
-          <input type="password" id="staffPasswordInput" placeholder="Enter secure password" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
-        </div>
+        <!-- Granular Permissions Matrix -->
+        <div class="space-y-3 pt-1">
+          <label class="block text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center justify-between">
+            <span>Granular Capability Permissions:</span>
+            <span class="text-[10px] text-slate-500 font-normal">Check specific permissions below</span>
+          </label>
 
-        <div>
-          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Assigned Staff Role *</label>
-          <select id="staffRoleSelect" onchange="handleStaffRoleChange()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
-            <option value="support_agent">🎧 Support Specialist (Customer Care)</option>
-            <option value="operations_manager">📦 Operations Manager (Number Fleet & Delivery)</option>
-            <option value="finance_manager">💼 Finance Lead (Invoices & Billing)</option>
-            <option value="super_admin">👑 Super Admin (Full Unrestricted Access)</option>
-          </select>
-        </div>
+          <!-- 1. Support & Chat -->
+          <div class="p-3 bg-slate-950/70 border border-slate-800 rounded-xl space-y-1.5">
+            <div class="text-[10px] font-bold text-violet-400 uppercase">💬 Support & Customer Helpdesk</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300">
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="perm_can_handle_support" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>Handle Live Support Chats</span></label>
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="perm_can_transfer_tickets" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>Transfer Chats to Other Agents</span></label>
+            </div>
+          </div>
 
-        <div>
-          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Granular Permissions Granted:</label>
-          <div id="staffPermissionsGrid" class="grid grid-cols-2 gap-2 p-3 bg-slate-950 border border-slate-800 rounded-xl text-[11px] text-slate-300">
-            <label class="flex items-center gap-2"><input type="checkbox" id="perm_can_handle_support" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>Handle Support Chats</span></label>
-            <label class="flex items-center gap-2"><input type="checkbox" id="perm_can_manage_users" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>User Lookup (CRM)</span></label>
-            <label class="flex items-center gap-2"><input type="checkbox" id="perm_can_manage_numbers" class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>Manage Numbers</span></label>
-            <label class="flex items-center gap-2"><input type="checkbox" id="perm_can_view_cdr" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>View Call/SMS Logs</span></label>
-            <label class="flex items-center gap-2"><input type="checkbox" id="perm_can_view_transactions" class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>View Ledger/Billing</span></label>
-            <label class="flex items-center gap-2"><input type="checkbox" id="perm_can_adjust_balance" class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>Adjust User Balances</span></label>
+          <!-- 2. User Data & CRM -->
+          <div class="p-3 bg-slate-950/70 border border-slate-800 rounded-xl space-y-1.5">
+            <div class="text-[10px] font-bold text-indigo-400 uppercase">👤 User Management (View vs Edit)</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300">
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="perm_can_view_users" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>View User Profile & Info (Read-Only)</span></label>
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="perm_can_edit_user_profile" class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>Edit User Profile Details</span></label>
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="perm_can_block_users" class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>Block / Unblock Users</span></label>
+            </div>
+          </div>
+
+          <!-- 3. Wallet & Balance -->
+          <div class="p-3 bg-slate-950/70 border border-slate-800 rounded-xl space-y-1.5">
+            <div class="text-[10px] font-bold text-emerald-400 uppercase">💳 Wallet & Financial Controls</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300">
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="perm_can_view_wallet_balance" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>View User Wallet Balance</span></label>
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="perm_can_adjust_balance" class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>Manual Balance Adjustments (Increase/Decrease)</span></label>
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="perm_can_view_transactions" class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>View Ledger & Transactions</span></label>
+            </div>
+          </div>
+
+          <!-- 4. Number Fleet & Action-On-Behalf -->
+          <div class="p-3 bg-slate-950/70 border border-slate-800 rounded-xl space-y-1.5">
+            <div class="text-[10px] font-bold text-amber-400 uppercase">📞 Numbers & Actions On Behalf of User</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300">
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="perm_can_view_numbers" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>View User Active Numbers</span></label>
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="perm_can_purchase_for_user" checked class="rounded bg-slate-900 border-slate-700 text-amber-500"> <span class="text-amber-300 font-semibold">🛒 Buy Number for User (Using User's Balance)</span></label>
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="perm_can_renew_for_user" checked class="rounded bg-slate-900 border-slate-700 text-amber-500"> <span class="text-amber-300 font-semibold">🔄 Renew Number for User (Using User's Balance)</span></label>
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="perm_can_cancel_numbers" class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>Cancel / Reclaim Numbers</span></label>
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="perm_can_view_cdr" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600"> <span>View Call & SMS Records (CDR)</span></label>
+            </div>
+          </div>
+
+          <!-- 5. Deposit Specialist -->
+          <div class="p-3 bg-slate-950/70 border border-slate-800 rounded-xl space-y-1.5">
+            <div class="text-[10px] font-bold text-cyan-400 uppercase">💰 Deposit Supporter Specialist</div>
+            <div class="grid grid-cols-1 gap-2 text-[11px] text-slate-300">
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="perm_can_handle_deposits" class="rounded bg-slate-900 border-slate-700 text-cyan-500"> <span class="text-cyan-300 font-semibold">Deposit Supporter (Resolve & verify payment/deposit tickets)</span></label>
+            </div>
           </div>
         </div>
 
@@ -4667,6 +5084,202 @@ setInterval(() => {
         <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
           <button type="button" onclick="closeTransferTicketModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
           <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-indigo-600/30">Transfer Ticket Now</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 👤 IN-CHAT USER DOSSIER & ACTION CENTER MODAL -->
+  <div id="inChatUserDossierModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up max-h-[92vh] flex flex-col">
+      
+      <!-- Dossier Header -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <div id="dossierUserAvatar" class="w-11 h-11 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-base">
+            U
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 id="dossierUserName" class="text-base font-bold text-white">Loading Customer...</h3>
+              <span id="dossierUserStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
+            </div>
+            <div id="dossierUserMeta" class="text-xs text-slate-400">Loading details...</div>
+          </div>
+        </div>
+        <button onclick="closeInChatUserDossier()" class="text-slate-400 hover:text-white text-lg p-1.5 rounded-xl hover:bg-slate-800 transition-all">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Dossier Body (Scrollable) -->
+      <div class="space-y-4 overflow-y-auto custom-scrollbar pr-1 text-xs">
+        
+        <!-- Top Stats Row (Live Balance, Active Lines, Risk) -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="p-3.5 bg-slate-950/80 border border-slate-800 rounded-2xl">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Live Wallet Balance</div>
+            <div id="dossierWalletBalance" class="text-xl font-extrabold text-emerald-400 font-mono">$0.00</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Available for calling, SMS & line purchase</div>
+          </div>
+
+          <div class="p-3.5 bg-slate-950/80 border border-slate-800 rounded-2xl">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Active Virtual Lines</div>
+            <div id="dossierActiveNumbersCount" class="text-xl font-extrabold text-indigo-400 font-mono">0</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Assigned to this customer account</div>
+          </div>
+
+          <div class="p-3.5 bg-slate-950/80 border border-slate-800 rounded-2xl">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Account Risk & Security</div>
+            <div id="dossierRiskBadge" class="text-xs font-bold text-emerald-400 mt-1">🟢 LOW RISK (Score: 0)</div>
+            <div id="dossierDeviceMeta" class="text-[10px] text-slate-500 mt-0.5 truncate">Device: Standard Mobile Client</div>
+          </div>
+        </div>
+
+        <!-- 🚀 Support Agent Action Center (Action-On-Behalf) -->
+        <div class="p-4 bg-gradient-to-r from-slate-950 to-indigo-950/30 border border-indigo-500/20 rounded-2xl space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="text-[11px] font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+              <span>Agent Action Center (Assist Customer On-The-Fly)</span>
+            </div>
+            <span class="text-[10px] text-slate-400">Deducts directly from customer balance</span>
+          </div>
+
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button id="dossierBtnBuyNumber" onclick="openBuyNumberForUserModal(currentDossierUserId)" class="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-xl text-xs font-bold shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5">
+              <i class="fa-solid fa-cart-shopping"></i> <span>🛒 Buy Virtual Number for User</span>
+            </button>
+            <button id="dossierBtnAdjustBalance" onclick="handleAdjustBalanceFromDossier(currentDossierUserId)" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
+              <i class="fa-solid fa-wallet"></i> <span>💳 Adjust Balance</span>
+            </button>
+            <button id="dossierBtnBlockUser" onclick="handleToggleBlockFromDossier(currentDossierUserId)" class="px-3 py-2 bg-slate-800 hover:bg-rose-950 hover:text-rose-400 text-slate-300 border border-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5">
+              <i class="fa-solid fa-ban"></i> <span id="dossierBtnBlockText">Block User</span>
+            </button>
+            <button onclick="handleTransferToDepositSupport(currentDossierUserId)" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5">
+              <i class="fa-solid fa-shuffle text-cyan-400"></i> <span>↗️ Route to Deposit Support</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 📞 Active Virtual Numbers Fleet -->
+        <div class="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 space-y-2">
+          <div class="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+            <span>Virtual Numbers Owned:</span>
+            <span id="dossierNumberTotalBadge" class="text-[10px] text-slate-500">0 numbers</span>
+          </div>
+          <div id="dossierNumbersTableBody" class="space-y-2">
+            <div class="text-center text-slate-500 py-3 text-xs">No active virtual lines assigned.</div>
+          </div>
+        </div>
+
+        <!-- 💳 Recent 10 Transactions -->
+        <div class="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 space-y-2">
+          <div class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Recent Transactions Ledger (Last 10):</div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-[11px]">
+              <thead class="border-b border-slate-800 text-slate-400 font-semibold">
+                <tr>
+                  <th class="py-2 px-2">Type</th>
+                  <th class="py-2 px-2">Amount</th>
+                  <th class="py-2 px-2">Description</th>
+                  <th class="py-2 px-2 text-right">Date</th>
+                </tr>
+              </thead>
+              <tbody id="dossierTxTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+                <tr><td colspan="4" class="py-4 text-center text-slate-500">No recent transactions.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 📞 Recent Call & SMS Activity -->
+        <div class="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 space-y-2">
+          <div class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Recent Outbound/Inbound Calls:</div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-[11px]">
+              <thead class="border-b border-slate-800 text-slate-400 font-semibold">
+                <tr>
+                  <th class="py-2 px-2">From</th>
+                  <th class="py-2 px-2">To</th>
+                  <th class="py-2 px-2">Direction</th>
+                  <th class="py-2 px-2">Duration</th>
+                  <th class="py-2 px-2 text-right">Date</th>
+                </tr>
+              </thead>
+              <tbody id="dossierCallsTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+                <tr><td colspan="5" class="py-4 text-center text-slate-500">No recent calls recorded.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Dossier Footer -->
+      <div class="flex items-center justify-between pt-3 border-t border-slate-800 text-xs">
+        <span class="text-slate-500 text-[11px]">SimlyTel Customer Helpdesk Dossier Inspector</span>
+        <button onclick="closeInChatUserDossier()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs">Close Dossier</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🛒 MODAL: BUY VIRTUAL NUMBER FOR USER -->
+  <div id="buyNumberForUserModal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-cart-shopping text-amber-400"></i>
+          <span>Buy Number for Customer</span>
+        </h3>
+        <button onclick="closeBuyNumberForUserModal()" class="text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleExecuteBuyNumberForUser(event)" class="space-y-3.5 text-xs">
+        <input type="hidden" id="agentBuyUserId" value="">
+
+        <div class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-xs">
+          <div class="font-bold flex items-center gap-1.5 mb-0.5">
+            <i class="fa-solid fa-coins"></i> <span>Deduction Notice</span>
+          </div>
+          <div>Cost will be deducted automatically from the customer's wallet balance (<span id="agentBuyUserBalance" class="font-bold font-mono">$0.00</span> available).</div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Select Country *</label>
+          <select id="agentBuyCountrySelect" onchange="updateAgentBuyPricePreview()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+            <option value="US">🇺🇸 United States ($1.99 / 30 days)</option>
+            <option value="CA">🇨🇦 Canada ($1.99 / 30 days)</option>
+            <option value="GB">🇬🇧 United Kingdom ($4.99 / 30 days)</option>
+            <option value="PK">🇵🇰 Pakistan ($12.99 / 30 days)</option>
+            <option value="AU">🇦🇺 Australia ($5.99 / 30 days)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Plan Duration *</label>
+          <select id="agentBuyPlanSelect" onchange="updateAgentBuyPricePreview()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+            <option value="30_days">30 Days (Standard Monthly Plan)</option>
+            <option value="7_days">7 Days (Short Trial Plan)</option>
+            <option value="365_days">365 Days (Annual Plan)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Custom / Desired Number (Optional)</label>
+          <input type="text" id="agentBuyCustomPhoneInput" placeholder="Leave blank to auto-generate random line" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl font-bold">
+          <span class="text-slate-400 text-xs">Total Retail Price:</span>
+          <span id="agentBuyPricePreview" class="text-emerald-400 text-sm font-mono font-extrabold">$1.99</span>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeBuyNumberForUserModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+          <button type="submit" id="btnExecuteBuyNumber" class="px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-amber-500/20">Confirm & Activate Line</button>
         </div>
       </form>
     </div>

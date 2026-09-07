@@ -2836,8 +2836,8 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   }
 });
 
-// 3. Users CRM List, Search & Filter (with Erased & Soft-Deleted Support)
-app.get('/api/admin/users', requireAdmin, async (req, res) => {
+// 3. Users CRM List, Search & Filter (with Erased & Soft-Deleted Support & Multi-Line Search)
+app.get('/api/admin/users', requireStaffPermission(['can_view_users', 'can_manage_users', 'can_handle_support', 'all']), async (req, res) => {
   try {
     const query = req.query.search ? req.query.search.trim().toLowerCase() : '';
     const filter = (req.query.filter || 'all').toLowerCase(); // 'all', 'active', 'blocked', 'erased'
@@ -2849,12 +2849,27 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
     const andConditions = [];
 
     if (query) {
+      const cleanDigits = query.replace(/[^0-9]/g, '');
+      // Powerful Virtual Line Search: Search active & expired numbers in PurchasedNumber
+      const matchingNumbers = await prisma.purchasedNumber.findMany({
+        where: {
+          OR: [
+            { phoneNumber: { contains: query } },
+            ...(cleanDigits.length >= 3 ? [{ phoneNumber: { contains: cleanDigits } }] : [])
+          ]
+        },
+        select: { userId: true }
+      });
+      const numberUserIds = matchingNumbers.map(n => n.userId).filter(Boolean);
+
       andConditions.push({
         OR: [
           { email: { contains: query } },
           { name: { contains: query } },
           { id: { contains: query } },
-          { phone: { contains: query } }
+          { phone: { contains: query } },
+          ...(cleanDigits.length >= 3 ? [{ phone: { contains: cleanDigits } }] : []),
+          ...(numberUserIds.length > 0 ? [{ id: { in: numberUserIds } }] : [])
         ]
       });
     }
@@ -2955,7 +2970,7 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
 });
 
 // 3.5 360-Degree Deep User Profile Dossier (Numbers, Calls, SMS, Balance, Audit)
-app.get('/api/admin/users/:id/full-profile', requireAdmin, async (req, res) => {
+app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_users', 'can_manage_users', 'can_handle_support', 'all']), async (req, res) => {
   try {
     const rawId = req.params.id;
     const user = await prisma.user.findFirst({

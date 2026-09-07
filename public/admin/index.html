@@ -901,12 +901,12 @@
               <!-- Workstation Header -->
               <div id="chatHeader" class="pb-3 border-b border-slate-800 flex items-center justify-between flex-wrap gap-2">
                 <div class="flex items-center gap-3">
-                  <div id="chatUserAvatar" class="w-10 h-10 rounded-2xl bg-indigo-600/30 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-sm cursor-pointer hover:opacity-80" onclick="if(activeSupportUserId) openInChatUserDossier(activeSupportUserId)">
+                  <div id="chatUserAvatar" class="w-10 h-10 rounded-2xl bg-indigo-600/30 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-sm cursor-pointer hover:opacity-80" onclick="handleOpenDossierFromChat()">
                     ?
                   </div>
                   <div>
                     <div class="flex items-center gap-2">
-                      <span id="chatUserName" class="text-sm font-bold text-white cursor-pointer hover:underline" onclick="if(activeSupportUserId) openInChatUserDossier(activeSupportUserId)">Select a Customer</span>
+                      <span id="chatUserName" class="text-sm font-bold text-white cursor-pointer hover:underline" onclick="handleOpenDossierFromChat()">Select a Customer</span>
                       <span id="chatUserBalanceBadge" class="hidden px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">$0.00</span>
                     </div>
                     <div id="chatUserMeta" class="text-[11px] text-slate-400">Click any conversation from the list</div>
@@ -915,7 +915,7 @@
 
                 <!-- Ticket Action Controls (Claim / Transfer / Resolve / View Dossier) -->
                 <div id="ticketActionControls" class="flex items-center gap-2 hidden flex-wrap">
-                  <button id="btnViewDossierInChat" onclick="openInChatUserDossier(activeSupportUserId)" class="px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
+                  <button id="btnViewDossierInChat" onclick="handleOpenDossierFromChat()" class="px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
                     <i class="fa-solid fa-address-card text-indigo-400"></i> <span>👤 View Dossier & Actions</span>
                   </button>
                   <button id="btnClaimTicket" onclick="handleClaimCurrentTicket()" class="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-xl text-xs font-bold shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5">
@@ -4028,25 +4028,40 @@
       const btnClaim = document.getElementById('btnClaimTicket');
       const btnTransfer = document.getElementById('btnTransferTicket');
       const btnResolve = document.getElementById('btnResolveTicket');
+      const btnDossier = document.getElementById('btnViewDossierInChat');
       const replyInput = document.getElementById('replyTextInput');
       const btnSend = document.getElementById('btnSendReply');
 
       if (nameEl) nameEl.innerText = ticket.userName || ticket.userEmail || 'Customer';
-      if (metaEl) metaEl.innerText = `${ticket.userEmail || ticket.userId} • Click header to view full dossier`;
       if (avatarEl) avatarEl.innerText = (ticket.userName || ticket.userEmail || 'C')[0].toUpperCase();
       if (controlsEl) controlsEl.classList.remove('hidden');
 
+      if (metaEl) {
+        if (ticket.status === 'unassigned' && CURRENT_STAFF?.role !== 'super_admin') {
+          metaEl.innerText = `${ticket.userEmail || ticket.userId} • Waiting in Queue (Claim ticket to assist & unlock actions)`;
+        } else {
+          metaEl.innerText = `${ticket.userEmail || ticket.userId} • Click header to view full dossier & actions`;
+        }
+      }
+
       const balBadge = document.getElementById('chatUserBalanceBadge');
       if (balBadge) {
-        balBadge.classList.remove('hidden');
-        balBadge.innerText = 'Checking...';
-        adminFetch(`/api/admin/support/user-dossier/${encodeURIComponent(userId)}`).then(res => {
-          if (res.success && res.user && activeSupportUserId === userId) {
-            balBadge.innerText = `$${(res.user.walletBalance || 0).toFixed(2)}`;
-          }
-        }).catch(() => {
-          if (balBadge) balBadge.classList.add('hidden');
-        });
+        if (ticket.status === 'unassigned' && CURRENT_STAFF?.role !== 'super_admin') {
+          balBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1';
+          balBadge.innerHTML = '<i class="fa-solid fa-lock text-[8px]"></i> <span>Claim to unlock</span>';
+          balBadge.classList.remove('hidden');
+        } else {
+          balBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+          balBadge.classList.remove('hidden');
+          balBadge.innerText = 'Checking...';
+          adminFetch(`/api/admin/support/user-dossier/${encodeURIComponent(userId)}`).then(res => {
+            if (res.success && res.user && activeSupportUserId === userId) {
+              balBadge.innerText = `${(res.user.walletBalance || 0).toFixed(2)}`;
+            }
+          }).catch(() => {
+            if (balBadge) balBadge.classList.add('hidden');
+          });
+        }
       }
 
       // Configure Action Buttons & Collision Lock Banner
@@ -4056,10 +4071,25 @@
           bannerEl.classList.remove('hidden');
         }
         if (bannerText) bannerText.innerHTML = '<i class="fa-solid fa-clock-rotate-left mr-1.5"></i> Customer is waiting in Queue for an Agent.';
-        if (bannerSub) bannerSub.innerText = 'Click "Pick Up / Claim" to assist.';
-        if (btnClaim) btnClaim.classList.remove('hidden');
+        if (bannerSub) bannerSub.innerText = 'Click "Pick Up / Claim" to unlock actions & assist.';
+        if (btnClaim) {
+          btnClaim.classList.remove('hidden');
+          btnClaim.innerHTML = '<i class="fa-solid fa-hand"></i> <span>Pick Up / Claim</span>';
+          btnClaim.disabled = false;
+        }
         if (btnTransfer) btnTransfer.classList.add('hidden');
         if (btnResolve) btnResolve.classList.add('hidden');
+        if (btnDossier) {
+          if (CURRENT_STAFF?.role === 'super_admin') {
+            btnDossier.className = 'px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer';
+            btnDossier.innerHTML = '<i class="fa-solid fa-address-card text-indigo-400"></i> <span>👤 View Dossier & Actions</span>';
+            btnDossier.disabled = false;
+          } else {
+            btnDossier.className = 'px-2.5 py-1.5 bg-slate-800/80 text-amber-400/80 border border-amber-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed opacity-80';
+            btnDossier.innerHTML = '<i class="fa-solid fa-lock text-amber-400"></i> <span>🔒 Claim to Unlock Actions</span>';
+            btnDossier.disabled = true;
+          }
+        }
         if (replyInput) {
           replyInput.placeholder = '⚠️ Please Click "Pick Up / Claim" above before replying...';
           replyInput.disabled = true;
@@ -4078,6 +4108,11 @@
         if (btnClaim) btnClaim.classList.add('hidden');
         if (btnTransfer) btnTransfer.classList.remove('hidden');
         if (btnResolve) btnResolve.classList.remove('hidden');
+        if (btnDossier) {
+          btnDossier.className = 'px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer';
+          btnDossier.innerHTML = '<i class="fa-solid fa-address-card text-indigo-400"></i> <span>👤 View Dossier & Actions</span>';
+          btnDossier.disabled = false;
+        }
         if (replyInput) {
           replyInput.placeholder = 'Type your response to customer...';
           replyInput.disabled = false;
@@ -4103,6 +4138,17 @@
         }
         if (btnTransfer) btnTransfer.classList.toggle('hidden', CURRENT_STAFF?.role !== 'super_admin');
         if (btnResolve) btnResolve.classList.toggle('hidden', CURRENT_STAFF?.role !== 'super_admin');
+        if (btnDossier) {
+          if (CURRENT_STAFF?.role === 'super_admin') {
+            btnDossier.className = 'px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer';
+            btnDossier.innerHTML = '<i class="fa-solid fa-address-card text-indigo-400"></i> <span>👤 View Dossier & Actions</span>';
+            btnDossier.disabled = false;
+          } else {
+            btnDossier.className = 'px-2.5 py-1.5 bg-slate-800/80 text-slate-500 border border-slate-700/50 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed opacity-70';
+            btnDossier.innerHTML = `<i class="fa-solid fa-lock text-slate-500"></i> <span>Handled by ${ticket.assignedStaffName || 'Agent'}</span>`;
+            btnDossier.disabled = true;
+          }
+        }
         if (replyInput) {
           if (CURRENT_STAFF?.role === 'super_admin') {
             replyInput.placeholder = 'Super Admin Mode: You can send reply or Force Takeover...';
@@ -4131,6 +4177,11 @@
         }
         if (btnTransfer) btnTransfer.classList.add('hidden');
         if (btnResolve) btnResolve.classList.add('hidden');
+        if (btnDossier) {
+          btnDossier.className = 'px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer';
+          btnDossier.innerHTML = '<i class="fa-solid fa-address-card text-indigo-400"></i> <span>👤 View Dossier & Actions</span>';
+          btnDossier.disabled = false;
+        }
         if (replyInput) {
           replyInput.placeholder = 'Ticket resolved. Re-open to send message.';
           replyInput.disabled = true;
@@ -4334,7 +4385,40 @@
     let currentDossierUserId = null;
     let currentDossierData = null;
 
+    function handleOpenDossierFromChat() {
+      if (!activeSupportUserId) return;
+      
+      const ticket = activeTicketData || (rawQueueData.allChats.find(x => x.userId === activeSupportUserId) || 
+                                          rawQueueData.unassigned.find(x => x.userId === activeSupportUserId) || 
+                                          rawQueueData.myChats.find(x => x.userId === activeSupportUserId));
+
+      if (ticket && ticket.status === 'unassigned' && CURRENT_STAFF?.role !== 'super_admin') {
+        alert('⚠️ Customer chat is currently waiting in the Queue! Please click "Pick Up / Claim" first to assist this customer and unlock their history & actions.');
+        return;
+      }
+
+      if (ticket && ticket.isLockedByOther && CURRENT_STAFF?.role !== 'super_admin') {
+        alert(`⚠️ This conversation is currently assigned to ${ticket.assignedStaffName || 'another agent'}. Action access is restricted.`);
+        return;
+      }
+
+      openInChatUserDossier(activeSupportUserId);
+    }
+
     async function openInChatUserDossier(userId) {
+      if (!userId) return;
+
+      const ticket = (activeTicketData && activeTicketData.userId === userId) ? activeTicketData :
+                     (rawQueueData.unassigned.find(x => x.userId === userId) || rawQueueData.allChats.find(x => x.userId === userId));
+
+      if (ticket && ticket.status === 'unassigned' && CURRENT_STAFF?.role !== 'super_admin') {
+        alert('⚠️ Customer chat is waiting in queue! Please click "Pick Up / Claim" first before opening customer dossier.');
+        return;
+      }
+      if (ticket && ticket.isLockedByOther && CURRENT_STAFF?.role !== 'super_admin') {
+        alert(`⚠️ This conversation is assigned to ${ticket.assignedStaffName || 'another agent'}.`);
+        return;
+      }
       if (!userId) return;
       currentDossierUserId = userId;
 
@@ -4515,6 +4599,19 @@
     async function openBuyNumberForUserModal(userId) {
       if (!userId && !currentDossierUserId) return;
       const targetUid = userId || currentDossierUserId;
+
+      const ticket = (activeTicketData && activeTicketData.userId === targetUid) ? activeTicketData :
+                     (rawQueueData.unassigned.find(x => x.userId === targetUid) || rawQueueData.allChats.find(x => x.userId === targetUid));
+
+      if (ticket && ticket.status === 'unassigned' && CURRENT_STAFF?.role !== 'super_admin') {
+        alert('⚠️ This customer chat is waiting in queue! Please click "Pick Up / Claim" first to join the conversation before purchasing numbers.');
+        return;
+      }
+      if (ticket && ticket.isLockedByOther && CURRENT_STAFF?.role !== 'super_admin') {
+        alert(`⚠️ This customer ticket is assigned to ${ticket.assignedStaffName || 'another agent'}.`);
+        return;
+      }
+
       document.getElementById('agentBuyUserId').value = targetUid;
 
       // Extract User Information
@@ -4544,7 +4641,7 @@
       if (nameEl) nameEl.innerText = u?.name || 'Customer';
       if (emailEl) emailEl.innerText = u?.email || targetUid;
       if (avatarEl) avatarEl.innerText = (u?.name || u?.email || 'U')[0].toUpperCase();
-      if (balEl) balEl.innerText = `$${(u?.walletBalance || 0).toFixed(2)}`;
+      if (balEl) balEl.innerText = `${(u?.walletBalance || 0).toFixed(2)}`;
 
       // Populate Country Dropdown
       const countrySelect = document.getElementById('agentBuyCountrySelect');
@@ -4559,9 +4656,7 @@
       selectedAgentPlanType = '30_days';
       agentSelectedPhoneNumber = null;
       document.getElementById('agentBuyNumberFilterInput').value = '';
-      document.getElementById('agentBuyCustomPhoneInput').value = '';
-      document.getElementById('agentCustomNumberContainer')?.classList.add('hidden');
-      document.getElementById('agentSelectedNumberDisplay').innerText = 'None Selected (Click a number below)';
+      document.getElementById('agentSelectedNumberDisplay').innerText = 'Loading numbers from carrier pool...';
 
       selectAgentPlanDuration('30_days', false);
 
@@ -4581,8 +4676,7 @@
       const country = document.getElementById('agentBuyCountrySelect')?.value || 'US';
       agentSelectedPhoneNumber = null;
       document.getElementById('agentBuyNumberFilterInput').value = '';
-      document.getElementById('agentBuyCustomPhoneInput').value = '';
-      document.getElementById('agentSelectedNumberDisplay').innerText = 'Loading numbers...';
+      document.getElementById('agentSelectedNumberDisplay').innerText = 'Loading numbers from carrier pool...';
       
       updatePlanPricesUI();
       await loadAvailableNumbersForAgent(country);
@@ -4597,7 +4691,7 @@
       grid.innerHTML = `
         <div class="col-span-2 text-center text-slate-400 py-6 text-xs flex items-center justify-center gap-2">
           <i class="fa-solid fa-spinner fa-spin text-indigo-400"></i>
-          <span>Loading available numbers for ${country}...</span>
+          <span>Loading available numbers for ${country} from carrier...</span>
         </div>
       `;
 
@@ -4608,20 +4702,23 @@
           renderAvailableNumbersGrid(res.numbers);
 
           // Auto-select first number
-          if (!agentSelectedPhoneNumber && res.numbers[0]) {
+          if (res.numbers[0]) {
             selectNumberCard(res.numbers[0].phoneNumber, res.numbers[0].region?.region_name || country);
           }
         } else {
           grid.innerHTML = `
             <div class="col-span-2 text-center text-slate-500 py-6 text-xs">
-              No numbers currently in pool. Click "Custom Input" to enter a number.
+              No numbers currently available in ${country} carrier inventory.
             </div>
           `;
+          document.getElementById('agentSelectedNumberDisplay').innerText = 'No numbers available';
+          agentSelectedPhoneNumber = null;
+          updateAgentBuyPricePreview();
         }
       } catch (err) {
         grid.innerHTML = `
           <div class="col-span-2 text-center text-rose-400 py-6 text-xs">
-            Failed to load numbers: ${escapeHtml(err.message)}
+            Failed to load numbers from carrier: ${escapeHtml(err.message)}
           </div>
         `;
       }
@@ -4672,35 +4769,14 @@
 
     function selectNumberCard(phoneNumber, regionName) {
       agentSelectedPhoneNumber = phoneNumber;
-      document.getElementById('agentSelectedNumberDisplay').innerHTML = `
-        <span class="text-indigo-300 font-mono font-bold text-sm">${escapeHtml(phoneNumber)}</span> 
-        <span class="text-[10px] text-slate-400 font-normal">(${escapeHtml(regionName)})</span>
-      `;
-      document.getElementById('agentBuyCustomPhoneInput').value = phoneNumber;
-      renderAvailableNumbersGrid(currentLoadedAvailableNumbers);
-      updateAgentBuyPricePreview();
-    }
-
-    function toggleCustomNumberInput() {
-      const container = document.getElementById('agentCustomNumberContainer');
-      const btn = document.getElementById('btnToggleCustomNum');
-      if (container) {
-        container.classList.toggle('hidden');
-        if (!container.classList.contains('hidden')) {
-          document.getElementById('agentBuyCustomPhoneInput')?.focus();
-          btn.innerText = 'Hide Custom';
-        } else {
-          btn.innerText = 'Custom Input';
-        }
-      }
-    }
-
-    function onCustomNumberTyped(val) {
-      agentSelectedPhoneNumber = val.trim();
       const display = document.getElementById('agentSelectedNumberDisplay');
       if (display) {
-        display.innerHTML = val.trim() ? `<span class="text-indigo-300 font-mono font-bold text-sm">${escapeHtml(val.trim())}</span> <span class="text-[10px] text-amber-400 font-normal">(Custom Line)</span>` : 'None Selected';
+        display.innerHTML = `
+          <span class="text-indigo-300 font-mono font-bold text-sm">${escapeHtml(phoneNumber)}</span> 
+          <span class="text-[10px] text-slate-400 font-normal">(${escapeHtml(regionName)})</span>
+        `;
       }
+      renderAvailableNumbersGrid(currentLoadedAvailableNumbers);
       updateAgentBuyPricePreview();
     }
 
@@ -4733,9 +4809,9 @@
       const p30 = calculateNumberPrice(country, '30_days');
       const p365 = calculateNumberPrice(country, '365_days');
 
-      if (document.getElementById('planPrice_7_days')) document.getElementById('planPrice_7_days').innerText = `$${p7.toFixed(2)}`;
-      if (document.getElementById('planPrice_30_days')) document.getElementById('planPrice_30_days').innerText = `$${p30.toFixed(2)}`;
-      if (document.getElementById('planPrice_365_days')) document.getElementById('planPrice_365_days').innerText = `$${p365.toFixed(2)}`;
+      if (document.getElementById('planPrice_7_days')) document.getElementById('planPrice_7_days').innerText = `${p7.toFixed(2)}`;
+      if (document.getElementById('planPrice_30_days')) document.getElementById('planPrice_30_days').innerText = `${p30.toFixed(2)}`;
+      if (document.getElementById('planPrice_365_days')) document.getElementById('planPrice_365_days').innerText = `${p365.toFixed(2)}`;
     }
 
     function updateAgentBuyPricePreview() {
@@ -4749,33 +4825,44 @@
       const statusNotice = document.getElementById('agentBuyBalanceStatusNotice');
       const btnSubmit = document.getElementById('btnExecuteBuyNumber');
 
-      const planNameMap = { '7_days': '7 Days Plan', '30_days': '30 Days Standard Plan', '365_days': '1 Year Annual Plan' };
-
-      if (previewEl) previewEl.innerText = `$${price.toFixed(2)}`;
+      if (previewEl) previewEl.innerText = `${price.toFixed(2)}`;
       if (remEl) {
-        remEl.innerText = `$${remaining.toFixed(2)}`;
+        remEl.innerText = `${remaining.toFixed(2)}`;
         remEl.className = remaining >= 0 ? 'font-mono font-bold text-emerald-400' : 'font-mono font-bold text-rose-400';
+      }
+
+      if (!agentSelectedPhoneNumber) {
+        if (statusNotice) {
+          statusNotice.className = 'text-[11px] font-semibold text-amber-400 flex items-center gap-1.5 pt-1';
+          statusNotice.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> <span>Please select an available phone number card above.</span>';
+        }
+        if (btnSubmit) {
+          btnSubmit.disabled = true;
+          btnSubmit.className = 'px-5 py-2.5 bg-slate-800 text-slate-500 font-bold rounded-xl text-xs cursor-not-allowed flex items-center gap-1.5 opacity-60';
+          btnSubmit.innerHTML = '<i class="fa-solid fa-hand-pointer"></i> <span>Select a Number</span>';
+        }
+        return;
       }
 
       if (bal < price) {
         if (statusNotice) {
           statusNotice.className = 'text-[11px] font-semibold text-rose-400 flex items-center gap-1.5 pt-1';
-          statusNotice.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <span>Insufficient Balance: Customer needs $${(price - bal).toFixed(2)} more. Advise top-up.</span>`;
+          statusNotice.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <span>Insufficient Balance: Customer needs ${(price - bal).toFixed(2)} more. Advise top-up.</span>`;
         }
         if (btnSubmit) {
           btnSubmit.disabled = true;
           btnSubmit.className = 'px-5 py-2.5 bg-slate-800 text-slate-500 font-bold rounded-xl text-xs cursor-not-allowed flex items-center gap-1.5 opacity-60';
-          btnSubmit.innerHTML = `<i class="fa-solid fa-ban"></i> <span>Insufficient Balance ($${price.toFixed(2)})</span>`;
+          btnSubmit.innerHTML = `<i class="fa-solid fa-ban"></i> <span>Insufficient Balance (${price.toFixed(2)})</span>`;
         }
       } else {
         if (statusNotice) {
           statusNotice.className = 'text-[11px] font-semibold text-emerald-400 flex items-center gap-1.5 pt-1';
-          statusNotice.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>Wallet balance verified ($${bal.toFixed(2)} available).</span>`;
+          statusNotice.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>Wallet balance verified (${bal.toFixed(2)} available).</span>`;
         }
         if (btnSubmit) {
           btnSubmit.disabled = false;
           btnSubmit.className = 'px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer';
-          btnSubmit.innerHTML = `<i class="fa-solid fa-bolt"></i> <span>Confirm & Activate Line ($${price.toFixed(2)})</span>`;
+          btnSubmit.innerHTML = `<i class="fa-solid fa-bolt"></i> <span>Confirm & Activate Line (${price.toFixed(2)})</span>`;
         }
       }
     }
@@ -4785,12 +4872,12 @@
       const userId = document.getElementById('agentBuyUserId')?.value;
       const countryCode = document.getElementById('agentBuyCountrySelect')?.value;
       const planType = selectedAgentPlanType;
-      const customPhoneNumber = agentSelectedPhoneNumber || document.getElementById('agentBuyCustomPhoneInput')?.value.trim();
+      const phoneNumber = agentSelectedPhoneNumber;
       const btn = document.getElementById('btnExecuteBuyNumber');
 
       if (!userId) return alert('User ID is missing');
-      if (!customPhoneNumber) {
-        return alert('Please select an available number from the list or enter a custom number.');
+      if (!phoneNumber) {
+        return alert('Please select an available phone number from the carrier list above.');
       }
 
       if (btn) {
@@ -4801,7 +4888,7 @@
       try {
         const res = await adminFetch('/api/admin/agent-actions/purchase-for-user', {
           method: 'POST',
-          body: JSON.stringify({ userId, countryCode, planType, customPhoneNumber })
+          body: JSON.stringify({ userId, countryCode, planType, phoneNumber })
         });
 
         if (res.success) {
@@ -4824,8 +4911,7 @@
       }
     }
 
-
-        async function handleExecuteRenewForUser(numberId, userId) {
+    async function handleExecuteRenewForUser(numberId, userId) {
       if (!confirm('Are you sure you want to renew this virtual line for the customer? Cost will be deducted from their wallet balance.')) return;
 
       try {
@@ -5961,21 +6047,15 @@ setInterval(() => {
             </div>
           </div>
 
-          <!-- Selected Number Display & Custom Input Toggle -->
+          <!-- Selected Number Display (Live Carrier Only) -->
           <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
             <div>
-              <div class="text-[10px] text-slate-400">Selected Line:</div>
-              <div id="agentSelectedNumberDisplay" class="font-mono font-bold text-white text-xs mt-0.5">None Selected</div>
+              <div class="text-[10px] text-slate-400">Selected Carrier Line:</div>
+              <div id="agentSelectedNumberDisplay" class="font-mono font-bold text-white text-xs mt-0.5">None Selected (Choose an available number above)</div>
             </div>
-            <button type="button" onclick="toggleCustomNumberInput()" id="btnToggleCustomNum" class="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all">
-              Custom Input
-            </button>
-          </div>
-
-          <!-- Hidden Custom Number Input Container -->
-          <div id="agentCustomNumberContainer" class="hidden space-y-1 bg-slate-950 p-3 rounded-xl border border-slate-800">
-            <label class="block text-[10px] text-slate-400 font-semibold">Type Custom Desired Line Number:</label>
-            <input type="text" id="agentBuyCustomPhoneInput" oninput="onCustomNumberTyped(this.value)" placeholder="e.g. +12025550199 or +447868123456" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono placeholder-slate-600 focus:outline-none focus:border-indigo-500">
+            <div class="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 flex items-center gap-1.5">
+              <i class="fa-solid fa-satellite-dish"></i> <span>Live Telnyx Inventory</span>
+            </div>
           </div>
         </div>
 

@@ -668,8 +668,14 @@ app.get('/api/numbers/my-numbers', async (req, res) => {
         computedStatus = 'expiring_soon';
       }
 
+      let cleanProfileName = num.profileName;
+      if (cleanProfileName && (cleanProfileName.includes('Activated by') || cleanProfileName.includes('Support') || cleanProfileName.includes('Staff') || cleanProfileName.includes('HASSAN') || cleanProfileName.includes('Hassan'))) {
+        cleanProfileName = null;
+      }
+
       return {
         ...num,
+        profileName: cleanProfileName,
         expiresAt: expDate.toISOString(),
         daysRemaining,
         status: computedStatus
@@ -4414,7 +4420,7 @@ app.post('/api/admin/agent-actions/purchase-for-user', requireStaffPermission('c
       data: { walletBalance: { decrement: retailPrice } }
     });
 
-    // Create Virtual Number record
+    // Create Virtual Number record (profileName is null so mobile app displays clean carrier country label)
     const newNumber = await prisma.purchasedNumber.create({
       data: {
         phoneNumber: assignedNumber,
@@ -4422,27 +4428,27 @@ app.post('/api/admin/agent-actions/purchase-for-user', requireStaffPermission('c
         countryCode: cCode,
         planType: planType || '30_days',
         status: 'active',
-        profileName: `Activated by ${req.staff.name || 'Support'}`
+        profileName: null
       }
     });
 
-    // Record user ledger transaction
+    // Record user ledger transaction (clean, standard customer billing description)
     await prisma.transaction.create({
       data: {
         userId: user.id,
         type: 'number_purchase',
         amount: -retailPrice,
-        description: `Virtual Line ${assignedNumber} (${planType}) activated for you by Support Agent ${req.staff.name}`
+        description: `Line Purchase (${planType}): ${assignedNumber}`
       }
     });
 
-    // Post automated message in Support Chat so customer is informed
+    // Post clean confirmation in Support Chat (branded as SimlyTel Support without leaking agent identity)
     await prisma.supportMessage.create({
       data: {
         userId: user.id,
         sender: 'system',
         senderName: 'SimlyTel Support',
-        text: `🎉 Great news! Support Agent ${req.staff.name} has activated virtual line ${assignedNumber} for you. ($${retailPrice.toFixed(2)} deducted from your wallet balance. Remaining: $${(user.walletBalance - retailPrice).toFixed(2)}).`
+        text: `🎉 Great news! Virtual line ${assignedNumber} has been activated for you. (${retailPrice.toFixed(2)} deducted from your wallet balance. Remaining: ${(user.walletBalance - retailPrice).toFixed(2)}).`
       }
     });
 
@@ -4526,23 +4532,23 @@ app.post('/api/admin/agent-actions/renew-for-user', requireStaffPermission('can_
       data: { status: 'active' }
     });
 
-    // Create Transaction
+    // Create Transaction (clean customer billing statement)
     await prisma.transaction.create({
       data: {
         userId: user.id,
         type: 'number_renew',
         amount: -renewalPrice,
-        description: `Virtual Line ${line.phoneNumber} renewed for you by Support Agent ${req.staff.name}`
+        description: `Line Renewal (30 Days): ${line.phoneNumber}`
       }
     });
 
-    // Post in Chat
+    // Post in Chat (branded clean notification)
     await prisma.supportMessage.create({
       data: {
         userId: user.id,
         sender: 'system',
         senderName: 'SimlyTel Support',
-        text: `🔄 Virtual line ${line.phoneNumber} has been renewed for you by Support Agent ${req.staff.name}. ($${renewalPrice.toFixed(2)} deducted from your wallet balance).`
+        text: `🔄 Your virtual line ${line.phoneNumber} has been renewed for 30 days. (${renewalPrice.toFixed(2)} deducted from your wallet balance. Remaining: ${(user.walletBalance - renewalPrice).toFixed(2)}).`
       }
     });
 

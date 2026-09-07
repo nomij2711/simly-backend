@@ -2595,11 +2595,26 @@ const requireStaffPermission = (requiredPermission = null) => {
           });
         }
 
-        const perms = dbStaff.permissions ? dbStaff.permissions.split(',').map(p => p.trim()) : [];
-        if (!perms.includes(requiredPermission) && !perms.includes('all')) {
+        let perms = [];
+        try {
+          if (typeof dbStaff.permissions === 'string' && dbStaff.permissions.startsWith('[')) {
+            perms = JSON.parse(dbStaff.permissions);
+          } else if (typeof dbStaff.permissions === 'string') {
+            perms = dbStaff.permissions.split(',').map(p => p.trim());
+          } else if (Array.isArray(dbStaff.permissions)) {
+            perms = dbStaff.permissions;
+          }
+        } catch (e) {
+          perms = (dbStaff.permissions || '').split(',').map(p => p.trim());
+        }
+
+        const requiredList = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission];
+        const hasPermission = perms.includes('all') || requiredList.some(r => perms.includes(r));
+
+        if (!hasPermission) {
           return res.status(403).json({
             success: false,
-            error: `Access Denied: Your staff role (${dbStaff.role}) does not have '${requiredPermission}' permission.`
+            error: `Access Denied: Your staff account does not have '${requiredList.join(' or ')}' permission.`
           });
         }
       }
@@ -3771,9 +3786,10 @@ app.post('/api/admin/team', requireStaffPermission('super_admin_only'), async (r
     // Default permission presets
     let perms = permissions;
     if (!perms) {
-      if (role === 'support_agent') perms = 'can_handle_support,can_manage_users,can_view_cdr';
-      else if (role === 'operations_manager') perms = 'can_manage_numbers,can_manage_users,can_view_cdr,can_handle_support';
-      else if (role === 'finance_manager') perms = 'can_view_transactions,can_view_stats,can_manage_users';
+      if (role === 'support_agent') perms = 'can_handle_support,can_view_users,can_view_wallet_balance,can_view_numbers,can_purchase_for_user,can_renew_for_user,can_transfer_tickets';
+      else if (role === 'deposit_supporter') perms = 'can_handle_support,can_handle_deposits,can_view_users,can_view_wallet_balance,can_adjust_balance,can_transfer_tickets';
+      else if (role === 'operations_manager') perms = 'can_view_numbers,can_purchase_for_user,can_renew_for_user,can_cancel_numbers,can_view_users,can_view_cdr,can_handle_support';
+      else if (role === 'finance_manager') perms = 'can_view_transactions,can_view_stats,can_view_users,can_view_wallet_balance,can_adjust_balance';
       else perms = 'all';
     }
 
@@ -4222,6 +4238,312 @@ app.get('/api/admin/support/agents', requireStaffPermission('can_handle_support'
       select: { id: true, name: true, email: true, role: true, isOnline: true }
     });
     res.json({ success: true, agents });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 13b. Endpoint: Get Consolidated User Dossier for Support Workstation
+app.get('/api/admin/support/user-dossier/:userId', requireStaffPermission(['can_view_users', 'can_handle_support']), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) return res.status(400).json({ success: false, error: 'User ID is required.' });
+
+    const cleanUid = userId.toString().trim();
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: cleanUid },
+          { email: cleanUid.toLowerCase() },
+          { email: `${cleanUid.toLowerCase()}@simlytel.com` },
+          { email: `${cleanUid.toLowerCase()}@simly.app` }
+        ]
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    // Numbers owned by user
+    const numbers = await prisma.purchasedNumber.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const userPhoneNumbers = numbers.map(n => n.phoneNumber);
+
+    // Recent 10 Transactions
+    const transactions = await prisma.transaction.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 10
+    });
+
+    // Recent 10 Call Logs
+    const calls = await prisma.callLog.findMany({
+      where: {
+        OR: [
+          { myNumber: { in: userPhoneNumbers } },
+          { contactNumber: { in: userPhoneNumbers } }
+        ]
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10
+    });
+
+    // Support Ticket Info
+    const ticket = await prisma.supportTicket.findUnique({
+      where: { userId: user.id }
+    });
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        walletBalance: user.walletBalance,
+        isVerified: user.isVerified,
+        isBanned: user.isBanned,
+        banReason: user.banReason,
+        riskScore: user.riskScore,
+        riskLevel: user.riskLevel,
+        lastLoginIp: user.lastLoginIp,
+        deviceId: user.deviceId,
+        createdAt: user.createdAt
+      },
+      numbers,
+      transactions,
+      calls,
+      ticket: ticket || null
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 13c. Endpoint: Support Agent Action: Purchase Virtual Line for User (Deducting User Balance)
+app.post('/api/admin/agent-actions/purchase-for-user', requireStaffPermission('can_purchase_for_user'), async (req, res) => {
+  try {
+    const { userId, countryCode = 'US', planType = '30_days', customPhoneNumber } = req.body;
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'User ID is required.' });
+    }
+
+    const cleanUid = userId.toString().trim();
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: cleanUid },
+          { email: cleanUid.toLowerCase() },
+          { email: `${cleanUid.toLowerCase()}@simlytel.com` }
+        ]
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User account not found.' });
+    }
+
+    if (user.isBanned || !user.isVerified) {
+      return res.status(403).json({ success: false, error: 'User account is restricted or banned. Cannot purchase lines.' });
+    }
+
+    // Determine retail price based on country & duration
+    const cCode = countryCode.toUpperCase();
+    let basePrice = 1.99;
+    if (cCode === 'GB') { basePrice = 4.99; }
+    else if (cCode === 'CA') { basePrice = 1.99; }
+    else if (cCode === 'PK') { basePrice = 12.99; }
+    else if (cCode === 'AU') { basePrice = 5.99; }
+
+    let multiplier = 1.0;
+    if (planType === '7_days') multiplier = 0.4;
+    else if (planType === '365_days') multiplier = 10.0;
+
+    const retailPrice = parseFloat((basePrice * multiplier).toFixed(2));
+
+    // STRICT WALLET BALANCE CHECK
+    if (user.walletBalance < retailPrice || user.walletBalance <= 0) {
+      return res.status(402).json({
+        success: false,
+        error: `Customer balance ($${user.walletBalance.toFixed(2)}) is insufficient for this number plan ($${retailPrice.toFixed(2)}). Please advise customer to top up first.`,
+        requiredAmount: retailPrice,
+        currentBalance: user.walletBalance
+      });
+    }
+
+    // Generate or clean phone number
+    let assignedNumber = customPhoneNumber ? normalizePhone(customPhoneNumber) : null;
+    if (!assignedNumber) {
+      const randDigits = Math.floor(2000000 + Math.random() * 7999999);
+      if (cCode === 'GB') assignedNumber = `+447868${Math.floor(100000 + Math.random() * 899999)}`;
+      else if (cCode === 'PK') assignedNumber = `+92304${Math.floor(1000000 + Math.random() * 8999999)}`;
+      else assignedNumber = `+1202${randDigits}`;
+    }
+
+    // Deduct user balance
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { walletBalance: { decrement: retailPrice } }
+    });
+
+    // Create Virtual Number record
+    const newNumber = await prisma.purchasedNumber.create({
+      data: {
+        phoneNumber: assignedNumber,
+        userId: user.id,
+        countryCode: cCode,
+        planType: planType || '30_days',
+        status: 'active',
+        profileName: `Activated by ${req.staff.name || 'Support'}`
+      }
+    });
+
+    // Record user ledger transaction
+    await prisma.transaction.create({
+      data: {
+        userId: user.id,
+        type: 'number_purchase',
+        amount: -retailPrice,
+        description: `Virtual Line ${assignedNumber} (${planType}) activated for you by Support Agent ${req.staff.name}`
+      }
+    });
+
+    // Post automated message in Support Chat so customer is informed
+    await prisma.supportMessage.create({
+      data: {
+        userId: user.id,
+        sender: 'system',
+        senderName: 'SimlyTel Support',
+        text: `🎉 Great news! Support Agent ${req.staff.name} has activated virtual line ${assignedNumber} for you. ($${retailPrice.toFixed(2)} deducted from your wallet balance. Remaining: $${(user.walletBalance - retailPrice).toFixed(2)}).`
+      }
+    });
+
+    // Audit Log
+    await logAuditEvent({
+      staffId: req.staff.id,
+      staffName: req.staff.name,
+      staffEmail: req.staff.email,
+      staffRole: req.staff.role,
+      action: 'PURCHASE_NUMBER_FOR_USER',
+      targetId: user.id,
+      targetType: 'number',
+      details: `Agent purchased line ${assignedNumber} for ${user.email} (Deducted $${retailPrice.toFixed(2)} from user wallet)`,
+      req
+    });
+
+    res.json({
+      success: true,
+      message: `Successfully activated ${assignedNumber} for customer ${user.name || user.email}!`,
+      number: newNumber,
+      deductedAmount: retailPrice,
+      remainingBalance: updatedUser.walletBalance
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 13d. Endpoint: Support Agent Action: Renew Virtual Line for User (Deducting User Balance)
+app.post('/api/admin/agent-actions/renew-for-user', requireStaffPermission('can_renew_for_user'), async (req, res) => {
+  try {
+    const { numberId, userId } = req.body;
+    if (!numberId || !userId) {
+      return res.status(400).json({ success: false, error: 'numberId and userId are required.' });
+    }
+
+    const cleanUid = userId.toString().trim();
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: cleanUid },
+          { email: cleanUid.toLowerCase() },
+          { email: `${cleanUid.toLowerCase()}@simlytel.com` }
+        ]
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User account not found.' });
+    }
+
+    const line = await prisma.purchasedNumber.findFirst({
+      where: { id: numberId, userId: user.id }
+    });
+
+    if (!line) {
+      return res.status(404).json({ success: false, error: 'Virtual line not found for this user.' });
+    }
+
+    // Determine renewal price
+    let renewalPrice = 1.99;
+    if (line.countryCode === 'GB') renewalPrice = 4.99;
+    else if (line.countryCode === 'PK') renewalPrice = 12.99;
+    else if (line.countryCode === 'AU') renewalPrice = 5.99;
+
+    if (user.walletBalance < renewalPrice || user.walletBalance <= 0) {
+      return res.status(402).json({
+        success: false,
+        error: `Customer balance ($${user.walletBalance.toFixed(2)}) is insufficient for line renewal ($${renewalPrice.toFixed(2)}).`,
+        requiredAmount: renewalPrice,
+        currentBalance: user.walletBalance
+      });
+    }
+
+    // Deduct user balance
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { walletBalance: { decrement: renewalPrice } }
+    });
+
+    // Update number status
+    const updatedLine = await prisma.purchasedNumber.update({
+      where: { id: line.id },
+      data: { status: 'active' }
+    });
+
+    // Create Transaction
+    await prisma.transaction.create({
+      data: {
+        userId: user.id,
+        type: 'number_renew',
+        amount: -renewalPrice,
+        description: `Virtual Line ${line.phoneNumber} renewed for you by Support Agent ${req.staff.name}`
+      }
+    });
+
+    // Post in Chat
+    await prisma.supportMessage.create({
+      data: {
+        userId: user.id,
+        sender: 'system',
+        senderName: 'SimlyTel Support',
+        text: `🔄 Virtual line ${line.phoneNumber} has been renewed for you by Support Agent ${req.staff.name}. ($${renewalPrice.toFixed(2)} deducted from your wallet balance).`
+      }
+    });
+
+    // Audit Log
+    await logAuditEvent({
+      staffId: req.staff.id,
+      staffName: req.staff.name,
+      staffEmail: req.staff.email,
+      staffRole: req.staff.role,
+      action: 'RENEW_NUMBER_FOR_USER',
+      targetId: line.id,
+      targetType: 'number',
+      details: `Agent renewed line ${line.phoneNumber} for ${user.email} (Deducted $${renewalPrice.toFixed(2)})`,
+      req
+    });
+
+    res.json({
+      success: true,
+      message: `Line ${line.phoneNumber} renewed successfully!`,
+      number: updatedLine,
+      remainingBalance: updatedUser.walletBalance
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

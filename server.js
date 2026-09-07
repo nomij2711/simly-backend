@@ -448,16 +448,34 @@ app.get('/api/numbers/search', async (req, res) => {
     // High Quality Dynamic Fallback if Telnyx is in test mode or returns empty
     if (!numbers || numbers.length === 0) {
       const countryConfigs = {
-        US: { prefix: '+1', areaCodes: ['202', '312', '415', '212', '718', '305', '702', '404'], city: 'New York, NY', upfront: '2.50', monthly: '4.99' },
-        CA: { prefix: '+1', areaCodes: ['416', '647', '514', '604', '403'], city: 'Toronto, ON', upfront: '2.50', monthly: '4.99' },
-        GB: { prefix: '+44', areaCodes: ['7400', '7451', '7911', '7700', '7890'], city: 'London, UK', upfront: '3.00', monthly: '5.99' },
-        AU: { prefix: '+61', areaCodes: ['412', '423', '434', '445', '456'], city: 'Sydney, NSW', upfront: '4.00', monthly: '7.99' },
-        DE: { prefix: '+49', areaCodes: ['151', '152', '160', '170', '175'], city: 'Berlin, Germany', upfront: '4.50', monthly: '8.99' },
-        FR: { prefix: '+33', areaCodes: ['612', '623', '634', '645', '756'], city: 'Paris, France', upfront: '4.50', monthly: '8.99' },
-        PK: { prefix: '+92', areaCodes: ['300', '301', '321', '333', '345'], city: 'Islamabad, PK', upfront: '5.00', monthly: '9.99' }
+        US: { prefix: '+1', areaCodes: ['202', '312', '415', '212', '718', '305', '702', '404'], city: 'New York, NY', upfront: '0.50', monthly: '1.50' },
+        CA: { prefix: '+1', areaCodes: ['416', '647', '514', '604', '403'], city: 'Toronto, ON', upfront: '0.50', monthly: '1.50' },
+        GB: { prefix: '+44', areaCodes: ['7400', '7451', '7911', '7700', '7890'], city: 'London, UK', upfront: '1.00', monthly: '3.00' },
+        AU: { prefix: '+61', areaCodes: ['412', '423', '434', '445', '456'], city: 'Sydney, NSW', upfront: '2.00', monthly: '7.00' },
+        DE: { prefix: '+49', areaCodes: ['151', '152', '160', '170', '175'], city: 'Berlin, Germany', upfront: '1.50', monthly: '4.50' },
+        FR: { prefix: '+33', areaCodes: ['612', '623', '634', '645', '756'], city: 'Paris, France', upfront: '1.50', monthly: '4.50' },
+        PK: { prefix: '+92', areaCodes: ['300', '301', '321', '333', '345'], city: 'Islamabad, PK', upfront: '1.50', monthly: '4.50' },
+        AE: { prefix: '+971', areaCodes: ['50', '52', '54', '55', '56'], city: 'Dubai, UAE', upfront: '1.50', monthly: '4.50' },
+        SA: { prefix: '+966', areaCodes: ['50', '53', '54', '55', '56'], city: 'Riyadh, SA', upfront: '1.50', monthly: '4.50' },
+        TR: { prefix: '+90', areaCodes: ['532', '542', '552', '505', '530'], city: 'Istanbul, TR', upfront: '1.50', monthly: '4.50' },
+        ES: { prefix: '+34', areaCodes: ['612', '622', '632', '642', '652'], city: 'Madrid, ES', upfront: '1.50', monthly: '4.50' },
+        IT: { prefix: '+39', areaCodes: ['320', '330', '340', '350', '360'], city: 'Rome, IT', upfront: '1.50', monthly: '4.50' },
+        NL: { prefix: '+31', areaCodes: ['61', '62', '63', '64', '65'], city: 'Amsterdam, NL', upfront: '1.50', monthly: '4.50' },
+        IN: { prefix: '+91', areaCodes: ['981', '982', '983', '984', '985'], city: 'Mumbai, IN', upfront: '1.50', monthly: '4.50' },
+        BR: { prefix: '+55', areaCodes: ['11', '21', '31', '41', '51'], city: 'Sao Paulo, BR', upfront: '1.50', monthly: '4.50' }
       };
 
-      const cfg = countryConfigs[countryCode] || { prefix: '+1', areaCodes: ['202', '312', '415'], city: 'Virtual Line', upfront: '2.50', monthly: '4.99' };
+      const rateEntry = (typeof baseRates !== 'undefined' ? baseRates : []).find(r => r.code === countryCode);
+      const defaultPrefix = rateEntry ? rateEntry.dialCode : '+1';
+      const defaultCity = rateEntry ? `${rateEntry.country} Virtual Line` : 'Virtual Line';
+
+      const cfg = countryConfigs[countryCode] || { 
+        prefix: defaultPrefix, 
+        areaCodes: ['301', '402', '503', '604', '705'], 
+        city: defaultCity, 
+        upfront: '1.50', 
+        monthly: '4.50' 
+      };
 
       numbers = Array.from({ length: 15 }, (_, i) => {
         const area = cfg.areaCodes[i % cfg.areaCodes.length];
@@ -4366,19 +4384,10 @@ app.post('/api/admin/agent-actions/purchase-for-user', requireStaffPermission('c
       return res.status(403).json({ success: false, error: 'User account is restricted or banned. Cannot purchase lines.' });
     }
 
-    // Determine retail price based on country & duration
+    // Determine retail price based on exact system pricing rules
     const cCode = countryCode.toUpperCase();
-    let basePrice = 1.99;
-    if (cCode === 'GB') { basePrice = 4.99; }
-    else if (cCode === 'CA') { basePrice = 1.99; }
-    else if (cCode === 'PK') { basePrice = 12.99; }
-    else if (cCode === 'AU') { basePrice = 5.99; }
-
-    let multiplier = 1.0;
-    if (planType === '7_days') multiplier = 0.4;
-    else if (planType === '365_days') multiplier = 10.0;
-
-    const retailPrice = parseFloat((basePrice * multiplier).toFixed(2));
+    const durationDays = planType === '7_days' ? 7 : (planType === '365_days' ? 365 : 30);
+    const retailPrice = calculateNumberPrice(cCode, planType, durationDays, customPhoneNumber);
 
     // STRICT WALLET BALANCE CHECK
     if (user.walletBalance < retailPrice || user.walletBalance <= 0) {
@@ -4493,11 +4502,8 @@ app.post('/api/admin/agent-actions/renew-for-user', requireStaffPermission('can_
       return res.status(404).json({ success: false, error: 'Virtual line not found for this user.' });
     }
 
-    // Determine renewal price
-    let renewalPrice = 1.99;
-    if (line.countryCode === 'GB') renewalPrice = 4.99;
-    else if (line.countryCode === 'PK') renewalPrice = 12.99;
-    else if (line.countryCode === 'AU') renewalPrice = 5.99;
+    // Determine renewal price using unified pricing function
+    const renewalPrice = calculateNumberPrice(line.countryCode || 'US', line.planType || '30_days', 30, line.phoneNumber);
 
     if (user.walletBalance < renewalPrice || user.walletBalance <= 0) {
       return res.status(402).json({

@@ -4393,15 +4393,19 @@ app.post('/api/admin/agent-actions/purchase-for-user', requireStaffPermission('c
       return res.status(404).json({ success: false, error: 'User account not found.' });
     }
 
-    // Queue / Claim enforcement check: If staff is not super_admin, verify ticket claim
-    if (req.staff.role !== 'super_admin') {
-      const ticket = await prisma.supportTicket.findUnique({ where: { userId: user.id } });
-      if (ticket && (ticket.status === 'unassigned' || (ticket.assignedStaffId && ticket.assignedStaffId !== req.staff.id))) {
-        return res.status(403).json({
-          success: false,
-          error: 'You must claim/join this customer ticket first before purchasing virtual lines.'
-        });
-      }
+    // Strict Queue / Claim enforcement check: NO ONE can buy numbers for an unassigned queue chat without claiming it first
+    const ticket = await prisma.supportTicket.findUnique({ where: { userId: user.id } });
+    if (ticket && ticket.status === 'unassigned') {
+      return res.status(403).json({
+        success: false,
+        error: 'Chat accept / claim nahi hui! Pehle "Pick Up / Claim" par click karke ticket accept karein.'
+      });
+    }
+    if (req.staff.role !== 'super_admin' && ticket && ticket.assignedStaffId && ticket.assignedStaffId !== req.staff.id) {
+      return res.status(403).json({
+        success: false,
+        error: 'This ticket is assigned to another agent.'
+      });
     }
 
     if (user.isBanned || !user.isVerified) {
@@ -4528,15 +4532,19 @@ app.post('/api/admin/agent-actions/renew-for-user', requireStaffPermission('can_
       return res.status(404).json({ success: false, error: 'Virtual line not found for this user.' });
     }
 
-    // Queue / Claim enforcement check for renew
-    if (req.staff.role !== 'super_admin') {
-      const ticket = await prisma.supportTicket.findUnique({ where: { userId: user.id } });
-      if (ticket && (ticket.status === 'unassigned' || (ticket.assignedStaffId && ticket.assignedStaffId !== req.staff.id))) {
-        return res.status(403).json({
-          success: false,
-          error: 'You must claim/join this customer ticket first before renewing virtual lines.'
-        });
-      }
+    // Strict Queue / Claim enforcement check for renew: NO ONE can renew numbers for unassigned queue chats
+    const ticket = await prisma.supportTicket.findUnique({ where: { userId: user.id } });
+    if (ticket && ticket.status === 'unassigned') {
+      return res.status(403).json({
+        success: false,
+        error: 'Chat accept / claim nahi hui! Pehle "Pick Up / Claim" par click karke ticket accept karein.'
+      });
+    }
+    if (req.staff.role !== 'super_admin' && ticket && ticket.assignedStaffId && ticket.assignedStaffId !== req.staff.id) {
+      return res.status(403).json({
+        success: false,
+        error: 'This ticket is assigned to another agent.'
+      });
     }
 
     // Determine renewal price using unified pricing function

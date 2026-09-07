@@ -1986,12 +1986,18 @@ app.get('/api/support/messages', async (req, res) => {
   try {
     const { userId = 'user_demo_1' } = req.query;
 
-    let messages = await prisma.supportMessage.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'asc' }
-    });
+    const [messages, ticket] = await Promise.all([
+      prisma.supportMessage.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'asc' }
+      }),
+      prisma.supportTicket.findUnique({
+        where: { userId }
+      })
+    ]);
 
-    if (messages.length === 0) {
+    let finalMessages = messages;
+    if (finalMessages.length === 0) {
       const welcomeMsg = await prisma.supportMessage.create({
         data: {
           userId,
@@ -2000,13 +2006,25 @@ app.get('/api/support/messages', async (req, res) => {
           text: 'Hi there! 👋 Welcome to SimlyTel VIP Support. How can we help with your virtual lines, WhatsApp OTP, or top-up today?'
         }
       });
-      messages = [welcomeMsg];
+      finalMessages = [welcomeMsg];
     }
+
+    const isResolved = ticket?.status === 'resolved';
 
     res.json({
       success: true,
-      count: messages.length,
-      messages
+      count: finalMessages.length,
+      isResolved,
+      status: ticket?.status || 'unassigned',
+      canReply: !isResolved,
+      ticket: ticket ? {
+        id: ticket.id,
+        status: ticket.status,
+        isResolved,
+        assignedStaffName: ticket.assignedStaffName,
+        resolvedAt: ticket.resolvedAt
+      } : null,
+      messages: finalMessages
     });
   } catch (error) {
     console.error('[SIMLY ERROR] Failed to fetch support messages:', error);
@@ -2020,6 +2038,17 @@ app.post('/api/support/messages', async (req, res) => {
     const { userId = 'user_demo_1', text } = req.body;
     if (!text || !text.trim()) {
       return res.status(400).json({ success: false, error: 'Message text is required' });
+    }
+
+    const existingTicket = await prisma.supportTicket.findUnique({ where: { userId } });
+    
+    // Strict block: If ticket is resolved, prevent posting and require new chat
+    if (existingTicket && existingTicket.status === 'resolved') {
+      return res.status(400).json({
+        success: false,
+        error: 'This support ticket has been resolved and closed. Please click "Start New Support Chat" to open a new inquiry.',
+        isResolved: true
+      });
     }
 
     // Lookup user info for ticket profiling
@@ -2042,7 +2071,6 @@ app.post('/api/support/messages', async (req, res) => {
     });
 
     // Auto-update or Create Support Ticket in Incoming Queue
-    const existingTicket = await prisma.supportTicket.findUnique({ where: { userId } });
     const isLiveAgentAssigned = existingTicket && (existingTicket.status === 'in_progress' || Boolean(existingTicket.assignedStaffId));
     const ticketStatus = isLiveAgentAssigned ? 'in_progress' : 'unassigned';
 
@@ -2103,6 +2131,77 @@ app.post('/api/support/messages', async (req, res) => {
     });
   } catch (error) {
     console.error('[SIMLY ERROR] Failed to send support message:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 15d. Endpoint: Start New Support Chat Session (Zendesk / Intercom style)
+app.post('/api/support/start-new-chat', async (req, res) => {
+  try {
+    const { userId = 'user_demo_1' } = req.body;
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'User ID is required' });
+    }
+
+    const senderUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: userId },
+          { email: userId.toLowerCase() }
+        ]
+      },
+      select: { name: true, email: true }
+    });
+
+    // Insert visual session divider in messages history
+    const dividerMsg = await prisma.supportMessage.create({
+      data: {
+        userId,
+        sender: 'system',
+        senderName: 'SimlyTel Support',
+        text: '━━━━━━━━━━━━━━━━━━━━━━\n🆕 New Support Conversation Started\n━━━━━━━━━━━━━━━━━━━━━━\nA live telecom support specialist will join shortly. How can we assist you?'
+      }
+    });
+
+    // Reset ticket to unassigned fresh ticket in Incoming Queue
+    const ticket = await prisma.supportTicket.upsert({
+      where: { userId },
+      update: {
+        userName: senderUser?.name || (userId.includes('@') ? userId.split('@')[0] : 'SimlyTel Customer'),
+        userEmail: senderUser?.email || (userId.includes('@') ? userId : null),
+        status: 'unassigned',
+        assignedStaffId: null,
+        assignedStaffName: null,
+        claimedAt: null,
+        resolvedAt: null,
+        lastMessageText: 'New support conversation started',
+        lastMessageSender: 'system',
+        lastMessageAt: new Date(),
+        unreadStaffCount: 1,
+        unreadUserCount: 0
+      },
+      create: {
+        userId,
+        userName: senderUser?.name || (userId.includes('@') ? userId.split('@')[0] : 'SimlyTel Customer'),
+        userEmail: senderUser?.email || (userId.includes('@') ? userId : null),
+        status: 'unassigned',
+        lastMessageText: 'New support conversation started',
+        lastMessageSender: 'system',
+        lastMessageAt: new Date(),
+        unreadStaffCount: 1
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'New support ticket started successfully!',
+      isResolved: false,
+      status: 'unassigned',
+      dividerMessage: dividerMsg,
+      ticket
+    });
+  } catch (error) {
+    console.error('[SIMLY ERROR] Failed to start new support chat:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

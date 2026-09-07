@@ -14,13 +14,20 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Helper to normalize phone numbers received from query params or bodies
 const normalizePhone = (num) => (num ? num.toString().trim().replace(/^ /, '+') : num);
 
-// Admin Web Dashboard SPA Route
-app.get('/admin', (req, res) => {
+// Admin Web Dashboard SPA Route (with strict no-cache headers)
+const sendAdminApp = (req, res) => {
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'Surrogate-Control': 'no-store'
+  });
   res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
-});
-app.get('/admin/{*splat}', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
-});
+};
+
+app.get('/admin', sendAdminApp);
+app.get('/admin/', sendAdminApp);
+app.get('/admin/{*splat}', sendAdminApp);
 
 // Root Health Check Route
 app.get('/', (req, res) => {

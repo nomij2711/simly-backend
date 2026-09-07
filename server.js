@@ -2931,6 +2931,170 @@ async function calculateMasterFinancials() {
   };
 }
 
+
+// 2b. Master Dashboard KPI Detailed Breakdown (Wholesale, Profit, Subscriptions, CDR & Deposits)
+app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
+  try {
+    const fin = await calculateMasterFinancials();
+
+    // 1. Numbers Fleet Breakdown with wholesale vs retail pricing & user details
+    const numbers = await prisma.purchasedNumber.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const userIds = [...new Set(numbers.map(n => n.userId).filter(Boolean))];
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, email: true, phone: true, walletBalance: true }
+    });
+    const userMap = {};
+    users.forEach(u => {
+      userMap[u.id] = u;
+      if (u.email) userMap[u.email.toLowerCase()] = u;
+    });
+
+    const numbersDetailed = numbers.map(n => {
+      let wholesale = 1.00000000;
+      let retail = 3.99000000;
+      let planDaysLabel = '30 Days Monthly';
+
+      if (n.planType === '7_days') {
+        wholesale = 0.25000000;
+        retail = 1.99000000;
+        planDaysLabel = '7 Days Weekly';
+      } else if (n.planType === '365_days') {
+        wholesale = 12.00000000;
+        retail = 39.99000000;
+        planDaysLabel = '365 Days Yearly';
+      }
+
+      const netProfit = retail - wholesale;
+      const margin = retail > 0 ? ((netProfit / retail) * 100).toFixed(2) : '0.00';
+      const user = userMap[n.userId] || { name: 'SimlyTel User', email: n.userId };
+
+      return {
+        id: n.id,
+        phoneNumber: n.phoneNumber,
+        countryCode: (n.countryCode || 'US').toUpperCase(),
+        planType: n.planType || '30_days',
+        planDaysLabel,
+        status: n.status || 'active',
+        createdAt: n.createdAt,
+        expiresAt: n.expiresAt,
+        userName: user.name || 'SimlyTel Customer',
+        userEmail: user.email || n.userId,
+        wholesaleCost: parseFloat(wholesale.toFixed(8)),
+        retailPrice: parseFloat(retail.toFixed(8)),
+        netProfit: parseFloat(netProfit.toFixed(8)),
+        marginPercent: margin
+      };
+    });
+
+    // 2. Call Logs Breakdown
+    const callLogs = await prisma.callLog.findMany({
+      take: 150,
+      orderBy: { createdAt: 'desc' }
+    });
+    const callsDetailed = callLogs.map(c => {
+      const durSec = c.durationSeconds || 0;
+      const wholesale = durSec * (0.00900000 / 60);
+      const retail = Math.ceil(durSec / 60) * 0.05000000; // $0.05/min standard
+      const profit = retail - wholesale;
+      return {
+        id: c.id,
+        myNumber: c.myNumber,
+        contactNumber: c.contactNumber,
+        direction: c.direction,
+        status: c.status,
+        durationSeconds: durSec,
+        durationFormatted: Math.floor(durSec / 60) + 'm ' + (durSec % 60) + 's',
+        wholesaleCost: parseFloat(wholesale.toFixed(8)),
+        retailCharge: parseFloat(retail.toFixed(8)),
+        netProfit: parseFloat(profit.toFixed(8)),
+        createdAt: c.createdAt
+      };
+    });
+
+    // 3. Outbound SMS Breakdown
+    const smsLogs = await prisma.message.findMany({
+      where: { direction: 'outbound' },
+      take: 150,
+      orderBy: { createdAt: 'desc' }
+    });
+    const smsDetailed = smsLogs.map(m => {
+      const wholesale = 0.00750000;
+      const retail = 0.03000000;
+      const profit = retail - wholesale;
+      return {
+        id: m.id,
+        fromNumber: m.fromNumber,
+        toNumber: m.toNumber,
+        text: m.text,
+        status: m.status,
+        telnyxMessageId: m.telnyxMessageId,
+        wholesaleCost: wholesale,
+        retailCharge: retail,
+        netProfit: profit,
+        createdAt: m.createdAt
+      };
+    });
+
+    // 4. Customer Deposit Transactions
+    const deposits = await prisma.transaction.findMany({
+      where: { type: { in: ['topup', 'deposit', 'crypto_deposit', 'stripe_deposit'] } },
+      take: 150,
+      orderBy: { createdAt: 'desc' }
+    });
+    const depositsDetailed = deposits.map(d => {
+      const u = userMap[d.userId] || { name: 'Customer', email: d.userId, walletBalance: 0 };
+      return {
+        id: d.id,
+        userId: d.userId,
+        userName: u.name,
+        userEmail: u.email,
+        userCurrentBalance: u.walletBalance,
+        amount: Math.abs(d.amount),
+        type: d.type,
+        description: d.description,
+        createdAt: d.createdAt
+      };
+    });
+
+    // 5. Retail Usage / Purchase Transactions
+    const retailCharges = await prisma.transaction.findMany({
+      where: { type: { in: ['number_purchase', 'renewal', 'number_renewal', 'call', 'call_charge', 'sms', 'sms_charge'] } },
+      take: 150,
+      orderBy: { createdAt: 'desc' }
+    });
+    const retailDetailed = retailCharges.map(r => {
+      const u = userMap[r.userId] || { name: 'Customer', email: r.userId };
+      return {
+        id: r.id,
+        userId: r.userId,
+        userName: u.name,
+        userEmail: u.email,
+        amount: Math.abs(r.amount),
+        type: r.type,
+        description: r.description,
+        createdAt: r.createdAt
+      };
+    });
+
+    res.json({
+      success: true,
+      financials: fin,
+      numbers: numbersDetailed,
+      calls: callsDetailed,
+      sms: smsDetailed,
+      deposits: depositsDetailed,
+      retailCharges: retailDetailed
+    });
+  } catch (error) {
+    console.error('[ADMIN FINANCIALS BREAKDOWN ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 2. Master Dashboard KPI Stats
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   try {

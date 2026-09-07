@@ -4414,9 +4414,6 @@
       if (ticket && ticket.isLockedByOther && CURRENT_STAFF?.role !== 'super_admin') {
         alert(`⚠️ This conversation is assigned to ${ticket.assignedStaffName || 'another agent'}.`);
         return;
-      } && CURRENT_STAFF?.role !== 'super_admin') {
-        alert(`⚠️ This conversation is assigned to ${ticket.assignedStaffName || 'another agent'}.`);
-        return;
       }
       if (!userId) return;
       currentDossierUserId = userId;
@@ -4607,9 +4604,6 @@
         return;
       }
       if (ticket && ticket.isLockedByOther && CURRENT_STAFF?.role !== 'super_admin') {
-        alert(`⚠️ This customer ticket is assigned to ${ticket.assignedStaffName || 'another agent'}.`);
-        return;
-      } && CURRENT_STAFF?.role !== 'super_admin') {
         alert(`⚠️ This customer ticket is assigned to ${ticket.assignedStaffName || 'another agent'}.`);
         return;
       }

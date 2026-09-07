@@ -4373,7 +4373,7 @@ app.get('/api/admin/support/user-dossier/:userId', requireStaffPermission(['can_
 // 13c. Endpoint: Support Agent Action: Purchase Virtual Line for User (Deducting User Balance)
 app.post('/api/admin/agent-actions/purchase-for-user', requireStaffPermission('can_purchase_for_user'), async (req, res) => {
   try {
-    const { userId, countryCode = 'US', planType = '30_days', customPhoneNumber } = req.body;
+    const { userId, countryCode = 'US', planType = '30_days', phoneNumber, customPhoneNumber } = req.body;
     if (!userId) {
       return res.status(400).json({ success: false, error: 'User ID is required.' });
     }
@@ -4393,32 +4393,45 @@ app.post('/api/admin/agent-actions/purchase-for-user', requireStaffPermission('c
       return res.status(404).json({ success: false, error: 'User account not found.' });
     }
 
+    // Queue / Claim enforcement check: If staff is not super_admin, verify ticket claim
+    if (req.staff.role !== 'super_admin') {
+      const ticket = await prisma.supportTicket.findUnique({ where: { userId: user.id } });
+      if (ticket && (ticket.status === 'unassigned' || (ticket.assignedStaffId && ticket.assignedStaffId !== req.staff.id))) {
+        return res.status(403).json({
+          success: false,
+          error: 'You must claim/join this customer ticket first before purchasing virtual lines.'
+        });
+      }
+    }
+
     if (user.isBanned || !user.isVerified) {
       return res.status(403).json({ success: false, error: 'User account is restricted or banned. Cannot purchase lines.' });
     }
 
+    const selectedNumber = phoneNumber || customPhoneNumber;
+    if (!selectedNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please select an available phone number from the carrier pool.'
+      });
+    }
+
+    // Assigned carrier phone number
+    const assignedNumber = normalizePhone(selectedNumber);
+
     // Determine retail price based on exact system pricing rules
     const cCode = countryCode.toUpperCase();
     const durationDays = planType === '7_days' ? 7 : (planType === '365_days' ? 365 : 30);
-    const retailPrice = calculateNumberPrice(cCode, planType, durationDays, customPhoneNumber);
+    const retailPrice = calculateNumberPrice(cCode, planType, durationDays, assignedNumber);
 
     // STRICT WALLET BALANCE CHECK
     if (user.walletBalance < retailPrice || user.walletBalance <= 0) {
       return res.status(402).json({
         success: false,
-        error: `Customer balance ($${user.walletBalance.toFixed(2)}) is insufficient for this number plan ($${retailPrice.toFixed(2)}). Please advise customer to top up first.`,
+        error: `Customer balance (${user.walletBalance.toFixed(2)}) is insufficient for this number plan (${retailPrice.toFixed(2)}). Please advise customer to top up first.`,
         requiredAmount: retailPrice,
         currentBalance: user.walletBalance
       });
-    }
-
-    // Generate or clean phone number
-    let assignedNumber = customPhoneNumber ? normalizePhone(customPhoneNumber) : null;
-    if (!assignedNumber) {
-      const randDigits = Math.floor(2000000 + Math.random() * 7999999);
-      if (cCode === 'GB') assignedNumber = `+447868${Math.floor(100000 + Math.random() * 899999)}`;
-      else if (cCode === 'PK') assignedNumber = `+92304${Math.floor(1000000 + Math.random() * 8999999)}`;
-      else assignedNumber = `+1202${randDigits}`;
     }
 
     // Deduct user balance
@@ -4468,7 +4481,7 @@ app.post('/api/admin/agent-actions/purchase-for-user', requireStaffPermission('c
       action: 'PURCHASE_NUMBER_FOR_USER',
       targetId: user.id,
       targetType: 'number',
-      details: `Agent purchased line ${assignedNumber} for ${user.email} (Deducted $${retailPrice.toFixed(2)} from user wallet)`,
+      details: `Agent purchased carrier line ${assignedNumber} for ${user.email} (Deducted ${retailPrice.toFixed(2)} from user wallet)`,
       req
     });
 
@@ -4513,6 +4526,17 @@ app.post('/api/admin/agent-actions/renew-for-user', requireStaffPermission('can_
 
     if (!line) {
       return res.status(404).json({ success: false, error: 'Virtual line not found for this user.' });
+    }
+
+    // Queue / Claim enforcement check for renew
+    if (req.staff.role !== 'super_admin') {
+      const ticket = await prisma.supportTicket.findUnique({ where: { userId: user.id } });
+      if (ticket && (ticket.status === 'unassigned' || (ticket.assignedStaffId && ticket.assignedStaffId !== req.staff.id))) {
+        return res.status(403).json({
+          success: false,
+          error: 'You must claim/join this customer ticket first before renewing virtual lines.'
+        });
+      }
     }
 
     // Determine renewal price using unified pricing function

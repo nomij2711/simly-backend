@@ -409,6 +409,29 @@ const calculateNumberPrice = (countryCode, planType, durationDays, phoneNumber =
   return 1.50;                 // US / CA 30 Days = $1.50
 };
 
+
+// Calculate Virtual Number Carrier Wholesale Base Cost (Telnyx Direct)
+const calculateNumberWholesaleCost = (countryCode, planType) => {
+  const cc = (countryCode || 'US').toUpperCase();
+  const isAU = cc === 'AU';
+  const isOther = cc !== 'US' && cc !== 'CA' && cc !== 'GB' && !isAU;
+
+  if (planType === '7_days') {
+    if (isAU) return 0.70000000;
+    if (isOther) return 0.50000000;
+    return 0.25000000; // US, CA, GB
+  } else if (planType === '365_days') {
+    if (isAU) return 30.00000000;
+    if (isOther) return 18.00000000;
+    return 12.00000000; // US, CA, GB
+  }
+
+  // 30 Days Standard
+  if (isAU) return 2.50000000;
+  if (isOther) return 1.50000000;
+  return 1.00000000; // US, CA, GB
+};
+
 // 1. Endpoint: Search Available Numbers from Telnyx (with 1.5x retail pricing + robust fallback)
 app.get('/api/numbers/search', async (req, res) => {
   try {
@@ -2874,13 +2897,11 @@ async function calculateMasterFinancials() {
   const totalRetailRevenue = retailLineRevenue + retailCallRevenue + retailSmsRevenue;
 
   // 4. Wholesale Telecom Carrier Costs (Telnyx Direct Wholesale DIDs, Termination & SMS)
-  // A. Numbers Wholesale Cost: Telnyx wholesale DID rate per purchased line ($1.00000000 / month standard)
-  const purchasedNumbers = await prisma.purchasedNumber.findMany({ select: { id: true, planType: true, createdAt: true } });
+  // A. Numbers Wholesale Cost: Exact Telnyx wholesale DID rate per country & plan
+  const purchasedNumbers = await prisma.purchasedNumber.findMany({ select: { id: true, countryCode: true, planType: true, createdAt: true } });
   let wholesaleNumberCost = 0;
   purchasedNumbers.forEach(n => {
-    if (n.planType === '7_days') wholesaleNumberCost += 0.25000000;
-    else if (n.planType === '365_days') wholesaleNumberCost += 12.00000000;
-    else wholesaleNumberCost += 1.00000000;
+    wholesaleNumberCost += calculateNumberWholesaleCost(n.countryCode, n.planType);
   });
 
   // B. Calls Wholesale Cost: Termination per second ($0.00900000 / min = $0.00015000 / sec)
@@ -2954,20 +2975,16 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
     });
 
     const numbersDetailed = numbers.map(n => {
-      let wholesale = 1.00000000;
-      let retail = 3.99000000;
-      let planDaysLabel = '30 Days Monthly';
-
-      if (n.planType === '7_days') {
-        wholesale = 0.25000000;
-        retail = 1.99000000;
-        planDaysLabel = '7 Days Weekly';
-      } else if (n.planType === '365_days') {
-        wholesale = 12.00000000;
-        retail = 39.99000000;
-        planDaysLabel = '365 Days Yearly';
-      }
-
+      const cc = (n.countryCode || 'US').toUpperCase();
+      const plan = n.planType || '30_days';
+      
+      // Calculate exact official retail price (identical to mobile app)
+      const retail = calculateNumberPrice(cc, plan, plan === '7_days' ? 7 : plan === '365_days' ? 365 : 30, n.phoneNumber);
+      
+      // Calculate exact carrier wholesale base cost
+      const wholesale = calculateNumberWholesaleCost(cc, plan);
+      
+      const planDaysLabel = plan === '7_days' ? '7 Days Weekly' : plan === '365_days' ? '365 Days Yearly' : '30 Days Monthly';
       const netProfit = retail - wholesale;
       const margin = retail > 0 ? ((netProfit / retail) * 100).toFixed(2) : '0.00';
       const user = userMap[n.userId] || { name: 'SimlyTel User', email: n.userId };
@@ -2975,8 +2992,8 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
       return {
         id: n.id,
         phoneNumber: n.phoneNumber,
-        countryCode: (n.countryCode || 'US').toUpperCase(),
-        planType: n.planType || '30_days',
+        countryCode: cc,
+        planType: plan,
         planDaysLabel,
         status: n.status || 'active',
         createdAt: n.createdAt,

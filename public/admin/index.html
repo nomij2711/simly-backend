@@ -4211,7 +4211,11 @@
 
       document.getElementById('planTierModalTitle').innerText = 'Add Subscription Tier';
       document.getElementById('btnDeletePlanTier').classList.add('hidden');
-      document.getElementById('planTierModal')?.classList.remove('hidden');
+      const m = document.getElementById('planTierModal');
+      if (m) {
+        m.classList.remove('hidden');
+        m.classList.add('flex');
+      }
     }
 
     function openEditPlanTierModal(id) {
@@ -4231,11 +4235,19 @@
 
       document.getElementById('planTierModalTitle').innerText = `Edit ${t.name} Plan Tier`;
       document.getElementById('btnDeletePlanTier').classList.remove('hidden');
-      document.getElementById('planTierModal')?.classList.remove('hidden');
+      const m = document.getElementById('planTierModal');
+      if (m) {
+        m.classList.remove('hidden');
+        m.classList.add('flex');
+      }
     }
 
     function closePlanTierModal() {
-      document.getElementById('planTierModal')?.classList.add('hidden');
+      const m = document.getElementById('planTierModal');
+      if (m) {
+        m.classList.add('hidden');
+        m.classList.remove('flex');
+      }
     }
 
     async function handleSavePlanTier(e) {

@@ -383,54 +383,79 @@ app.get('/api/auth/me', async (req, res) => {
 const CALLING_RETAIL_MULTIPLIER = 2.5; // Calling rates = 2.5x wholesale
 const NUMBER_RETAIL_MULTIPLIER = 1.5;  // Numbers & SMS = 1.5x wholesale
 
-// Calculate Virtual Number Retail Price (Exact Flat Tiers)
+// ============================================================================
+// 🌐 DYNAMIC COUNTRY RATES & SYSTEM CONFIG ENGINE (Zero Hardcoding - PostgreSQL)
+// ============================================================================
+let dynamicRatesCache = [];
+let dynamicConfigCache = {};
+
+async function refreshDynamicCaches() {
+  try {
+    const rates = await prisma.countryRate.findMany({ orderBy: { countryCode: 'asc' } });
+    if (rates && rates.length > 0) {
+      dynamicRatesCache = rates;
+    }
+    const configs = await prisma.systemConfig.findMany();
+    dynamicConfigCache = configs.reduce((acc, cur) => {
+      acc[cur.key] = cur.value;
+      return acc;
+    }, {});
+    console.log(`📡 [DYNAMIC CACHE] Synced ${dynamicRatesCache.length} country rate decks and ${Object.keys(dynamicConfigCache).length} system configs from PostgreSQL.`);
+  } catch (err) {
+    console.warn('[DYNAMIC CACHE WARNING] Sync error:', err.message);
+  }
+}
+
+// Initial cache load on server startup
+refreshDynamicCaches();
+
+const getCountryRate = (countryCode) => {
+  const cc = (countryCode || 'US').toString().toUpperCase().trim();
+  const found = dynamicRatesCache.find(r => r.countryCode === cc);
+  if (found) return found;
+  const usRate = dynamicRatesCache.find(r => r.countryCode === 'US');
+  return usRate || {
+    countryCode: 'US',
+    countryName: 'United States',
+    dialCode: '+1',
+    flagEmoji: '🇺🇸',
+    numberMonthlySellPrice: 1.00,
+    numberYearlySellPrice: 12.00,
+    number7DaySellPrice: 0.50,
+    numberWholesaleCost: 1.00,
+    callSellPricePerMin: 0.020,
+    callWholesaleCostPerMin: 0.007,
+    smsSellPrice: 0.020,
+    smsWholesaleCost: 0.004,
+    isActive: true,
+    allowOutboundCalls: true,
+    allowOutboundSms: true
+  };
+};
+
+// Calculate Virtual Number Retail Price (Dynamically linked with PostgreSQL)
 const calculateNumberPrice = (countryCode, planType, durationDays, phoneNumber = '') => {
-  const cc = (countryCode || 'US').toUpperCase();
-  const isAU = cc === 'AU';
-  const isGB = cc === 'GB';
-  const isOther = cc !== 'US' && cc !== 'CA' && !isGB && !isAU;
-
+  const rate = getCountryRate(countryCode);
   if (planType === '7_days' || durationDays <= 7) {
-    if (isAU) return 2.00;     // Australia 7 Days = $2.00
-    if (isGB) return 1.00;     // UK 7 Days = $1.00
-    if (isOther) return 1.50;  // Other 7 Days = $1.50
-    return 0.50;               // US / CA 7 Days = $0.50
+    return rate.number7DaySellPrice || 0.50;
   } else if (planType === '365_days' || durationDays >= 365) {
-    if (isAU) return 75.00;    // Australia 1 Year = $75.00
-    if (isGB) return 30.00;    // UK 1 Year = $30.00
-    if (isOther) return 45.00; // Other 1 Year = $45.00
-    return 15.00;              // US / CA 1 Year = $15.00
+    return rate.numberYearlySellPrice || 12.00;
   }
-
-  // 30 Days Standard Plan
-  if (isAU) return 7.00;       // Australia 30 Days = $7.00
-  if (isGB) return 3.00;       // UK 30 Days = $3.00
-  if (isOther) return 4.50;    // Other 30 Days = $4.50
-  return 1.50;                 // US / CA 30 Days = $1.50
+  return rate.numberMonthlySellPrice || 1.00;
 };
 
-
-// Calculate Virtual Number Carrier Wholesale Base Cost (Telnyx Direct)
+// Calculate Virtual Number Carrier Wholesale Base Cost (Dynamically linked with PostgreSQL)
 const calculateNumberWholesaleCost = (countryCode, planType) => {
-  const cc = (countryCode || 'US').toUpperCase();
-  const isAU = cc === 'AU';
-  const isOther = cc !== 'US' && cc !== 'CA' && cc !== 'GB' && !isAU;
-
+  const rate = getCountryRate(countryCode);
+  const baseWholesale = rate.numberWholesaleCost || 1.00;
   if (planType === '7_days') {
-    if (isAU) return 0.70000000;
-    if (isOther) return 0.50000000;
-    return 0.25000000; // US, CA, GB
+    return parseFloat((baseWholesale * 0.25).toFixed(4));
   } else if (planType === '365_days') {
-    if (isAU) return 30.00000000;
-    if (isOther) return 18.00000000;
-    return 12.00000000; // US, CA, GB
+    return parseFloat((baseWholesale * 12).toFixed(4));
   }
-
-  // 30 Days Standard
-  if (isAU) return 2.50000000;
-  if (isOther) return 1.50000000;
-  return 1.00000000; // US, CA, GB
+  return baseWholesale;
 };
+
 
 // 1. Endpoint: Search Available Numbers from Telnyx (with 1.5x retail pricing + robust fallback)
 app.get('/api/numbers/search', async (req, res) => {
@@ -1917,14 +1942,27 @@ const retailRates = baseRates.map(r => ({
   example: r.example,
 }));
 
-// 14. Endpoint: International Calling & SMS Rates Catalog
+// 14. Endpoint: International Calling & SMS Rates Catalog (Dynamic PostgreSQL Sync)
 app.get('/api/rates', async (req, res) => {
   try {
+    const activeRates = dynamicRatesCache.filter(r => r.isActive).map(r => ({
+      country: r.countryName,
+      code: r.countryCode,
+      dialCode: r.dialCode,
+      flag: r.flagEmoji,
+      callRatePerMin: r.callSellPricePerMin,
+      smsRate: r.smsSellPrice,
+      numberMonthlyPrice: r.numberMonthlySellPrice,
+      numberYearlyPrice: r.numberYearlySellPrice,
+      number7DayPrice: r.number7DaySellPrice,
+      allowCalls: r.allowOutboundCalls,
+      allowSms: r.allowOutboundSms
+    }));
+
     res.json({
       success: true,
-      count: retailRates.length,
-      multiplier: RETAIL_MULTIPLIER,
-      rates: retailRates
+      count: activeRates.length,
+      rates: activeRates.length > 0 ? activeRates : retailRates
     });
   } catch (error) {
     console.error('[SIMLY ERROR] Failed to fetch rates:', error);
@@ -5028,6 +5066,176 @@ app.post('/api/admin/support/reply', requireStaffPermission('can_handle_support'
     });
 
     res.json({ success: true, message: 'Reply sent successfully!', data: saved });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================================
+// 💎 ADMIN DYNAMIC COUNTRY RATE DECKS CRUD (POSTGRESQL SYNCED)
+// ============================================================================
+
+// 1. List all Country Rate Decks with live profit margin %
+app.get('/api/admin/rates', requireAdmin, async (req, res) => {
+  try {
+    const rates = await prisma.countryRate.findMany({ orderBy: { countryCode: 'asc' } });
+    const formatted = rates.map(r => {
+      const numMonthlyMargin = r.numberMonthlySellPrice > 0 ? (((r.numberMonthlySellPrice - r.numberWholesaleCost) / r.numberMonthlySellPrice) * 100).toFixed(1) : '0.0';
+      const callMargin = r.callSellPricePerMin > 0 ? (((r.callSellPricePerMin - r.callWholesaleCostPerMin) / r.callSellPricePerMin) * 100).toFixed(1) : '0.0';
+      const smsMargin = r.smsSellPrice > 0 ? (((r.smsSellPrice - r.smsWholesaleCost) / r.smsSellPrice) * 100).toFixed(1) : '0.0';
+      return {
+        ...r,
+        numMonthlyMarginPercent: parseFloat(numMonthlyMargin),
+        callMarginPercent: parseFloat(callMargin),
+        smsMarginPercent: parseFloat(smsMargin)
+      };
+    });
+    res.json({ success: true, count: formatted.length, rates: formatted });
+  } catch (error) {
+    console.error('[ADMIN GET RATES ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 2. Create or Upsert Country Rate Deck
+app.post('/api/admin/rates', requireAdmin, async (req, res) => {
+  try {
+    const {
+      countryCode,
+      countryName,
+      dialCode,
+      flagEmoji = '🌐',
+      numberMonthlySellPrice,
+      numberYearlySellPrice,
+      number7DaySellPrice,
+      numberWholesaleCost,
+      callSellPricePerMin,
+      callWholesaleCostPerMin,
+      smsSellPrice,
+      smsWholesaleCost,
+      isActive = true,
+      allowOutboundCalls = true,
+      allowOutboundSms = true
+    } = req.body;
+
+    if (!countryCode || !countryName || !dialCode) {
+      return res.status(400).json({ success: false, error: 'countryCode, countryName, and dialCode are required.' });
+    }
+
+    const cc = countryCode.trim().toUpperCase();
+    const saved = await prisma.countryRate.upsert({
+      where: { countryCode: cc },
+      update: {
+        countryName: countryName.trim(),
+        dialCode: dialCode.trim(),
+        flagEmoji: flagEmoji.trim(),
+        numberMonthlySellPrice: parseFloat(numberMonthlySellPrice) || 1.0,
+        numberYearlySellPrice: parseFloat(numberYearlySellPrice) || 12.0,
+        number7DaySellPrice: parseFloat(number7DaySellPrice) || 0.50,
+        numberWholesaleCost: parseFloat(numberWholesaleCost) || 1.0,
+        callSellPricePerMin: parseFloat(callSellPricePerMin) || 0.02,
+        callWholesaleCostPerMin: parseFloat(callWholesaleCostPerMin) || 0.007,
+        smsSellPrice: parseFloat(smsSellPrice) || 0.02,
+        smsWholesaleCost: parseFloat(smsWholesaleCost) || 0.004,
+        isActive: Boolean(isActive),
+        allowOutboundCalls: Boolean(allowOutboundCalls),
+        allowOutboundSms: Boolean(allowOutboundSms)
+      },
+      create: {
+        countryCode: cc,
+        countryName: countryName.trim(),
+        dialCode: dialCode.trim(),
+        flagEmoji: flagEmoji.trim(),
+        numberMonthlySellPrice: parseFloat(numberMonthlySellPrice) || 1.0,
+        numberYearlySellPrice: parseFloat(numberYearlySellPrice) || 12.0,
+        number7DaySellPrice: parseFloat(number7DaySellPrice) || 0.50,
+        numberWholesaleCost: parseFloat(numberWholesaleCost) || 1.0,
+        callSellPricePerMin: parseFloat(callSellPricePerMin) || 0.02,
+        callWholesaleCostPerMin: parseFloat(callWholesaleCostPerMin) || 0.007,
+        smsSellPrice: parseFloat(smsSellPrice) || 0.02,
+        smsWholesaleCost: parseFloat(smsWholesaleCost) || 0.004,
+        isActive: Boolean(isActive),
+        allowOutboundCalls: Boolean(allowOutboundCalls),
+        allowOutboundSms: Boolean(allowOutboundSms)
+      }
+    });
+
+    await refreshDynamicCaches();
+    await logAuditEvent(req, 'UPDATE_PRICING', cc, 'country_rate', `Upserted Rate Deck for ${saved.flagEmoji} ${saved.countryName} (${cc})`);
+
+    res.json({ success: true, message: `Rate deck for ${saved.countryName} saved successfully!`, rate: saved });
+  } catch (error) {
+    console.error('[ADMIN POST RATE ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3. Update single country rate deck
+app.put('/api/admin/rates/:countryCode', requireAdmin, async (req, res) => {
+  try {
+    const cc = req.params.countryCode.trim().toUpperCase();
+    const existing = await prisma.countryRate.findUnique({ where: { countryCode: cc } });
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Country rate deck not found.' });
+    }
+
+    const updates = {};
+    if (req.body.countryName !== undefined) updates.countryName = req.body.countryName.trim();
+    if (req.body.dialCode !== undefined) updates.dialCode = req.body.dialCode.trim();
+    if (req.body.flagEmoji !== undefined) updates.flagEmoji = req.body.flagEmoji.trim();
+    if (req.body.numberMonthlySellPrice !== undefined) updates.numberMonthlySellPrice = parseFloat(req.body.numberMonthlySellPrice);
+    if (req.body.numberYearlySellPrice !== undefined) updates.numberYearlySellPrice = parseFloat(req.body.numberYearlySellPrice);
+    if (req.body.number7DaySellPrice !== undefined) updates.number7DaySellPrice = parseFloat(req.body.number7DaySellPrice);
+    if (req.body.numberWholesaleCost !== undefined) updates.numberWholesaleCost = parseFloat(req.body.numberWholesaleCost);
+    if (req.body.callSellPricePerMin !== undefined) updates.callSellPricePerMin = parseFloat(req.body.callSellPricePerMin);
+    if (req.body.callWholesaleCostPerMin !== undefined) updates.callWholesaleCostPerMin = parseFloat(req.body.callWholesaleCostPerMin);
+    if (req.body.smsSellPrice !== undefined) updates.smsSellPrice = parseFloat(req.body.smsSellPrice);
+    if (req.body.smsWholesaleCost !== undefined) updates.smsWholesaleCost = parseFloat(req.body.smsWholesaleCost);
+    if (req.body.isActive !== undefined) updates.isActive = Boolean(req.body.isActive);
+    if (req.body.allowOutboundCalls !== undefined) updates.allowOutboundCalls = Boolean(req.body.allowOutboundCalls);
+    if (req.body.allowOutboundSms !== undefined) updates.allowOutboundSms = Boolean(req.body.allowOutboundSms);
+
+    const updated = await prisma.countryRate.update({
+      where: { countryCode: cc },
+      data: updates
+    });
+
+    await refreshDynamicCaches();
+    await logAuditEvent(req, 'UPDATE_PRICING', cc, 'country_rate', `Updated Rate Deck for ${updated.flagEmoji} ${updated.countryName} (${cc})`);
+
+    res.json({ success: true, message: `Rate deck for ${updated.countryName} updated successfully!`, rate: updated });
+  } catch (error) {
+    console.error('[ADMIN PUT RATE ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4. Toggle Country Active Status
+app.post('/api/admin/rates/:countryCode/toggle', requireAdmin, async (req, res) => {
+  try {
+    const cc = req.params.countryCode.trim().toUpperCase();
+    const existing = await prisma.countryRate.findUnique({ where: { countryCode: cc } });
+    if (!existing) return res.status(404).json({ success: false, error: 'Rate deck not found' });
+
+    const updated = await prisma.countryRate.update({
+      where: { countryCode: cc },
+      data: { isActive: !existing.isActive }
+    });
+
+    await refreshDynamicCaches();
+    res.json({ success: true, message: `${updated.countryName} is now ${updated.isActive ? 'ACTIVE 🟢' : 'DISABLED 🔴'}`, rate: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. Delete Country Rate Deck
+app.delete('/api/admin/rates/:countryCode', requireAdmin, async (req, res) => {
+  try {
+    const cc = req.params.countryCode.trim().toUpperCase();
+    await prisma.countryRate.delete({ where: { countryCode: cc } });
+    await refreshDynamicCaches();
+    res.json({ success: true, message: `Rate deck for ${cc} deleted successfully.` });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

@@ -595,15 +595,16 @@ app.get('/api/numbers/search', async (req, res) => {
     const countryCode = (req.query.country || fallbackCountry).toUpperCase();
     const rateDeck = getCountryRate(countryCode);
 
-    // 🔒 STRICT ROUTE ACTIVE CHECK: If route is removed or disabled by admin, return empty list and 403 error
+    // 🔒 STRICT ROUTE ACTIVE CHECK: If route is removed or disabled by admin, return empty list cleanly
     if (!rateDeck || rateDeck.isActive === false) {
-      return res.status(403).json({
-        success: false,
-        error: `Virtual numbers for ${rateDeck?.countryName || countryCode} are currently disabled by administrator.`,
+      return res.json({
+        success: true,
+        count: 0,
+        numbers: [],
         isActive: false,
         country: rateDeck?.countryName || countryCode,
         countryCode: countryCode,
-        numbers: []
+        message: `Virtual numbers for ${rateDeck?.countryName || countryCode} are currently disabled by administrator.`
       });
     }
     let numbers = [];

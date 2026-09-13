@@ -5547,34 +5547,273 @@ app.post('/api/admin/pricing', requireAdmin, (req, res) => {
   res.json({ success: true, message: 'Runtime pricing updated live!', config: adminRuntimeConfig });
 });
 
-// 16. Promo Codes Management
-app.post('/api/admin/promos/create', requireAdmin, (req, res) => {
-  const { code, bonus, maxUses } = req.body;
-  if (!code || !bonus) {
-    return res.status(400).json({ success: false, error: 'Code and bonus amount required.' });
+// ============================================================================
+// 🎁 MARKETING GIFT PROMO CODES ENGINE (PostgreSQL Database Driven)
+// ============================================================================
+
+// 1. Admin: List All Promo Codes
+app.get('/api/admin/promos', requireAdmin, async (req, res) => {
+  try {
+    let list = [];
+    if (prisma?.promoCode) {
+      list = await prisma.promoCode.findMany({ orderBy: { createdAt: 'desc' } });
+    } else {
+      list = await prisma.$queryRaw`SELECT * FROM "PromoCode" ORDER BY "createdAt" DESC`;
+    }
+    res.json({ success: true, count: list.length, promos: list });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
-
-  const newPromo = {
-    id: `p_${Date.now()}`,
-    code: code.trim().toUpperCase(),
-    bonus: parseFloat(bonus),
-    maxUses: parseInt(maxUses || '100', 10),
-    used: 0,
-    active: true,
-    createdAt: new Date()
-  };
-
-  adminRuntimeConfig.promos.unshift(newPromo);
-  res.json({ success: true, message: `Promo code ${newPromo.code} created!`, promo: newPromo });
 });
 
-app.post('/api/admin/promos/toggle', requireAdmin, (req, res) => {
-  const { id } = req.body;
-  const promo = adminRuntimeConfig.promos.find(p => p.id === id);
-  if (!promo) return res.status(404).json({ success: false, error: 'Promo not found.' });
+// 2. Admin: Create Promo Code
+app.post('/api/admin/promos/create', requireAdmin, async (req, res) => {
+  try {
+    const { code, bonus, maxUses } = req.body;
+    if (!code || !bonus) {
+      return res.status(400).json({ success: false, error: 'Promo code and bonus amount are required.' });
+    }
 
-  promo.active = !promo.active;
-  res.json({ success: true, message: `Promo ${promo.code} is now ${promo.active ? 'ACTIVE' : 'DISABLED'}` });
+    const cleanCode = code.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+    const bonusVal = parseFloat(bonus);
+    const maxUsesVal = parseInt(maxUses || '100', 10);
+
+    if (isNaN(bonusVal) || bonusVal <= 0) {
+      return res.status(400).json({ success: false, error: 'Bonus amount must be a positive number.' });
+    }
+
+    let saved;
+    if (prisma?.promoCode) {
+      saved = await prisma.promoCode.upsert({
+        where: { code: cleanCode },
+        update: {
+          bonus: bonusVal,
+          maxUses: maxUsesVal,
+          isActive: true
+        },
+        create: {
+          code: cleanCode,
+          bonus: bonusVal,
+          maxUses: maxUsesVal,
+          isActive: true
+        }
+      });
+    } else {
+      const id = `promo_${Date.now()}`;
+      await prisma.$executeRaw`
+        INSERT INTO "PromoCode" ("id", "code", "bonus", "maxUses", "usedCount", "isActive", "updatedAt")
+        VALUES (${id}, ${cleanCode}, ${bonusVal}, ${maxUsesVal}, 0, true, CURRENT_TIMESTAMP)
+        ON CONFLICT ("code") DO UPDATE SET "bonus" = ${bonusVal}, "maxUses" = ${maxUsesVal}, "isActive" = true, "updatedAt" = CURRENT_TIMESTAMP;
+      `;
+      saved = { id, code: cleanCode, bonus: bonusVal, maxUses: maxUsesVal, usedCount: 0, isActive: true };
+    }
+
+    await logAuditEvent({
+      staffId: req.staff?.id,
+      staffName: req.staff?.name,
+      staffEmail: req.staff?.email,
+      staffRole: req.staff?.role,
+      action: 'CREATE_PROMO',
+      targetId: cleanCode,
+      targetType: 'promo_code',
+      details: `Created/Updated promo voucher ${cleanCode} with $${bonusVal} bonus`,
+      req
+    });
+
+    res.json({ success: true, message: `Promo code ${cleanCode} ($${bonusVal.toFixed(2)}) created successfully!`, promo: saved });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3. Admin: Toggle Promo Code Active Status
+app.post(['/api/admin/promos/:id/toggle', '/api/admin/promos/toggle'], requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id || req.body.id;
+    if (!id) return res.status(400).json({ success: false, error: 'Promo ID is required.' });
+
+    let promo;
+    if (prisma?.promoCode) {
+      promo = await prisma.promoCode.findFirst({ where: { OR: [{ id }, { code: id }] } });
+      if (!promo) return res.status(404).json({ success: false, error: 'Promo code not found.' });
+      promo = await prisma.promoCode.update({
+        where: { id: promo.id },
+        data: { isActive: !promo.isActive }
+      });
+    } else {
+      const rows = await prisma.$queryRaw`SELECT * FROM "PromoCode" WHERE "id" = ${id} OR "code" = ${id} LIMIT 1`;
+      if (!rows || rows.length === 0) return res.status(404).json({ success: false, error: 'Promo code not found.' });
+      const current = rows[0];
+      const newStatus = !current.isActive;
+      await prisma.$executeRaw`UPDATE "PromoCode" SET "isActive" = ${newStatus}, "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ${current.id}`;
+      promo = { ...current, isActive: newStatus };
+    }
+
+    await logAuditEvent({
+      staffId: req.staff?.id,
+      staffName: req.staff?.name,
+      staffEmail: req.staff?.email,
+      staffRole: req.staff?.role,
+      action: 'TOGGLE_PROMO',
+      targetId: promo.code,
+      targetType: 'promo_code',
+      details: `Set promo voucher ${promo.code} to ${promo.isActive ? 'ACTIVE' : 'DISABLED'}`,
+      req
+    });
+
+    res.json({
+      success: true,
+      message: `Promo code ${promo.code} is now ${promo.isActive ? 'ACTIVE 🟢 (Users can redeem)' : 'DISABLED 🔴 (Users cannot redeem)'}`,
+      promo
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4. Admin: Delete Promo Code
+app.delete('/api/admin/promos/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    let codeName = id;
+    if (prisma?.promoCode) {
+      const existing = await prisma.promoCode.findFirst({ where: { OR: [{ id }, { code: id }] } });
+      if (existing) {
+        codeName = existing.code;
+        await prisma.promoCode.delete({ where: { id: existing.id } });
+      }
+    } else {
+      await prisma.$executeRaw`DELETE FROM "PromoCode" WHERE "id" = ${id} OR "code" = ${id}`;
+    }
+
+    await logAuditEvent({
+      staffId: req.staff?.id,
+      staffName: req.staff?.name,
+      staffEmail: req.staff?.email,
+      staffRole: req.staff?.role,
+      action: 'DELETE_PROMO',
+      targetId: codeName,
+      targetType: 'promo_code',
+      details: `Permanently deleted promo voucher ${codeName}`,
+      req
+    });
+
+    res.json({ success: true, message: `Promo code ${codeName} deleted permanently.` });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. Public Mobile App Endpoint: Redeem Promo Code / Gift Voucher
+app.post(['/api/wallet/redeem-promo', '/api/promos/redeem'], async (req, res) => {
+  try {
+    const { userId, code } = req.body;
+    if (!userId || !code) {
+      return res.status(400).json({ success: false, error: 'User ID and promo code are required.' });
+    }
+
+    const cleanCode = code.trim().toUpperCase();
+    const cleanUid = userId.toString().trim().toLowerCase();
+
+    // 1. Find User
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: userId },
+          { email: cleanUid },
+          { email: `${cleanUid}@simlytel.com` },
+          { email: `${cleanUid}@simly.app` }
+        ]
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User account not found.' });
+    }
+
+    if (user.isBanned || !user.isVerified) {
+      return res.status(403).json({ success: false, error: 'Account suspended or restricted. Cannot redeem vouchers.' });
+    }
+
+    // 2. Find Promo in Database
+    let promo;
+    if (prisma?.promoCode) {
+      promo = await prisma.promoCode.findUnique({ where: { code: cleanCode } });
+    } else {
+      const rows = await prisma.$queryRaw`SELECT * FROM "PromoCode" WHERE "code" = ${cleanCode} LIMIT 1`;
+      promo = rows?.[0];
+    }
+
+    // Check if promo exists and is active
+    if (!promo || promo.isActive !== true) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid or expired promo code. Please check code and try again.'
+      });
+    }
+
+    // Check redemption limit
+    if (promo.usedCount >= promo.maxUses) {
+      return res.status(400).json({
+        success: false,
+        error: 'This promo code has reached its maximum redemption limit.'
+      });
+    }
+
+    // Check if this specific user already redeemed this promo
+    const alreadyRedeemed = await prisma.transaction.findFirst({
+      where: {
+        userId: user.id,
+        description: { contains: cleanCode }
+      }
+    });
+
+    if (alreadyRedeemed) {
+      return res.status(400).json({
+        success: false,
+        error: `You have already redeemed promo code ${cleanCode}.`
+      });
+    }
+
+    // Credit User Wallet
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { walletBalance: { increment: promo.bonus } }
+    });
+
+    // Increment usedCount
+    if (prisma?.promoCode) {
+      await prisma.promoCode.update({
+        where: { id: promo.id },
+        data: { usedCount: { increment: 1 } }
+      });
+    } else {
+      await prisma.$executeRaw`UPDATE "PromoCode" SET "usedCount" = "usedCount" + 1, "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ${promo.id}`;
+    }
+
+    // Record Transaction Ledger
+    const tx = await prisma.transaction.create({
+      data: {
+        userId: user.id,
+        type: 'topup',
+        amount: promo.bonus,
+        description: `Promo Code Bonus Redeemed: ${cleanCode}`
+      }
+    });
+
+    console.log(`🎁 [PROMO REDEEMED] User ${user.email} redeemed ${cleanCode} for +$${promo.bonus.toFixed(2)}. New balance: $${updatedUser.walletBalance.toFixed(2)}`);
+
+    res.json({
+      success: true,
+      message: `🎉 Success! $${promo.bonus.toFixed(2)} bonus credit added to your wallet.`,
+      bonus: promo.bonus,
+      newBalance: updatedUser.walletBalance,
+      transaction: tx
+    });
+  } catch (error) {
+    console.error('[PROMO REDEEM ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // ============================================================================

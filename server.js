@@ -509,32 +509,19 @@ async function refreshDynamicCaches() {
 refreshDynamicCaches();
 
 const getCountryRate = (countryCode) => {
-  const cc = (countryCode || 'US').toString().toUpperCase().trim();
+  if (!countryCode) return null;
+  const cc = countryCode.toString().toUpperCase().trim();
   const found = dynamicRatesCache.find(r => r.countryCode === cc);
   if (found) return found;
-  const usRate = dynamicRatesCache.find(r => r.countryCode === 'US');
-  return usRate || {
-    countryCode: 'US',
-    countryName: 'United States',
-    dialCode: '+1',
-    flagEmoji: '🇺🇸',
-    numberMonthlySellPrice: 1.00,
-    numberYearlySellPrice: 12.00,
-    number7DaySellPrice: 0.50,
-    numberWholesaleCost: 1.00,
-    callSellPricePerMin: 0.020,
-    callWholesaleCostPerMin: 0.007,
-    smsSellPrice: 0.020,
-    smsWholesaleCost: 0.004,
-    isActive: true,
-    allowOutboundCalls: true,
-    allowOutboundSms: true
-  };
+  return null;
 };
 
 // 💎 Constructs dynamic plan tiers for any country (Combining active tiers + base rates + custom overrides)
 const getCountryPlans = (countryCode, onlyActive = true) => {
   const rate = getCountryRate(countryCode);
+  if (!rate || (onlyActive && rate.isActive === false)) {
+    return [];
+  }
   let customMap = {};
   try {
     if (rate.customPlanPrices) {
@@ -547,16 +534,16 @@ const getCountryPlans = (countryCode, onlyActive = true) => {
   return tiers.map(tier => {
     let sellPrice = customMap[tier.key];
     if (sellPrice === undefined || sellPrice === null) {
-      if (tier.key === '7_days' && rate.number7DaySellPrice) sellPrice = rate.number7DaySellPrice;
-      else if (tier.key === '30_days' && rate.numberMonthlySellPrice) sellPrice = rate.numberMonthlySellPrice;
-      else if (tier.key === '365_days' && rate.numberYearlySellPrice) sellPrice = rate.numberYearlySellPrice;
+      if (tier.key === '7_days' && rate.number7DaySellPrice !== undefined) sellPrice = rate.number7DaySellPrice;
+      else if (tier.key === '30_days' && rate.numberMonthlySellPrice !== undefined) sellPrice = rate.numberMonthlySellPrice;
+      else if (tier.key === '365_days' && rate.numberYearlySellPrice !== undefined) sellPrice = rate.numberYearlySellPrice;
       else {
-        sellPrice = parseFloat((rate.numberMonthlySellPrice * (tier.defaultPriceRatio || 1.0)).toFixed(2));
+        sellPrice = parseFloat(((rate.numberMonthlySellPrice || 1.0) * (tier.defaultPriceRatio || 1.0)).toFixed(2));
       }
     }
     sellPrice = parseFloat(Number(sellPrice).toFixed(2));
 
-    const wholesaleCost = parseFloat((rate.numberWholesaleCost * (tier.wholesaleDayRatio || 1.0)).toFixed(2));
+    const wholesaleCost = parseFloat(((rate.numberWholesaleCost || 1.0) * (tier.wholesaleDayRatio || 1.0)).toFixed(2));
     const profit = parseFloat((sellPrice - wholesaleCost).toFixed(2));
     const marginPct = sellPrice > 0 ? Math.round((profit / sellPrice) * 100) : 0;
 
@@ -578,19 +565,23 @@ const getCountryPlans = (countryCode, onlyActive = true) => {
 
 // Calculate Virtual Number Retail Price (Dynamically resolved from dynamic tiers)
 const calculateNumberPrice = (countryCode, planType, durationDays, phoneNumber = '') => {
+  const rate = getCountryRate(countryCode);
+  if (!rate || rate.isActive === false) {
+    throw new Error(`Virtual line route for ${rate?.countryName || countryCode} is disabled by administrator.`);
+  }
   const plans = getCountryPlans(countryCode, false);
   const matched = plans.find(p => p.key === planType || (durationDays && p.durationDays === parseInt(durationDays)));
   if (matched) return matched.price;
-  const rate = getCountryRate(countryCode);
   return rate.numberMonthlySellPrice || 1.00;
 };
 
 // Calculate Virtual Number Carrier Wholesale Base Cost (Dynamically resolved from dynamic tiers)
 const calculateNumberWholesaleCost = (countryCode, planType, durationDays) => {
+  const rate = getCountryRate(countryCode);
+  if (!rate) return 1.00;
   const plans = getCountryPlans(countryCode, false);
   const matched = plans.find(p => p.key === planType || (durationDays && p.durationDays === parseInt(durationDays)));
   if (matched) return matched.wholesaleCost;
-  const rate = getCountryRate(countryCode);
   return rate.numberWholesaleCost || 1.00;
 };
 
@@ -598,8 +589,21 @@ const calculateNumberWholesaleCost = (countryCode, planType, durationDays) => {
 // 1. Endpoint: Search Available Numbers (100% Dynamic Sync with PostgreSQL CountryRate Deck)
 app.get('/api/numbers/search', async (req, res) => {
   try {
+    await refreshDynamicCaches();
     const countryCode = (req.query.country || 'US').toUpperCase();
     const rateDeck = getCountryRate(countryCode);
+
+    // 🔒 STRICT ROUTE ACTIVE CHECK: If route is removed or disabled by admin, return empty list and 403 error
+    if (!rateDeck || rateDeck.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        error: `Virtual numbers for ${rateDeck?.countryName || countryCode} are currently disabled by administrator.`,
+        isActive: false,
+        country: rateDeck?.countryName || countryCode,
+        countryCode: countryCode,
+        numbers: []
+      });
+    }
     let numbers = [];
 
     if (process.env.TELNYX_API_KEY && telnyx?.availablePhoneNumbers) {
@@ -740,7 +744,23 @@ const handleBuyTest = async (req, res) => {
     const cleanCountryCode = rawCountryCode.toString().trim().toUpperCase().substring(0, 2) || "US";
     const cleanUserId = rawUserId.toString().trim();
 
-    const price = calculateNumberPrice(cleanCountryCode, planType, durationDays, cleanPhoneNumber);
+    await refreshDynamicCaches();
+    const rateDeck = getCountryRate(cleanCountryCode);
+
+    // 🔒 STRICT ROUTE ACTIVE CHECK: Block buying numbers for disabled/removed countries
+    if (!rateDeck || rateDeck.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        error: `Virtual numbers for ${rateDeck?.countryName || cleanCountryCode} are currently disabled by administrator. Purchase blocked.`
+      });
+    }
+
+    let price;
+    try {
+      price = calculateNumberPrice(cleanCountryCode, planType, durationDays, cleanPhoneNumber);
+    } catch (priceErr) {
+      return res.status(400).json({ success: false, error: priceErr.message });
+    }
 
     let user = await prisma.user.findFirst({
       where: {
@@ -2107,6 +2127,7 @@ const retailRates = baseRates.map(r => ({
 // 14. Endpoint: International Calling & SMS Rates Catalog (Dynamic PostgreSQL Sync)
 app.get('/api/rates', async (req, res) => {
   try {
+    await refreshDynamicCaches();
     const activeRates = dynamicRatesCache.filter(r => r.isActive).map(r => ({
       country: r.countryName,
       code: r.countryCode,
@@ -2124,10 +2145,44 @@ app.get('/api/rates', async (req, res) => {
     res.json({
       success: true,
       count: activeRates.length,
-      rates: activeRates.length > 0 ? activeRates : retailRates
+      rates: activeRates
     });
   } catch (error) {
     console.error('[SIMLY ERROR] Failed to fetch rates:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 14a. Available Active Countries Catalog for Mobile App (100% Dynamic PostgreSQL)
+app.get(['/api/countries', '/api/app/countries', '/api/numbers/countries', '/api/marketplace/countries'], async (req, res) => {
+  try {
+    await refreshDynamicCaches();
+    const activeList = dynamicRatesCache.filter(r => r.isActive).map(r => ({
+      country: r.countryName,
+      countryName: r.countryName,
+      name: r.countryName,
+      code: r.countryCode,
+      countryCode: r.countryCode,
+      dialCode: r.dialCode,
+      flag: r.flagEmoji,
+      flagEmoji: r.flagEmoji,
+      monthlyPrice: r.numberMonthlySellPrice,
+      yearlyPrice: r.numberYearlySellPrice,
+      sevenDayPrice: r.number7DaySellPrice,
+      callRate: r.callSellPricePerMin,
+      smsRate: r.smsSellPrice,
+      allowCalls: r.allowOutboundCalls,
+      allowSms: r.allowOutboundSms,
+      isActive: true
+    }));
+
+    res.json({
+      success: true,
+      count: activeList.length,
+      countries: activeList,
+      rates: activeList
+    });
+  } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });

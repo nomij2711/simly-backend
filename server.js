@@ -384,25 +384,124 @@ const CALLING_RETAIL_MULTIPLIER = 2.5; // Calling rates = 2.5x wholesale
 const NUMBER_RETAIL_MULTIPLIER = 1.5;  // Numbers & SMS = 1.5x wholesale
 
 // ============================================================================
-// 🌐 DYNAMIC COUNTRY RATES & SYSTEM CONFIG ENGINE (Zero Hardcoding - PostgreSQL)
+// 🌐 DYNAMIC COUNTRY RATES, PLAN TIERS & CONFIG ENGINE (Zero Hardcoding - PostgreSQL)
 // ============================================================================
 let dynamicRatesCache = [];
+let dynamicPlanTiersCache = [];
 let dynamicConfigCache = {};
+
+const DEFAULT_PLAN_TIERS = [
+  {
+    id: 'tier_7d',
+    key: '7_days',
+    name: '7 Days',
+    badge: '⚡ Quick',
+    subtitle: 'Quick verification & temporary use',
+    durationDays: 7,
+    wholesaleDayRatio: 0.25,
+    defaultPriceRatio: 0.5,
+    isActive: true,
+    sortOrder: 1
+  },
+  {
+    id: 'tier_30d',
+    key: '30_days',
+    name: '30 Days',
+    badge: '🌟 Standard',
+    subtitle: 'Most popular for personal & WhatsApp',
+    durationDays: 30,
+    wholesaleDayRatio: 1.0,
+    defaultPriceRatio: 1.0,
+    isActive: true,
+    sortOrder: 2
+  },
+  {
+    id: 'tier_90d',
+    key: '90_days',
+    name: '3 Months',
+    badge: '🔥 Popular',
+    subtitle: 'Quarterly saver with bonus savings',
+    durationDays: 90,
+    wholesaleDayRatio: 3.0,
+    defaultPriceRatio: 2.7,
+    isActive: true,
+    sortOrder: 3
+  },
+  {
+    id: 'tier_180d',
+    key: '180_days',
+    name: '6 Months',
+    badge: '🚀 Semi-Annual',
+    subtitle: 'Half-yearly dedicated private line',
+    durationDays: 180,
+    wholesaleDayRatio: 6.0,
+    defaultPriceRatio: 5.0,
+    isActive: true,
+    sortOrder: 4
+  },
+  {
+    id: 'tier_365d',
+    key: '365_days',
+    name: '1 Year',
+    badge: '💎 Saver',
+    subtitle: 'Permanent line with 2 months free',
+    durationDays: 365,
+    wholesaleDayRatio: 12.0,
+    defaultPriceRatio: 10.0,
+    isActive: true,
+    sortOrder: 5
+  }
+];
+
+async function seedDefaultTiersIfEmpty() {
+  try {
+    if (prisma?.subscriptionPlanTier) {
+      const count = await prisma.subscriptionPlanTier.count();
+      if (count === 0) {
+        for (const t of DEFAULT_PLAN_TIERS) {
+          await prisma.subscriptionPlanTier.upsert({
+            where: { key: t.key },
+            update: t,
+            create: t
+          });
+        }
+        console.log('✅ Seeded default subscription plan tiers into PostgreSQL');
+      }
+    }
+  } catch (err) {
+    console.warn('[TIERS SEED WARNING]', err.message);
+  }
+}
 
 async function refreshDynamicCaches() {
   try {
+    await seedDefaultTiersIfEmpty();
+
     const rates = await prisma.countryRate.findMany({ orderBy: { countryCode: 'asc' } });
     if (rates && rates.length > 0) {
       dynamicRatesCache = rates;
     }
+
+    if (prisma?.subscriptionPlanTier) {
+      const tiers = await prisma.subscriptionPlanTier.findMany({ orderBy: { sortOrder: 'asc' } });
+      if (tiers && tiers.length > 0) {
+        dynamicPlanTiersCache = tiers;
+      } else {
+        dynamicPlanTiersCache = DEFAULT_PLAN_TIERS;
+      }
+    } else {
+      dynamicPlanTiersCache = DEFAULT_PLAN_TIERS;
+    }
+
     const configs = await prisma.systemConfig.findMany();
     dynamicConfigCache = configs.reduce((acc, cur) => {
       acc[cur.key] = cur.value;
       return acc;
     }, {});
-    console.log(`📡 [DYNAMIC CACHE] Synced ${dynamicRatesCache.length} country rate decks and ${Object.keys(dynamicConfigCache).length} system configs from PostgreSQL.`);
+    console.log(`📡 [DYNAMIC CACHE] Synced ${dynamicRatesCache.length} country decks, ${dynamicPlanTiersCache.length} plan tiers, and ${Object.keys(dynamicConfigCache).length} system configs.`);
   } catch (err) {
     console.warn('[DYNAMIC CACHE WARNING] Sync error:', err.message);
+    if (dynamicPlanTiersCache.length === 0) dynamicPlanTiersCache = DEFAULT_PLAN_TIERS;
   }
 }
 
@@ -433,27 +532,66 @@ const getCountryRate = (countryCode) => {
   };
 };
 
-// Calculate Virtual Number Retail Price (Dynamically linked with PostgreSQL)
-const calculateNumberPrice = (countryCode, planType, durationDays, phoneNumber = '') => {
+// 💎 Constructs dynamic plan tiers for any country (Combining active tiers + base rates + custom overrides)
+const getCountryPlans = (countryCode, onlyActive = true) => {
   const rate = getCountryRate(countryCode);
-  if (planType === '7_days' || durationDays <= 7) {
-    return rate.number7DaySellPrice || 0.50;
-  } else if (planType === '365_days' || durationDays >= 365) {
-    return rate.numberYearlySellPrice || 12.00;
-  }
+  let customMap = {};
+  try {
+    if (rate.customPlanPrices) {
+      customMap = typeof rate.customPlanPrices === 'string' ? JSON.parse(rate.customPlanPrices) : rate.customPlanPrices;
+    }
+  } catch (e) {}
+
+  const tiers = onlyActive ? dynamicPlanTiersCache.filter(t => t.isActive) : dynamicPlanTiersCache;
+
+  return tiers.map(tier => {
+    let sellPrice = customMap[tier.key];
+    if (sellPrice === undefined || sellPrice === null) {
+      if (tier.key === '7_days' && rate.number7DaySellPrice) sellPrice = rate.number7DaySellPrice;
+      else if (tier.key === '30_days' && rate.numberMonthlySellPrice) sellPrice = rate.numberMonthlySellPrice;
+      else if (tier.key === '365_days' && rate.numberYearlySellPrice) sellPrice = rate.numberYearlySellPrice;
+      else {
+        sellPrice = parseFloat((rate.numberMonthlySellPrice * (tier.defaultPriceRatio || 1.0)).toFixed(2));
+      }
+    }
+    sellPrice = parseFloat(Number(sellPrice).toFixed(2));
+
+    const wholesaleCost = parseFloat((rate.numberWholesaleCost * (tier.wholesaleDayRatio || 1.0)).toFixed(2));
+    const profit = parseFloat((sellPrice - wholesaleCost).toFixed(2));
+    const marginPct = sellPrice > 0 ? Math.round((profit / sellPrice) * 100) : 0;
+
+    return {
+      key: tier.key,
+      name: tier.name,
+      badge: tier.badge,
+      subtitle: tier.subtitle,
+      durationDays: tier.durationDays,
+      price: sellPrice,
+      wholesaleCost: wholesaleCost,
+      profit: profit,
+      marginPct: marginPct,
+      isActive: tier.isActive,
+      sortOrder: tier.sortOrder
+    };
+  });
+};
+
+// Calculate Virtual Number Retail Price (Dynamically resolved from dynamic tiers)
+const calculateNumberPrice = (countryCode, planType, durationDays, phoneNumber = '') => {
+  const plans = getCountryPlans(countryCode, false);
+  const matched = plans.find(p => p.key === planType || (durationDays && p.durationDays === parseInt(durationDays)));
+  if (matched) return matched.price;
+  const rate = getCountryRate(countryCode);
   return rate.numberMonthlySellPrice || 1.00;
 };
 
-// Calculate Virtual Number Carrier Wholesale Base Cost (Dynamically linked with PostgreSQL)
-const calculateNumberWholesaleCost = (countryCode, planType) => {
+// Calculate Virtual Number Carrier Wholesale Base Cost (Dynamically resolved from dynamic tiers)
+const calculateNumberWholesaleCost = (countryCode, planType, durationDays) => {
+  const plans = getCountryPlans(countryCode, false);
+  const matched = plans.find(p => p.key === planType || (durationDays && p.durationDays === parseInt(durationDays)));
+  if (matched) return matched.wholesaleCost;
   const rate = getCountryRate(countryCode);
-  const baseWholesale = rate.numberWholesaleCost || 1.00;
-  if (planType === '7_days') {
-    return parseFloat((baseWholesale * 0.25).toFixed(4));
-  } else if (planType === '365_days') {
-    return parseFloat((baseWholesale * 12).toFixed(4));
-  }
-  return baseWholesale;
+  return rate.numberWholesaleCost || 1.00;
 };
 
 
@@ -481,13 +619,16 @@ app.get('/api/numbers/search', async (req, res) => {
               resolvedNumber = resolvedNumber.replace(/-/g, () => Math.floor(Math.random() * 10).toString());
             }
 
+            const plans = getCountryPlans(countryCode, true);
+            const standardPlan = plans.find(p => p.key === '30_days') || plans[0] || { price: 1.00 };
             return {
               phoneNumber: resolvedNumber,
+              plans: plans,
               cost: {
-                monthly_cost: rateDeck.numberMonthlySellPrice.toFixed(2),
-                upfront_cost: rateDeck.number7DaySellPrice.toFixed(2),
-                yearly_cost: rateDeck.numberYearlySellPrice.toFixed(2),
-                seven_day_cost: rateDeck.number7DaySellPrice.toFixed(2),
+                monthly_cost: standardPlan.price.toFixed(2),
+                upfront_cost: (plans[0]?.price || 0.50).toFixed(2),
+                yearly_cost: (plans.find(p => p.key === '365_days')?.price || 12.00).toFixed(2),
+                seven_day_cost: (plans.find(p => p.key === '7_days')?.price || 0.50).toFixed(2),
                 carrier_wholesale_cost: rateDeck.numberWholesaleCost.toFixed(2),
                 currency: 'USD'
               },
@@ -534,13 +675,16 @@ app.get('/api/numbers/search', async (req, res) => {
         const randomDigits = Math.floor(100000 + Math.random() * 900000);
         const fullNumber = `${prefix}${area}${randomDigits}`;
 
+        const plans = getCountryPlans(countryCode, true);
+        const standardPlan = plans.find(p => p.key === '30_days') || plans[0] || { price: 1.00 };
         return {
           phoneNumber: fullNumber,
+          plans: plans,
           cost: {
-            monthly_cost: rateDeck.numberMonthlySellPrice.toFixed(2),
-            upfront_cost: rateDeck.number7DaySellPrice.toFixed(2),
-            yearly_cost: rateDeck.numberYearlySellPrice.toFixed(2),
-            seven_day_cost: rateDeck.number7DaySellPrice.toFixed(2),
+            monthly_cost: standardPlan.price.toFixed(2),
+            upfront_cost: (plans[0]?.price || 0.50).toFixed(2),
+            yearly_cost: (plans.find(p => p.key === '365_days')?.price || 12.00).toFixed(2),
+            seven_day_cost: (plans.find(p => p.key === '7_days')?.price || 0.50).toFixed(2),
             carrier_wholesale_cost: rateDeck.numberWholesaleCost.toFixed(2),
             currency: 'USD'
           },
@@ -5256,6 +5400,121 @@ app.post('/api/admin/rates/:countryCode/toggle', requireAdmin, async (req, res) 
 
     await refreshDynamicCaches();
     res.json({ success: true, message: `${updated.countryName} is now ${updated.isActive ? 'ACTIVE 🟢' : 'DISABLED 🔴'}`, rate: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+
+// ============================================================================
+// 💎 SUBSCRIPTION PLAN TIERS PUBLIC & ADMIN CONTROLLER
+// ============================================================================
+
+// 1. Public App Endpoint: List Active Plan Tiers
+app.get('/api/app/plans', async (req, res) => {
+  try {
+    const countryCode = (req.query.country || 'US').toUpperCase();
+    const plans = getCountryPlans(countryCode, true);
+    res.json({ success: true, count: plans.length, countryCode, plans });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 2. Admin Endpoint: List All Plan Tiers (Active + Inactive)
+app.get('/api/admin/plan-tiers', requireAdmin, async (req, res) => {
+  try {
+    let tiers = [];
+    if (prisma?.subscriptionPlanTier) {
+      tiers = await prisma.subscriptionPlanTier.findMany({ orderBy: { sortOrder: 'asc' } });
+    }
+    if (!tiers || tiers.length === 0) {
+      tiers = dynamicPlanTiersCache;
+    }
+    res.json({ success: true, count: tiers.length, tiers });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3. Admin Endpoint: Create or Upsert Plan Tier
+app.post('/api/admin/plan-tiers', requireAdmin, async (req, res) => {
+  try {
+    const { key, name, badge = '🌟 Plan', subtitle = 'Flexible line validity', durationDays, wholesaleDayRatio, defaultPriceRatio, isActive = true, sortOrder = 0 } = req.body;
+    if (!key || !name || !durationDays) {
+      return res.status(400).json({ success: false, error: 'key, name, and durationDays are required' });
+    }
+
+    const cleanKey = key.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const days = parseInt(durationDays);
+    const wRatio = wholesaleDayRatio !== undefined ? parseFloat(wholesaleDayRatio) : parseFloat((days / 30).toFixed(4));
+    const pRatio = defaultPriceRatio !== undefined ? parseFloat(defaultPriceRatio) : parseFloat((days / 30).toFixed(4));
+
+    const saved = await prisma.subscriptionPlanTier.upsert({
+      where: { key: cleanKey },
+      update: {
+        name: name.trim(),
+        badge: badge.trim(),
+        subtitle: subtitle.trim(),
+        durationDays: days,
+        wholesaleDayRatio: wRatio,
+        defaultPriceRatio: pRatio,
+        isActive: Boolean(isActive),
+        sortOrder: parseInt(sortOrder) || 0
+      },
+      create: {
+        key: cleanKey,
+        name: name.trim(),
+        badge: badge.trim(),
+        subtitle: subtitle.trim(),
+        durationDays: days,
+        wholesaleDayRatio: wRatio,
+        defaultPriceRatio: pRatio,
+        isActive: Boolean(isActive),
+        sortOrder: parseInt(sortOrder) || 0
+      }
+    });
+
+    await refreshDynamicCaches();
+    res.json({ success: true, message: `Plan tier '${saved.name}' saved successfully!`, tier: saved });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4. Admin Endpoint: Toggle Plan Tier Active Status
+app.post('/api/admin/plan-tiers/:id/toggle', requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const tier = await prisma.subscriptionPlanTier.findFirst({
+      where: { OR: [{ id }, { key: id }] }
+    });
+    if (!tier) return res.status(404).json({ success: false, error: 'Plan tier not found' });
+
+    const updated = await prisma.subscriptionPlanTier.update({
+      where: { id: tier.id },
+      data: { isActive: !tier.isActive }
+    });
+
+    await refreshDynamicCaches();
+    res.json({ success: true, message: `Plan tier '${updated.name}' is now ${updated.isActive ? 'ACTIVE 🟢' : 'DISABLED 🔴'}`, tier: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. Admin Endpoint: Delete Plan Tier
+app.delete('/api/admin/plan-tiers/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const tier = await prisma.subscriptionPlanTier.findFirst({
+      where: { OR: [{ id }, { key: id }] }
+    });
+    if (!tier) return res.status(404).json({ success: false, error: 'Plan tier not found' });
+
+    await prisma.subscriptionPlanTier.delete({ where: { id: tier.id } });
+    await refreshDynamicCaches();
+    res.json({ success: true, message: `Plan tier '${tier.name}' deleted successfully!` });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

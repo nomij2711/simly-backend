@@ -1393,7 +1393,7 @@
           <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
             <div class="overflow-x-auto custom-scrollbar">
               <table class="w-full text-left border-collapse">
-                <thead>
+                <thead id="countryRatesTableHead">
                   <tr class="border-b border-slate-800 bg-slate-950/80 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     <th class="py-3.5 px-4 min-w-[160px]">Country & Route</th>
                     <th class="py-3.5 px-4 min-w-[170px]">7-Day Line (Weekly)</th>
@@ -3703,13 +3703,22 @@
 
     async function loadPricing() {
       try {
-        const data = await adminFetch('/api/admin/rates');
-        if (!data || !data.success) return;
+        const [ratesData, tiersData] = await Promise.all([
+          adminFetch('/api/admin/rates'),
+          adminFetch('/api/admin/plan-tiers')
+        ]);
 
-        cachedCountryRates = data.rates || [];
-        applyCurrentRateFilter();
-        updatePricingSummaryKPIs(cachedCountryRates);
-        loadPlanTiers();
+        if (tiersData && tiersData.success) {
+          cachedPlanTiers = tiersData.tiers || [];
+          renderPlanTiersGrid(cachedPlanTiers);
+        }
+
+        if (ratesData && ratesData.success) {
+          cachedCountryRates = ratesData.rates || [];
+          applyCurrentRateFilter();
+          updatePricingSummaryKPIs(cachedCountryRates);
+        }
+
         loadPromos();
       } catch (err) {
         console.error('Failed to load country rates:', err);
@@ -3905,29 +3914,84 @@
 
     function renderCountryRatesTable(rates) {
       const tbody = document.getElementById('countryRatesTableBody');
+      const thead = document.getElementById('countryRatesTableHead');
       if (!tbody) return;
 
+      const activeTiers = (cachedPlanTiers && cachedPlanTiers.length > 0)
+        ? cachedPlanTiers.filter(t => t.isActive !== false)
+        : [
+            { key: '30_days', name: '30-Day', badge: '🌟 Monthly', durationDays: 30, wholesaleDayRatio: 1.0, defaultPriceRatio: 1.0 },
+            { key: '365_days', name: '1 Year', badge: '💎 Yearly', durationDays: 365, wholesaleDayRatio: 12.0, defaultPriceRatio: 10.0 }
+          ];
+
+      // Dynamically render <thead> columns based on active plan tiers
+      if (thead) {
+        thead.innerHTML = `
+          <tr class="border-b border-slate-800 bg-slate-950/80 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            <th class="py-3.5 px-4 min-w-[160px]">Country & Route</th>
+            ${activeTiers.map(t => `<th class="py-3.5 px-4 min-w-[170px]">${escapeHtml(t.name)} Line (${t.durationDays}d)</th>`).join('')}
+            <th class="py-3.5 px-4 min-w-[180px]">Voice Outbound / Min</th>
+            <th class="py-3.5 px-4 min-w-[180px]">SMS Outbound / Msg</th>
+            <th class="py-3.5 px-4 text-center">Status</th>
+            <th class="py-3.5 px-4 text-right">Actions</th>
+          </tr>
+        `;
+      }
+
+      const totalCols = activeTiers.length + 5;
       if (!rates || rates.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="py-10 text-center text-slate-500">No country rate decks matching current filter.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${totalCols}" class="py-10 text-center text-slate-500">No country rate decks matching current filter.</td></tr>`;
         return;
       }
 
       tbody.innerHTML = rates.map(r => {
-        // Line Margins
-        const monthlySell = r.numberMonthlySellPrice || 1.0;
-        const monthlyCost = r.numberWholesaleCost || 1.0;
-        const monthlyNet = monthlySell - monthlyCost;
-        const monthlyMarginPct = monthlySell > 0 ? ((monthlyNet / monthlySell) * 100).toFixed(0) : '0';
+        let customPrices = {};
+        try {
+          if (r.customPlanPrices) {
+            customPrices = typeof r.customPlanPrices === 'string' ? JSON.parse(r.customPlanPrices) : r.customPlanPrices;
+          }
+        } catch(e) {}
 
-        const weeklySell = r.number7DaySellPrice || 0.50;
-        const weeklyCost = parseFloat((monthlyCost * 0.25).toFixed(2));
-        const weeklyNet = weeklySell - weeklyCost;
+        const planCells = activeTiers.map(t => {
+          let sellPrice = customPrices[t.key];
+          if (sellPrice === undefined || sellPrice === null) {
+            if (t.key === '7_days' && r.number7DaySellPrice !== undefined) sellPrice = r.number7DaySellPrice;
+            else if (t.key === '30_days' && r.numberMonthlySellPrice !== undefined) sellPrice = r.numberMonthlySellPrice;
+            else if (t.key === '365_days' && r.numberYearlySellPrice !== undefined) sellPrice = r.numberYearlySellPrice;
+            else {
+              sellPrice = parseFloat(((r.numberMonthlySellPrice || 1.0) * (t.defaultPriceRatio || 1.0)).toFixed(2));
+            }
+          }
+          sellPrice = parseFloat(Number(sellPrice).toFixed(2));
 
-        const yearlySell = r.numberYearlySellPrice || 12.00;
-        const yearlyCost = parseFloat((monthlyCost * 12).toFixed(2));
-        const yearlyNet = yearlySell - yearlyCost;
+          const wholesaleCost = parseFloat(((r.numberWholesaleCost || 1.0) * (t.wholesaleDayRatio || 1.0)).toFixed(2));
+          const netProfit = parseFloat((sellPrice - wholesaleCost).toFixed(2));
+          const marginPct = sellPrice > 0 ? Math.round((netProfit / sellPrice) * 100) : 0;
+          const isCustom = customPrices[t.key] !== undefined && customPrices[t.key] !== null;
 
-        // Calling Margins
+          const unitSuffix = t.durationDays === 30 ? '/mo' : t.durationDays === 365 ? '/yr' : `/${t.durationDays}d`;
+
+          return `
+            <td class="py-3.5 px-4">
+              <div class="space-y-1">
+                <div class="flex items-center justify-between gap-1 p-1.5 rounded-lg bg-slate-950 border border-slate-800/80">
+                  <div class="text-[10px] text-slate-400">Sell:</div>
+                  <div class="font-bold text-emerald-400 text-xs flex items-center gap-1">
+                    <span>$${sellPrice.toFixed(2)}${unitSuffix}</span>
+                    ${isCustom ? '<span title="Custom price override" class="text-[8px] bg-pink-500/20 text-pink-300 px-1 py-0.2 rounded font-mono">Custom</span>' : ''}
+                    <button onclick="openQuickEditPlanPriceModal('${r.countryCode}', '${t.key}', '${escapeHtml(t.name)}', ${t.durationDays}, ${wholesaleCost}, ${sellPrice})" title="Edit ${escapeHtml(t.name)} sell price for ${escapeHtml(r.countryName)}" class="text-slate-500 hover:text-pink-400 p-0.5"><i class="fa-solid fa-pencil text-[9px]"></i></button>
+                  </div>
+                </div>
+                <div class="flex items-center justify-between text-[10px] px-1 text-slate-500">
+                  <span>Cost: $${wholesaleCost.toFixed(2)}</span>
+                  <span class="font-bold ${netProfit >= 0 ? 'text-emerald-400/90' : 'text-rose-400'}">${netProfit >= 0 ? '+' : ''}$${netProfit.toFixed(2)} (${marginPct}%)</span>
+                </div>
+              </div>
+            </td>
+          `;
+        }).join('');
+
+        // Voice Margins
         const callSell = r.callSellPricePerMin || 0.02;
         const callCost = r.callWholesaleCostPerMin || 0.007;
         const callNet = callSell - callCost;
@@ -3947,66 +4011,18 @@
                 <span class="text-2xl">${r.flagEmoji || '🌐'}</span>
                 <div>
                   <div class="font-bold text-white text-xs flex items-center gap-1.5">
-                    <span>${r.countryName}</span>
+                    <span>${escapeHtml(r.countryName)}</span>
                     <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">${r.countryCode}</span>
                   </div>
-                  <div class="text-[11px] text-pink-400 font-mono font-semibold">${r.dialCode}</div>
+                  <div class="text-[11px] text-pink-400 font-mono font-semibold">${escapeHtml(r.dialCode)}</div>
                 </div>
               </div>
             </td>
             
-            <!-- 2. 7-Day Plan (Weekly) -->
-            <td class="py-3.5 px-4">
-              <div class="space-y-1">
-                <div class="flex items-center justify-between gap-1 p-1.5 rounded-lg bg-slate-950 border border-slate-800/80">
-                  <div class="text-[10px] text-slate-400">Sell:</div>
-                  <div class="font-bold text-emerald-400 text-xs flex items-center gap-1">
-                    <span>$${weeklySell.toFixed(2)}</span>
-                    <button onclick="quickEditRate('${r.countryCode}', 'rateNum7Day')" title="Edit 7-day price" class="text-slate-500 hover:text-pink-400 p-0.5"><i class="fa-solid fa-pencil text-[9px]"></i></button>
-                  </div>
-                </div>
-                <div class="flex items-center justify-between text-[10px] px-1 text-slate-500">
-                  <span>Cost: $${weeklyCost.toFixed(2)}</span>
-                  <span class="font-bold text-emerald-400/90">${weeklyNet >= 0 ? '+' : ''}$${weeklyNet.toFixed(2)}</span>
-                </div>
-              </div>
-            </td>
+            <!-- Dynamic Line Plans -->
+            ${planCells}
 
-            <!-- 3. 30-Day Plan (Monthly) -->
-            <td class="py-3.5 px-4">
-              <div class="space-y-1">
-                <div class="flex items-center justify-between gap-1 p-1.5 rounded-lg bg-slate-950 border border-slate-800/80">
-                  <div class="text-[10px] text-slate-400">Sell:</div>
-                  <div class="font-bold text-emerald-400 text-xs flex items-center gap-1">
-                    <span>$${monthlySell.toFixed(2)}/mo</span>
-                    <button onclick="quickEditRate('${r.countryCode}', 'rateNumMonthly')" title="Edit Monthly price" class="text-slate-500 hover:text-pink-400 p-0.5"><i class="fa-solid fa-pencil text-[9px]"></i></button>
-                  </div>
-                </div>
-                <div class="flex items-center justify-between text-[10px] px-1 text-slate-400">
-                  <span class="flex items-center gap-0.5 text-slate-500">Cost: $${monthlyCost.toFixed(2)} ${renderTrendIcon(r.wholesaleTrend || 'stable')}</span>
-                  <span class="px-1.5 py-0.2 rounded font-bold text-[9px] ${monthlyNet >= 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400'}">+${monthlyMarginPct}%</span>
-                </div>
-              </div>
-            </td>
-
-            <!-- 4. 365-Day Plan (Yearly) -->
-            <td class="py-3.5 px-4">
-              <div class="space-y-1">
-                <div class="flex items-center justify-between gap-1 p-1.5 rounded-lg bg-slate-950 border border-slate-800/80">
-                  <div class="text-[10px] text-slate-400">Sell:</div>
-                  <div class="font-bold text-white text-xs flex items-center gap-1">
-                    <span>$${yearlySell.toFixed(2)}/yr</span>
-                    <button onclick="quickEditRate('${r.countryCode}', 'rateNumYearly')" title="Edit Yearly price" class="text-slate-500 hover:text-pink-400 p-0.5"><i class="fa-solid fa-pencil text-[9px]"></i></button>
-                  </div>
-                </div>
-                <div class="flex items-center justify-between text-[10px] px-1 text-slate-500">
-                  <span>Cost: $${yearlyCost.toFixed(2)}</span>
-                  <span class="font-bold text-emerald-400">${yearlyNet >= 0 ? '+' : ''}$${yearlyNet.toFixed(2)}</span>
-                </div>
-              </div>
-            </td>
-
-            <!-- 5. Voice Outbound / Min -->
+            <!-- Voice Outbound / Min -->
             <td class="py-3.5 px-4">
               <div class="space-y-1">
                 <div class="flex items-center justify-between gap-1 p-1.5 rounded-lg bg-slate-950 border border-slate-800/80">
@@ -4023,7 +4039,7 @@
               </div>
             </td>
 
-            <!-- 6. SMS Outbound / Msg -->
+            <!-- SMS Outbound / Msg -->
             <td class="py-3.5 px-4">
               <div class="space-y-1">
                 <div class="flex items-center justify-between gap-1 p-1.5 rounded-lg bg-slate-950 border border-slate-800/80">
@@ -4040,14 +4056,14 @@
               </div>
             </td>
 
-            <!-- 7. Status Toggle Button -->
+            <!-- Status Toggle Button -->
             <td class="py-3.5 px-4 text-center">
               <button onclick="toggleCountryRateActive('${r.countryCode}')" class="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all shadow-md ${r.isActive ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20'}">
                 ${r.isActive ? 'ACTIVE 🟢' : 'DISABLED 🔴'}
               </button>
             </td>
 
-            <!-- 8. Full Edit Dialog -->
+            <!-- Full Edit Dialog -->
             <td class="py-3.5 px-4 text-right">
               <button onclick="openEditCountryRateModal('${r.countryCode}')" class="p-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-pink-400 text-xs transition-all flex items-center gap-1.5 ml-auto" title="Full Route Rate Deck Settings">
                 <i class="fa-solid fa-sliders"></i>
@@ -4057,6 +4073,104 @@
           </tr>
         `;
       }).join('');
+    }
+
+    function openQuickEditPlanPriceModal(countryCode, planKey, planName, durationDays, wholesaleCost, currentSellPrice) {
+      const r = cachedCountryRates.find(x => x.countryCode === countryCode);
+      if (!r) return;
+
+      document.getElementById('quickEditCountryCode').value = countryCode;
+      document.getElementById('quickEditPlanKey').value = planKey;
+      document.getElementById('quickEditWholesaleCost').value = wholesaleCost;
+      document.getElementById('quickEditSellPrice').value = currentSellPrice.toFixed(2);
+
+      document.getElementById('quickEditModalTitle').innerText = `Set ${planName} Rate`;
+      document.getElementById('quickEditModalSubtitle').innerText = `${r.flagEmoji || '🌐'} ${r.countryName} (${countryCode}) • ${durationDays} Days Validity`;
+      document.getElementById('quickEditCostDisplay').innerText = `$${wholesaleCost.toFixed(2)}`;
+
+      updateQuickEditMargin();
+
+      const modal = document.getElementById('quickEditPlanPriceModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+      setTimeout(() => {
+        const input = document.getElementById('quickEditSellPrice');
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      }, 100);
+    }
+
+    function closeQuickEditPlanPriceModal() {
+      const modal = document.getElementById('quickEditPlanPriceModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function updateQuickEditMargin() {
+      const cost = parseFloat(document.getElementById('quickEditWholesaleCost').value) || 0;
+      const sell = parseFloat(document.getElementById('quickEditSellPrice').value) || 0;
+      const net = sell - cost;
+      const marginPct = sell > 0 ? Math.round((net / sell) * 100) : 0;
+
+      const badge = document.getElementById('quickEditMarginBadge');
+      if (badge) {
+        badge.innerText = `${net >= 0 ? '+' : ''}${marginPct}% Margin (${net >= 0 ? '+' : ''}$${net.toFixed(2)} Net Profit)`;
+        badge.className = `font-bold ${net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      }
+    }
+
+    async function handleSaveQuickEditPlanPrice(e) {
+      e.preventDefault();
+      const countryCode = document.getElementById('quickEditCountryCode').value;
+      const planKey = document.getElementById('quickEditPlanKey').value;
+      const newPrice = parseFloat(document.getElementById('quickEditSellPrice').value);
+
+      if (isNaN(newPrice) || newPrice < 0) {
+        showToast('Please enter a valid price.', 'error');
+        return;
+      }
+
+      const rate = cachedCountryRates.find(r => r.countryCode === countryCode);
+      if (!rate) return;
+
+      let customMap = {};
+      try {
+        if (rate.customPlanPrices) {
+          customMap = typeof rate.customPlanPrices === 'string' ? JSON.parse(rate.customPlanPrices) : rate.customPlanPrices;
+        }
+      } catch (e) {}
+
+      customMap[planKey] = newPrice;
+
+      const payload = {
+        customPlanPrices: customMap
+      };
+
+      if (planKey === '7_days') payload.number7DaySellPrice = newPrice;
+      if (planKey === '30_days') payload.numberMonthlySellPrice = newPrice;
+      if (planKey === '365_days') payload.numberYearlySellPrice = newPrice;
+
+      try {
+        const res = await adminFetch(`/api/admin/rates/${encodeURIComponent(countryCode)}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+        if (res.success) {
+          showToast(`Saved ${planKey} price for ${countryCode} ($${newPrice.toFixed(2)})`, 'success');
+          closeQuickEditPlanPriceModal();
+          await loadPricing();
+        } else {
+          showToast(res.error || 'Failed to update plan rate', 'error');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
     }
 
     function quickEditRate(countryCode, focusFieldId) {
@@ -4073,7 +4187,8 @@
     function updatePricingSummaryKPIs(rates) {
       if (!rates || rates.length === 0) return;
       const activeList = rates.filter(r => r.isActive);
-      document.getElementById('kpiActiveCountryCount').innerText = `${activeList.length} Active Routes`;
+      const countEl = document.getElementById('kpiActiveCountryCount');
+      if (countEl) countEl.innerText = `${activeList.length} Active Routes`;
 
       let totalLineMargin = 0;
       let totalCallMargin = 0;
@@ -4090,9 +4205,13 @@
       const avgCall = (totalCallMargin / calcList.length).toFixed(0);
       const avgSms = (totalSmsMargin / calcList.length).toFixed(0);
 
-      document.getElementById('kpiAvgLineMargin').innerText = `+${avgLine}%`;
-      document.getElementById('kpiAvgCallMargin').innerText = `+${avgCall}%`;
-      document.getElementById('kpiAvgSmsMargin').innerText = `+${avgSms}%`;
+      const elLine = document.getElementById('kpiAvgLineMargin');
+      const elCall = document.getElementById('kpiAvgCallMargin');
+      const elSms = document.getElementById('kpiAvgSmsMargin');
+
+      if (elLine) elLine.innerText = `+${avgLine}%`;
+      if (elCall) elCall.innerText = `+${avgCall}%`;
+      if (elSms) elSms.innerText = `+${avgSms}%`;
     }
 
     function filterCountryRatesTable(query) {
@@ -4124,6 +4243,47 @@
       document.getElementById('modalCountrySubtitle').innerText = `Route: ${rate.dialCode} (${rate.countryCode})`;
       document.getElementById('btnDeleteRateDeck').classList.remove('hidden');
 
+      // Populate dynamic custom plan tiers
+      let customPrices = {};
+      try {
+        if (rate.customPlanPrices) {
+          customPrices = typeof rate.customPlanPrices === 'string' ? JSON.parse(rate.customPlanPrices) : rate.customPlanPrices;
+        }
+      } catch(e) {}
+
+      const customTiersGrid = document.getElementById('modalActivePlanTiersGrid');
+      if (customTiersGrid) {
+        const activeTiers = (cachedPlanTiers || []).filter(t => t.isActive && !['7_days', '30_days', '365_days'].includes(t.key));
+        if (activeTiers.length === 0) {
+          customTiersGrid.innerHTML = '';
+          customTiersGrid.classList.add('hidden');
+        } else {
+          customTiersGrid.classList.remove('hidden');
+          customTiersGrid.innerHTML = `
+            <div class="col-span-full font-bold text-slate-300 text-[11px] uppercase tracking-wider mb-1 flex items-center gap-1.5">
+              <i class="fa-solid fa-layer-group text-indigo-400"></i>
+              <span>Active Custom Plan Tiers</span>
+            </div>
+            ${activeTiers.map(t => {
+              const currentVal = (customPrices[t.key] !== undefined) ? customPrices[t.key] : parseFloat((rate.numberMonthlySellPrice * t.defaultPriceRatio).toFixed(2));
+              const wholesaleCost = parseFloat((rate.numberWholesaleCost * t.wholesaleDayRatio).toFixed(2));
+              return `
+                <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                  <div class="flex items-center justify-between text-[10px]">
+                    <span class="font-bold text-white">${escapeHtml(t.name)}</span>
+                    <span class="text-slate-500 font-mono">Cost: $${wholesaleCost.toFixed(2)}</span>
+                  </div>
+                  <div>
+                    <label class="block text-[9px] text-slate-400">Sell Price ($):</label>
+                    <input type="number" step="0.01" id="modalTierPrice_${t.key}" value="${Number(currentVal).toFixed(2)}" class="modal-custom-tier-input w-full bg-slate-950 border border-slate-800 rounded-lg p-1.5 text-emerald-400 font-bold text-xs focus:outline-none focus:border-indigo-500" data-key="${t.key}">
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          `;
+        }
+      }
+
       calculateModalMargins();
       document.getElementById('editCountryRateModal').classList.remove('hidden');
     }
@@ -4150,6 +4310,12 @@
       document.getElementById('modalCountrySubtitle').innerText = 'Configure pricing and carrier wholesale base cost';
       document.getElementById('btnDeleteRateDeck').classList.add('hidden');
 
+      const customTiersGrid = document.getElementById('modalActivePlanTiersGrid');
+      if (customTiersGrid) {
+        customTiersGrid.innerHTML = '';
+        customTiersGrid.classList.add('hidden');
+      }
+
       calculateModalMargins();
       document.getElementById('editCountryRateModal').classList.remove('hidden');
     }
@@ -4170,9 +4336,13 @@
       const callMargin = callSell > 0 ? (((callSell - callCost) / callSell) * 100).toFixed(0) : 0;
       const smsMargin = smsSell > 0 ? (((smsSell - smsCost) / smsSell) * 100).toFixed(0) : 0;
 
-      document.getElementById('rateLineMarginBadge').innerText = `+${numMargin}% Margin ($${(numSell - numCost).toFixed(2)}/mo net)`;
-      document.getElementById('rateCallMarginBadge').innerText = `+${callMargin}% Margin ($${(callSell - callCost).toFixed(3)}/min net)`;
-      document.getElementById('rateSmsMarginBadge').innerText = `+${smsMargin}% Margin ($${(smsSell - smsCost).toFixed(3)}/msg net)`;
+      const numEl = document.getElementById('rateLineMarginBadge');
+      const callEl = document.getElementById('rateCallMarginBadge');
+      const smsEl = document.getElementById('rateSmsMarginBadge');
+
+      if (numEl) numEl.innerText = `+${numMargin}% Margin ($${(numSell - numCost).toFixed(2)}/mo net)`;
+      if (callEl) callEl.innerText = `+${callMargin}% Margin ($${(callSell - callCost).toFixed(3)}/min net)`;
+      if (smsEl) smsEl.innerText = `+${smsMargin}% Margin ($${(smsSell - smsCost).toFixed(3)}/msg net)`;
     }
 
     async function handleSaveCountryRate(e) {
@@ -4181,8 +4351,25 @@
       const countryCode = codeInput || prompt('Enter 2-letter ISO Country Code (e.g. US, GB, AU, DE):');
       if (!countryCode) return;
 
+      const cc = countryCode.toUpperCase();
+      const existing = cachedCountryRates.find(r => r.countryCode === cc);
+      let customMap = {};
+      try {
+        if (existing && existing.customPlanPrices) {
+          customMap = typeof existing.customPlanPrices === 'string' ? JSON.parse(existing.customPlanPrices) : existing.customPlanPrices;
+        }
+      } catch (e) {}
+
+      document.querySelectorAll('.modal-custom-tier-input').forEach(inp => {
+        const k = inp.getAttribute('data-key');
+        const val = parseFloat(inp.value);
+        if (k && !isNaN(val)) {
+          customMap[k] = val;
+        }
+      });
+
       const payload = {
-        countryCode: countryCode.toUpperCase(),
+        countryCode: cc,
         countryName: document.getElementById('rateCountryName').value.trim(),
         flagEmoji: document.getElementById('rateFlagEmoji').value.trim() || '🌐',
         dialCode: document.getElementById('rateDialCode').value.trim(),
@@ -4194,6 +4381,7 @@
         callWholesaleCostPerMin: parseFloat(document.getElementById('rateCallWholesale').value),
         smsSellPrice: parseFloat(document.getElementById('rateSmsSell').value),
         smsWholesaleCost: parseFloat(document.getElementById('rateSmsWholesale').value),
+        customPlanPrices: customMap,
         isActive: document.getElementById('rateIsActive').checked,
         allowOutboundCalls: document.getElementById('rateAllowCalls').checked,
         allowOutboundSms: document.getElementById('rateAllowSms').checked
@@ -4258,6 +4446,9 @@
 
         cachedPlanTiers = res.tiers || [];
         renderPlanTiersGrid(cachedPlanTiers);
+        if (cachedCountryRates && cachedCountryRates.length > 0) {
+          applyCurrentRateFilter();
+        }
       } catch (err) {
         console.error('Failed to load plan tiers:', err);
       }
@@ -4377,7 +4568,7 @@
         if (res.success) {
           showToast(res.message, 'success');
           closePlanTierModal();
-          loadPlanTiers();
+          await loadPricing();
         } else {
           showToast(res.error || 'Failed to save tier', 'error');
         }
@@ -4391,7 +4582,7 @@
         const res = await adminFetch(`/api/admin/plan-tiers/${encodeURIComponent(id)}/toggle`, { method: 'POST' });
         if (res.success) {
           showToast(res.message, 'success');
-          loadPlanTiers();
+          await loadPricing();
         } else {
           showToast(res.error || 'Failed to toggle tier', 'error');
         }
@@ -4410,7 +4601,7 @@
         if (res.success) {
           showToast(res.message, 'success');
           closePlanTierModal();
-          loadPlanTiers();
+          await loadPricing();
         } else {
           showToast(res.error || 'Failed to delete tier', 'error');
         }
@@ -7542,6 +7733,7 @@ setInterval(() => {
               <input type="number" step="0.01" id="rateNumWholesale" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-slate-500">
             </div>
           </div>
+          <div id="modalActivePlanTiersGrid" class="hidden grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2 border-t border-slate-800/80"></div>
         </div>
 
         <!-- 2. Voice Calling Rates -->
@@ -7606,6 +7798,57 @@ setInterval(() => {
               <i class="fa-solid fa-floppy-disk"></i> <span>Save Rate Deck</span>
             </button>
           </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 💎 MODAL: QUICK EDIT DYNAMIC PLAN PRICE -->
+  <div id="quickEditPlanPriceModal" class="hidden fixed inset-0 z-50 items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-pink-500/10 text-pink-400 flex items-center justify-center text-base">
+            <i class="fa-solid fa-tag"></i>
+          </div>
+          <div>
+            <h3 id="quickEditModalTitle" class="text-sm font-bold text-white">Set Plan Sell Rate</h3>
+            <p id="quickEditModalSubtitle" class="text-[10px] text-slate-400">Country Plan Pricing Override</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeQuickEditPlanPriceModal()" class="text-slate-400 hover:text-white text-base">&times;</button>
+      </div>
+
+      <form id="quickEditPlanPriceForm" onsubmit="handleSaveQuickEditPlanPrice(event)" class="space-y-4 text-xs">
+        <input type="hidden" id="quickEditCountryCode">
+        <input type="hidden" id="quickEditPlanKey">
+        <input type="hidden" id="quickEditWholesaleCost">
+
+        <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between text-slate-400 text-[11px]">
+            <span>Wholesale Carrier Base Cost:</span>
+            <span id="quickEditCostDisplay" class="font-bold text-slate-200 font-mono">$0.00</span>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-300 mb-1.5">SimlyTel Retail Sell Price ($)</label>
+            <div class="relative">
+              <span class="absolute left-3.5 top-2.5 text-slate-500 text-sm font-bold">$</span>
+              <input type="number" step="0.01" min="0" id="quickEditSellPrice" oninput="updateQuickEditMargin()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-4 py-2.5 text-base font-bold text-emerald-400 focus:outline-none focus:border-pink-500 transition-all">
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-between text-[11px]">
+          <span class="text-slate-400">Calculated Margin:</span>
+          <span id="quickEditMarginBadge" class="font-bold text-emerald-400">+0% Margin ($0.00 Net)</span>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeQuickEditPlanPriceModal()" class="w-1/2 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold">Cancel</button>
+          <button type="submit" class="w-1/2 py-2.5 bg-gradient-to-r from-pink-500 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-pink-500/20 flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-check"></i>
+            <span>Save Rate</span>
+          </button>
         </div>
       </form>
     </div>

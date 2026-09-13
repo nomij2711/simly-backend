@@ -255,3 +255,15 @@ model SubscriptionPlanTier {
   updatedAt         DateTime @updatedAt
 }
 
+model PromoCode {
+  id        String   @id @default(uuid())
+  code      String   @unique // e.g. "WELCOME10", "VIP2026"
+  bonus     Float    // Credit bonus in USD (e.g. 10.0)
+  maxUses   Int      @default(100)
+  usedCount Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+

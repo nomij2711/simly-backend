@@ -217,3 +217,24 @@ model AdminAlertSetting {
   isEnabled                 Boolean  @default(true)
   updatedAt                 DateTime @updatedAt
 }
+
+model CountryRate {
+  id                      String   @id @default(uuid())
+  countryCode             String   @unique // "US", "GB", "AU", "CA"
+  countryName             String   // "United States", "United Kingdom", "Australia"
+  dialCode                String   // "+1", "+44", "+61"
+  flagEmoji               String   @default("🌐") // "🇺🇸", "🇬🇧", "🇦🇺"
+  numberMonthlySellPrice  Float    @default(1.0)
+  numberYearlySellPrice   Float    @default(12.0)
+  number7DaySellPrice     Float    @default(0.50)
+  numberWholesaleCost     Float    @default(1.0)
+  callSellPricePerMin     Float    @default(0.02)
+  callWholesaleCostPerMin Float    @default(0.007)
+  smsSellPrice            Float    @default(0.02)
+  smsWholesaleCost        Float    @default(0.004)
+  isActive                Boolean  @default(true)
+  allowOutboundCalls      Boolean  @default(true)
+  allowOutboundSms        Boolean  @default(true)
+  updatedAt               DateTime @updatedAt
+  createdAt               DateTime @default(now())
+}

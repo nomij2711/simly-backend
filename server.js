@@ -457,10 +457,11 @@ const calculateNumberWholesaleCost = (countryCode, planType) => {
 };
 
 
-// 1. Endpoint: Search Available Numbers from Telnyx (with 1.5x retail pricing + robust fallback)
+// 1. Endpoint: Search Available Numbers (100% Dynamic Sync with PostgreSQL CountryRate Deck)
 app.get('/api/numbers/search', async (req, res) => {
   try {
     const countryCode = (req.query.country || 'US').toUpperCase();
+    const rateDeck = getCountryRate(countryCode);
     let numbers = [];
 
     if (process.env.TELNYX_API_KEY && telnyx?.availablePhoneNumbers) {
@@ -480,18 +481,27 @@ app.get('/api/numbers/search', async (req, res) => {
               resolvedNumber = resolvedNumber.replace(/-/g, () => Math.floor(Math.random() * 10).toString());
             }
 
-            const wholesaleUpfront = parseFloat(num.cost_information?.upfront_cost || "1.00");
-            const wholesaleMonthly = parseFloat(num.cost_information?.monthly_cost || "1.00");
-
             return {
               phoneNumber: resolvedNumber,
               cost: {
-                ...num.cost_information,
-                upfront_cost: (wholesaleUpfront * NUMBER_RETAIL_MULTIPLIER).toFixed(2),
-                monthly_cost: (wholesaleMonthly * NUMBER_RETAIL_MULTIPLIER).toFixed(2),
+                monthly_cost: rateDeck.numberMonthlySellPrice.toFixed(2),
+                upfront_cost: rateDeck.number7DaySellPrice.toFixed(2),
+                yearly_cost: rateDeck.numberYearlySellPrice.toFixed(2),
+                seven_day_cost: rateDeck.number7DaySellPrice.toFixed(2),
+                carrier_wholesale_cost: rateDeck.numberWholesaleCost.toFixed(2),
                 currency: 'USD'
               },
-              region: num.region_information
+              rates: {
+                monthly: rateDeck.numberMonthlySellPrice,
+                sevenDay: rateDeck.number7DaySellPrice,
+                yearly: rateDeck.numberYearlySellPrice,
+                callPerMin: rateDeck.callSellPricePerMin,
+                smsPerMsg: rateDeck.smsSellPrice
+              },
+              region: num.region_information || {
+                region_name: `${rateDeck.countryName} Standard`,
+                country_code: countryCode
+              }
             };
           });
         }
@@ -502,50 +512,47 @@ app.get('/api/numbers/search', async (req, res) => {
 
     // High Quality Dynamic Fallback if Telnyx is in test mode or returns empty
     if (!numbers || numbers.length === 0) {
-      const countryConfigs = {
-        US: { prefix: '+1', areaCodes: ['202', '312', '415', '212', '718', '305', '702', '404'], city: 'New York, NY', upfront: '0.50', monthly: '1.50' },
-        CA: { prefix: '+1', areaCodes: ['416', '647', '514', '604', '403'], city: 'Toronto, ON', upfront: '0.50', monthly: '1.50' },
-        GB: { prefix: '+44', areaCodes: ['7400', '7451', '7911', '7700', '7890'], city: 'London, UK', upfront: '1.00', monthly: '3.00' },
-        AU: { prefix: '+61', areaCodes: ['412', '423', '434', '445', '456'], city: 'Sydney, NSW', upfront: '2.00', monthly: '7.00' },
-        DE: { prefix: '+49', areaCodes: ['151', '152', '160', '170', '175'], city: 'Berlin, Germany', upfront: '1.50', monthly: '4.50' },
-        FR: { prefix: '+33', areaCodes: ['612', '623', '634', '645', '756'], city: 'Paris, France', upfront: '1.50', monthly: '4.50' },
-        PK: { prefix: '+92', areaCodes: ['300', '301', '321', '333', '345'], city: 'Islamabad, PK', upfront: '1.50', monthly: '4.50' },
-        AE: { prefix: '+971', areaCodes: ['50', '52', '54', '55', '56'], city: 'Dubai, UAE', upfront: '1.50', monthly: '4.50' },
-        SA: { prefix: '+966', areaCodes: ['50', '53', '54', '55', '56'], city: 'Riyadh, SA', upfront: '1.50', monthly: '4.50' },
-        TR: { prefix: '+90', areaCodes: ['532', '542', '552', '505', '530'], city: 'Istanbul, TR', upfront: '1.50', monthly: '4.50' },
-        ES: { prefix: '+34', areaCodes: ['612', '622', '632', '642', '652'], city: 'Madrid, ES', upfront: '1.50', monthly: '4.50' },
-        IT: { prefix: '+39', areaCodes: ['320', '330', '340', '350', '360'], city: 'Rome, IT', upfront: '1.50', monthly: '4.50' },
-        NL: { prefix: '+31', areaCodes: ['61', '62', '63', '64', '65'], city: 'Amsterdam, NL', upfront: '1.50', monthly: '4.50' },
-        IN: { prefix: '+91', areaCodes: ['981', '982', '983', '984', '985'], city: 'Mumbai, IN', upfront: '1.50', monthly: '4.50' },
-        BR: { prefix: '+55', areaCodes: ['11', '21', '31', '41', '51'], city: 'Sao Paulo, BR', upfront: '1.50', monthly: '4.50' }
+      const areaCodesMap = {
+        US: ['202', '312', '415', '212', '718', '305', '702', '404'],
+        CA: ['416', '647', '514', '604', '403'],
+        GB: ['7400', '7451', '7911', '7700', '7890'],
+        AU: ['412', '423', '434', '445', '456'],
+        DE: ['151', '152', '160', '170', '175'],
+        FR: ['612', '623', '634', '645', '756'],
+        PK: ['300', '301', '321', '333', '345'],
+        AE: ['50', '52', '54', '55', '56'],
+        SA: ['50', '53', '54', '55', '56'],
+        TR: ['532', '542', '552', '505', '530']
       };
 
-      const rateEntry = (typeof baseRates !== 'undefined' ? baseRates : []).find(r => r.code === countryCode);
-      const defaultPrefix = rateEntry ? rateEntry.dialCode : '+1';
-      const defaultCity = rateEntry ? `${rateEntry.country} Virtual Line` : 'Virtual Line';
-
-      const cfg = countryConfigs[countryCode] || { 
-        prefix: defaultPrefix, 
-        areaCodes: ['301', '402', '503', '604', '705'], 
-        city: defaultCity, 
-        upfront: '1.50', 
-        monthly: '4.50' 
-      };
+      const areaCodes = areaCodesMap[countryCode] || ['301', '402', '503', '604', '705'];
+      const prefix = rateDeck.dialCode || '+1';
+      const city = `${rateDeck.countryName} Virtual Line`;
 
       numbers = Array.from({ length: 15 }, (_, i) => {
-        const area = cfg.areaCodes[i % cfg.areaCodes.length];
+        const area = areaCodes[i % areaCodes.length];
         const randomDigits = Math.floor(100000 + Math.random() * 900000);
-        const fullNumber = `${cfg.prefix}${area}${randomDigits}`;
+        const fullNumber = `${prefix}${area}${randomDigits}`;
 
         return {
           phoneNumber: fullNumber,
           cost: {
-            upfront_cost: cfg.upfront,
-            monthly_cost: cfg.monthly,
+            monthly_cost: rateDeck.numberMonthlySellPrice.toFixed(2),
+            upfront_cost: rateDeck.number7DaySellPrice.toFixed(2),
+            yearly_cost: rateDeck.numberYearlySellPrice.toFixed(2),
+            seven_day_cost: rateDeck.number7DaySellPrice.toFixed(2),
+            carrier_wholesale_cost: rateDeck.numberWholesaleCost.toFixed(2),
             currency: 'USD'
           },
+          rates: {
+            monthly: rateDeck.numberMonthlySellPrice,
+            sevenDay: rateDeck.number7DaySellPrice,
+            yearly: rateDeck.numberYearlySellPrice,
+            callPerMin: rateDeck.callSellPricePerMin,
+            smsPerMsg: rateDeck.smsSellPrice
+          },
           region: {
-            region_name: cfg.city,
+            region_name: city,
             country_code: countryCode
           }
         };
@@ -554,6 +561,17 @@ app.get('/api/numbers/search', async (req, res) => {
 
     res.json({
       success: true,
+      country: rateDeck.countryName,
+      countryCode: rateDeck.countryCode,
+      flagEmoji: rateDeck.flagEmoji,
+      isActive: rateDeck.isActive,
+      rates: {
+        monthly: rateDeck.numberMonthlySellPrice,
+        sevenDay: rateDeck.number7DaySellPrice,
+        yearly: rateDeck.numberYearlySellPrice,
+        callPerMin: rateDeck.callSellPricePerMin,
+        smsPerMsg: rateDeck.smsSellPrice
+      },
       numbers
     });
   } catch (error) {
@@ -1983,9 +2001,23 @@ app.get('/api/rates/lookup', async (req, res) => {
       cleanNum = '+' + cleanNum;
     }
 
-    // Sort by dialCode length descending so longer matching prefixes (e.g. +852, +358, +971) match before +1 or +8
-    const sortedRates = [...retailRates].sort((a, b) => b.dialCode.length - a.dialCode.length);
-    const matchedRate = sortedRates.find(r => cleanNum.startsWith(r.dialCode)) || {
+    // Dynamic search against PostgreSQL dynamicRatesCache first
+    const dynamicList = dynamicRatesCache.map(r => ({
+      country: r.countryName,
+      code: r.countryCode,
+      dialCode: r.dialCode,
+      flag: r.flagEmoji,
+      callRatePerMin: r.callSellPricePerMin,
+      smsRate: r.smsSellPrice,
+      numberMonthlyPrice: r.numberMonthlySellPrice,
+      numberYearlyPrice: r.numberYearlySellPrice,
+      number7DayPrice: r.number7DaySellPrice,
+      isActive: r.isActive
+    }));
+
+    const sortedDynamic = [...dynamicList].sort((a, b) => b.dialCode.length - a.dialCode.length);
+    const sortedFallback = [...retailRates].sort((a, b) => b.dialCode.length - a.dialCode.length);
+    const matchedRate = sortedDynamic.find(r => cleanNum.startsWith(r.dialCode)) || sortedFallback.find(r => cleanNum.startsWith(r.dialCode)) || {
       country: 'International Destination',
       code: 'INTL',
       dialCode: '+',

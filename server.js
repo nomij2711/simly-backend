@@ -424,7 +424,7 @@ const DEFAULT_PLAN_TIERS = [
     durationDays: 90,
     wholesaleDayRatio: 3.0,
     defaultPriceRatio: 2.7,
-    isActive: true,
+    isActive: false,
     sortOrder: 3
   },
   {
@@ -436,7 +436,7 @@ const DEFAULT_PLAN_TIERS = [
     durationDays: 180,
     wholesaleDayRatio: 6.0,
     defaultPriceRatio: 5.0,
-    isActive: true,
+    isActive: false,
     sortOrder: 4
   },
   {
@@ -5413,6 +5413,7 @@ app.post('/api/admin/rates/:countryCode/toggle', requireAdmin, async (req, res) 
 // 1. Public App Endpoint: List Active Plan Tiers
 app.get('/api/app/plans', async (req, res) => {
   try {
+    await refreshDynamicCaches();
     const countryCode = (req.query.country || 'US').toUpperCase();
     const plans = getCountryPlans(countryCode, true);
     res.json({ success: true, count: plans.length, countryCode, plans });

@@ -590,7 +590,9 @@ const calculateNumberWholesaleCost = (countryCode, planType, durationDays) => {
 app.get('/api/numbers/search', async (req, res) => {
   try {
     await refreshDynamicCaches();
-    const countryCode = (req.query.country || 'US').toUpperCase();
+    const activeRouteCodes = dynamicRatesCache.filter(r => r.isActive).map(r => r.countryCode);
+    const fallbackCountry = activeRouteCodes[0] || 'US';
+    const countryCode = (req.query.country || fallbackCountry).toUpperCase();
     const rateDeck = getCountryRate(countryCode);
 
     // 🔒 STRICT ROUTE ACTIVE CHECK: If route is removed or disabled by admin, return empty list and 403 error
@@ -2154,7 +2156,20 @@ app.get('/api/rates', async (req, res) => {
 });
 
 // 14a. Available Active Countries Catalog for Mobile App (100% Dynamic PostgreSQL)
-app.get(['/api/countries', '/api/app/countries', '/api/numbers/countries', '/api/marketplace/countries'], async (req, res) => {
+app.get([
+  '/api/countries',
+  '/api/app/countries',
+  '/api/numbers/countries',
+  '/api/numbers/available-countries',
+  '/api/numbers/country-list',
+  '/api/marketplace/countries',
+  '/api/marketplace',
+  '/api/country-list',
+  '/api/available-countries',
+  '/api/rates/countries',
+  '/api/phone-numbers/countries',
+  '/api/virtual-numbers/countries'
+], async (req, res) => {
   try {
     await refreshDynamicCaches();
     const activeList = dynamicRatesCache.filter(r => r.isActive).map(r => ({
@@ -6524,12 +6539,32 @@ function isVersionOlder(clientVersion, minRequiredVersion) {
 // 1. Mobile App Public Config Polling Route
 app.get('/api/app/config', async (req, res) => {
   try {
+    await refreshDynamicCaches();
     const clientAppVersion = req.query.version || req.headers['x-app-version'] || '1.0.0';
     const configMap = await getSystemConfigsMap();
 
     const isMaintenance = configMap.maintenance_mode === 'true';
     const minVersion = configMap.min_app_version || '1.0.0';
     const requiresUpdate = isVersionOlder(clientAppVersion, minVersion);
+
+    const activeList = dynamicRatesCache.filter(r => r.isActive).map(r => ({
+      country: r.countryName,
+      countryName: r.countryName,
+      name: r.countryName,
+      code: r.countryCode,
+      countryCode: r.countryCode,
+      dialCode: r.dialCode,
+      flag: r.flagEmoji,
+      flagEmoji: r.flagEmoji,
+      monthlyPrice: r.numberMonthlySellPrice,
+      yearlyPrice: r.numberYearlySellPrice,
+      sevenDayPrice: r.number7DaySellPrice,
+      callRate: r.callSellPricePerMin,
+      smsRate: r.smsSellPrice,
+      allowCalls: r.allowOutboundCalls,
+      allowSms: r.allowOutboundSms,
+      isActive: true
+    }));
 
     res.json({
       success: true,
@@ -6550,6 +6585,8 @@ app.get('/api/app/config', async (req, res) => {
         smsEnabled: configMap.allow_sms === 'true',
         depositsEnabled: configMap.allow_deposits === 'true'
       },
+      activeCountries: activeList,
+      supportedCountries: activeList,
       support: {
         email: configMap.support_email,
         phone: configMap.support_phone

@@ -5425,6 +5425,16 @@ app.get('/api/app/plans', async (req, res) => {
   try {
     await refreshDynamicCaches();
     const countryCode = (req.query.country || 'US').toUpperCase();
+    const rate = getCountryRate(countryCode);
+    if (!rate || rate.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        error: `Virtual line plans for ${rate?.countryName || countryCode} are disabled by administrator.`,
+        isActive: false,
+        countryCode,
+        plans: []
+      });
+    }
     const plans = getCountryPlans(countryCode, true);
     res.json({ success: true, count: plans.length, countryCode, plans });
   } catch (error) {

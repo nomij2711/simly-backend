@@ -232,9 +232,26 @@ model CountryRate {
   callWholesaleCostPerMin Float    @default(0.007)
   smsSellPrice            Float    @default(0.02)
   smsWholesaleCost        Float    @default(0.004)
+  customPlanPrices        String?  @default("{}") // JSON map of custom prices per plan tier key
   isActive                Boolean  @default(true)
   allowOutboundCalls      Boolean  @default(true)
   allowOutboundSms        Boolean  @default(true)
   updatedAt               DateTime @updatedAt
   createdAt               DateTime @default(now())
 }
+
+model SubscriptionPlanTier {
+  id                String   @id @default(uuid())
+  key               String   @unique // e.g. "7_days", "30_days", "90_days", "180_days", "365_days"
+  name              String   // e.g. "7 Days", "30 Days", "3 Months (Quarterly)", "6 Months", "1 Year"
+  badge             String   // e.g. "⚡ Quick", "🌟 Standard", "🔥 Popular", "🚀 Extended", "💎 Saver"
+  subtitle          String   @default("Flexible validity")
+  durationDays      Int      // 7, 30, 90, 180, 365
+  wholesaleDayRatio Float    @default(1.0) // fraction of monthly carrier cost: 7d=0.25, 30d=1.0, 90d=3.0, 180d=6.0, 365d=12.0
+  defaultPriceRatio Float    @default(1.0) // multiplier on monthly sell price: 7d=0.5, 30d=1.0, 90d=2.7, 180d=5.0, 365d=10.0
+  isActive          Boolean  @default(true)
+  sortOrder         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+

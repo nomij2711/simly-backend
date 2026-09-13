@@ -1305,91 +1305,143 @@
 
         </div>
 
-        <!-- ⚙️ TAB 7: PRICING & PROMO CODES -->
+        <!-- ⚙️ TAB 7: DYNAMIC COUNTRY RATE DECKS & MARGIN ENGINE -->
         <!-- ============================================================ -->
         <div id="tab-view-pricing" class="tab-view hidden space-y-6">
-          <div>
-            <h2 class="text-xl font-bold text-white tracking-tight">Live Rates, Pricing & Promo Vouchers</h2>
-            <p class="text-xs text-slate-400">Control retail pricing multipliers and generate marketing promo codes on the fly.</p>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
+                <i class="fa-solid fa-tags text-pink-400"></i>
+                <span>Country Rate Decks & Profit Margin Manager</span>
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">Control live retail selling prices, carrier wholesale base costs, and live profit margins per country with zero hardcoding.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="openAddCountryRateModal()" class="px-4 py-2 bg-gradient-to-r from-pink-500 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i>
+                <span>Add Country Rate Deck</span>
+              </button>
+            </div>
           </div>
 
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Pricing Multipliers Card -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-400 flex items-center justify-center">
-                  <i class="fa-solid fa-sliders"></i>
-                </div>
-                <div>
-                  <h3 class="text-sm font-bold text-white">Retail Margin Multipliers</h3>
-                  <p class="text-[11px] text-slate-400">Adjust calling and number profit margins live</p>
-                </div>
+          <!-- Summary KPI Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-400 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-earth-americas"></i>
               </div>
-
-              <form onsubmit="handleSavePricing(event)" class="space-y-4">
-                <div>
-                  <label class="block text-xs font-semibold text-slate-400 mb-1">Calling Rate Multiplier (vs Telnyx Wholesale)</label>
-                  <input type="number" step="0.1" id="pricingCallMult" value="2.5" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-                  <p class="text-[10px] text-slate-500 mt-1">Example: 2.5x means wholesale $0.01/min is billed at $0.025/min (150% profit margin).</p>
-                </div>
-
-                <div>
-                  <label class="block text-xs font-semibold text-slate-400 mb-1">Virtual Numbers Multiplier</label>
-                  <input type="number" step="0.1" id="pricingNumMult" value="1.5" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-                  <p class="text-[10px] text-slate-500 mt-1">Example: 1.5x on numbers and SMS.</p>
-                </div>
-
-                <div>
-                  <label class="block text-xs font-semibold text-slate-400 mb-1">Default Signup Welcome Bonus ($)</label>
-                  <input type="number" step="1" id="pricingBonus" value="10.0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-                </div>
-
-                <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs shadow-lg shadow-indigo-600/30 transition-all">
-                  Save Pricing Changes
-                </button>
-              </form>
+              <div>
+                <div class="text-[10px] text-slate-400 font-semibold uppercase">Active Country Routes</div>
+                <div id="kpiActiveCountryCount" class="text-lg font-bold text-white">0</div>
+              </div>
             </div>
 
-            <!-- Promo Codes Generator Card -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-phone-volume"></i>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-400 font-semibold uppercase">Avg. Line Profit Margin</div>
+                <div id="kpiAvgLineMargin" class="text-lg font-bold text-emerald-400">+0%</div>
+              </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-microphone-lines"></i>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-400 font-semibold uppercase">Avg. Voice Call Margin</div>
+                <div id="kpiAvgCallMargin" class="text-lg font-bold text-cyan-400">+0%</div>
+              </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-comment-sms"></i>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-400 font-semibold uppercase">Avg. SMS Margin</div>
+                <div id="kpiAvgSmsMargin" class="text-lg font-bold text-purple-400">+0%</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Search & Filter Bar -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="relative w-full sm:w-80">
+              <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-500 text-xs"></i>
+              <input type="text" id="countryRateSearch" oninput="filterCountryRatesTable(this.value)" placeholder="Search country name, ISO code or dial prefix..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500 transition-all">
+            </div>
+            <div class="text-xs text-slate-400">
+              Synced with Cloud Database: <span class="text-emerald-400 font-bold">PostgreSQL 🟢</span>
+            </div>
+          </div>
+
+          <!-- Dynamic Rates Table -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <div class="overflow-x-auto custom-scrollbar">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 bg-slate-950/70 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th class="py-3.5 px-4">Country & Prefix</th>
+                    <th class="py-3.5 px-4">Virtual Line (Monthly)</th>
+                    <th class="py-3.5 px-4">Virtual Line (Yearly)</th>
+                    <th class="py-3.5 px-4">Voice Outbound / Min</th>
+                    <th class="py-3.5 px-4">SMS Outbound / Msg</th>
+                    <th class="py-3.5 px-4 text-center">Status</th>
+                    <th class="py-3.5 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="countryRatesTableBody" class="divide-y divide-slate-800 text-xs">
+                  <tr>
+                    <td colspan="7" class="py-8 text-center text-slate-500">Loading country rate decks from PostgreSQL...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Promo Vouchers Section (Below Rates) -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                <div class="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
                   <i class="fa-solid fa-gift"></i>
                 </div>
                 <div>
-                  <h3 class="text-sm font-bold text-white">Promo Codes & Vouchers</h3>
-                  <p class="text-[11px] text-slate-400">Create marketing gift codes for users</p>
+                  <h3 class="text-sm font-bold text-white">Marketing Gift Promo Codes</h3>
+                  <p class="text-[11px] text-slate-400">Generate discount and top-up gift vouchers for users</p>
                 </div>
               </div>
+            </div>
 
-              <!-- Create Promo Form -->
-              <form onsubmit="handleCreatePromo(event)" class="flex gap-2">
-                <input type="text" id="promoCodeInput" placeholder="CODE (e.g. VIP20)" required class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white uppercase placeholder-slate-500 focus:outline-none focus:border-indigo-500">
-                <input type="number" step="0.5" id="promoBonusInput" placeholder="Bonus $" required class="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
-                <button type="submit" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl text-xs transition-all">Create</button>
-              </form>
+            <form onsubmit="handleCreatePromo(event)" class="flex flex-col sm:flex-row gap-2.5">
+              <input type="text" id="promoCodeInput" placeholder="CODE (e.g. VIP20)" required class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white uppercase placeholder-slate-500 focus:outline-none focus:border-purple-500">
+              <input type="number" step="0.5" id="promoBonusInput" placeholder="Bonus USD $" required class="w-full sm:w-36 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500">
+              <button type="submit" class="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl text-xs transition-all flex items-center justify-center gap-2">
+                <i class="fa-solid fa-plus"></i> <span>Create Voucher</span>
+              </button>
+            </form>
 
-              <!-- Promo List Table -->
-              <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                  <thead>
-                    <tr class="text-slate-400 border-b border-slate-800 pb-2 text-[10px] uppercase">
-                      <th class="py-2">Code</th>
-                      <th class="py-2">Bonus</th>
-                      <th class="py-2">Used</th>
-                      <th class="py-2">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody id="promosTableBody" class="divide-y divide-slate-800/60">
-                    <tr><td colspan="4" class="py-4 text-center text-slate-500">Loading vouchers...</td></tr>
-                  </tbody>
-                </table>
-              </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="text-slate-400 border-b border-slate-800 pb-2 text-[10px] uppercase font-bold">
+                    <th class="py-2 px-3">Voucher Code</th>
+                    <th class="py-2 px-3">Credit Bonus</th>
+                    <th class="py-2 px-3">Redemptions</th>
+                    <th class="py-2 px-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="promosTableBody" class="divide-y divide-slate-800/60">
+                  <tr><td colspan="4" class="py-4 text-center text-slate-500">Loading vouchers...</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
 
-  
         <!-- ============================================================ -->
         <!-- 👥 TAB 9: TEAM & STAFF MANAGEMENT (RBAC) -->
         <!-- ============================================================ -->
@@ -3589,84 +3641,305 @@
 
     // (Legacy handleSendSupportReply removed; multi-agent handler is active)
 
-    // 7. PRICING & PROMOS
+    // ============================================================
+    // 💎 7. DYNAMIC COUNTRY RATE DECKS & MARGIN ENGINE
+    // ============================================================
+    let cachedCountryRates = [];
+
     async function loadPricing() {
       try {
-        const data = await adminFetch('/api/admin/pricing');
-        if (!data.success) return;
+        const data = await adminFetch('/api/admin/rates');
+        if (!data || !data.success) return;
 
-        const cfg = data.config;
-        document.getElementById('pricingCallMult').value = cfg.callRateMultiplier || 2.5;
-        document.getElementById('pricingNumMult').value = cfg.numberRateMultiplier || 1.5;
-        document.getElementById('pricingBonus').value = cfg.defaultWelcomeBonus || 10.0;
+        cachedCountryRates = data.rates || [];
+        renderCountryRatesTable(cachedCountryRates);
+        updatePricingSummaryKPIs(cachedCountryRates);
 
-        const tbody = document.getElementById('promosTableBody');
-        tbody.innerHTML = (cfg.promos || []).map(p => `
-          <tr class="hover:bg-slate-800/40">
-            <td class="py-2.5 font-mono font-bold text-purple-400">${p.code}</td>
-            <td class="py-2.5 font-mono font-bold text-emerald-400">${formatUSD8(p.bonus)}</td>
-            <td class="py-2.5 text-slate-400">${p.used || 0}/${p.maxUses || 100}</td>
-            <td class="py-2.5">
-              <button onclick="togglePromoActive('${p.id}')" class="px-2 py-0.5 rounded text-[10px] font-semibold ${p.active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-500'}">
-                ${p.active ? 'Active' : 'Disabled'}
+        // Load Promos
+        const pData = await adminFetch('/api/admin/pricing');
+        if (pData && pData.success && pData.config) {
+          const tbody = document.getElementById('promosTableBody');
+          if (tbody) {
+            tbody.innerHTML = (pData.config.promos || []).map(p => `
+              <tr class="hover:bg-slate-800/40">
+                <td class="py-2.5 px-3 font-mono font-bold text-purple-400">${p.code}</td>
+                <td class="py-2.5 px-3 font-mono font-bold text-emerald-400">${formatUSD8(p.bonus)}</td>
+                <td class="py-2.5 px-3 text-slate-400">${p.used || 0}/${p.maxUses || 100}</td>
+                <td class="py-2.5 px-3">
+                  <button onclick="togglePromoActive('${p.id}')" class="px-2 py-0.5 rounded text-[10px] font-semibold ${p.active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-500'}">
+                    ${p.active ? 'Active' : 'Disabled'}
+                  </button>
+                </td>
+              </tr>
+            `).join('') || '<tr><td colspan="4" class="py-4 text-center text-slate-500">No promo codes created.</td></tr>';
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load country rates:', err);
+      }
+    }
+
+    function renderCountryRatesTable(rates) {
+      const tbody = document.getElementById('countryRatesTableBody');
+      if (!tbody) return;
+
+      if (!rates || rates.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-500">No country rate decks found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rates.map(r => {
+        const lineProfit = (r.numberMonthlySellPrice - r.numberWholesaleCost);
+        const lineMarginPct = r.numberMonthlySellPrice > 0 ? ((lineProfit / r.numberMonthlySellPrice) * 100).toFixed(0) : '0';
+
+        const callProfit = (r.callSellPricePerMin - r.callWholesaleCostPerMin);
+        const callMarginPct = r.callSellPricePerMin > 0 ? ((callProfit / r.callSellPricePerMin) * 100).toFixed(0) : '0';
+
+        const smsProfit = (r.smsSellPrice - r.smsWholesaleCost);
+        const smsMarginPct = r.smsSellPrice > 0 ? ((smsProfit / r.smsSellPrice) * 100).toFixed(0) : '0';
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition-all">
+            <td class="py-3 px-4">
+              <div class="flex items-center gap-2.5">
+                <span class="text-xl">${r.flagEmoji || '🌐'}</span>
+                <div>
+                  <div class="font-bold text-white text-xs">${r.countryName}</div>
+                  <div class="text-[10px] text-slate-400 font-mono">${r.dialCode} (${r.countryCode})</div>
+                </div>
+              </div>
+            </td>
+            
+            <td class="py-3 px-4">
+              <div class="font-bold text-emerald-400 text-xs">$${r.numberMonthlySellPrice.toFixed(2)}/mo</div>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="text-[10px] text-slate-500">Cost: $${r.numberWholesaleCost.toFixed(2)}</span>
+                <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${lineProfit >= 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400'}">+${lineMarginPct}%</span>
+              </div>
+            </td>
+
+            <td class="py-3 px-4">
+              <div class="font-bold text-white text-xs">$${r.numberYearlySellPrice.toFixed(2)}/yr</div>
+              <div class="text-[10px] text-slate-500 mt-0.5">7-Day: $${r.number7DaySellPrice.toFixed(2)}</div>
+            </td>
+
+            <td class="py-3 px-4">
+              <div class="font-bold text-cyan-400 text-xs">$${r.callSellPricePerMin.toFixed(3)}/min</div>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="text-[10px] text-slate-500">Cost: $${r.callWholesaleCostPerMin.toFixed(3)}</span>
+                <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${callProfit >= 0 ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-rose-500/10 text-rose-400'}">+${callMarginPct}%</span>
+              </div>
+            </td>
+
+            <td class="py-3 px-4">
+              <div class="font-bold text-purple-400 text-xs">$${r.smsSellPrice.toFixed(3)}/sms</div>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="text-[10px] text-slate-500">Cost: $${r.smsWholesaleCost.toFixed(3)}</span>
+                <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${smsProfit >= 0 ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-rose-500/10 text-rose-400'}">+${smsMarginPct}%</span>
+              </div>
+            </td>
+
+            <td class="py-3 px-4 text-center">
+              <button onclick="toggleCountryRateActive('${r.countryCode}')" class="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${r.isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-slate-800 text-slate-500 border border-slate-700'}">
+                ${r.isActive ? 'ACTIVE 🟢' : 'DISABLED 🔴'}
+              </button>
+            </td>
+
+            <td class="py-3 px-4 text-right">
+              <button onclick="openEditCountryRateModal('${r.countryCode}')" class="p-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-pink-400 text-xs transition-all" title="Edit Rate Deck">
+                <i class="fa-solid fa-pen-to-square"></i>
               </button>
             </td>
           </tr>
-        `).join('') || '<tr><td colspan="4" class="py-4 text-center text-slate-500">No promo codes created.</td></tr>';
-      } catch (err) {
-        console.error(err);
-      }
+        `;
+      }).join('');
     }
 
-    async function handleSavePricing(e) {
-      e.preventDefault();
-      const callRateMultiplier = document.getElementById('pricingCallMult').value;
-      const numberRateMultiplier = document.getElementById('pricingNumMult').value;
-      const defaultWelcomeBonus = document.getElementById('pricingBonus').value;
+    function updatePricingSummaryKPIs(rates) {
+      if (!rates || rates.length === 0) return;
+      document.getElementById('kpiActiveCountryCount').innerText = rates.filter(r => r.isActive).length;
 
-      try {
-        const res = await adminFetch('/api/admin/pricing', {
-          method: 'POST',
-          body: JSON.stringify({ callRateMultiplier, numberRateMultiplier, defaultWelcomeBonus })
-        });
-        if (res.success) alert(res.message);
-      } catch (err) {
-        alert(err.message);
-      }
+      let totalLineMargin = 0;
+      let totalCallMargin = 0;
+      let totalSmsMargin = 0;
+
+      rates.forEach(r => {
+        if (r.numberMonthlySellPrice > 0) totalLineMargin += ((r.numberMonthlySellPrice - r.numberWholesaleCost) / r.numberMonthlySellPrice) * 100;
+        if (r.callSellPricePerMin > 0) totalCallMargin += ((r.callSellPricePerMin - r.callWholesaleCostPerMin) / r.callSellPricePerMin) * 100;
+        if (r.smsSellPrice > 0) totalSmsMargin += ((r.smsSellPrice - r.smsWholesaleCost) / r.smsSellPrice) * 100;
+      });
+
+      const avgLine = (totalLineMargin / rates.length).toFixed(0);
+      const avgCall = (totalCallMargin / rates.length).toFixed(0);
+      const avgSms = (totalSmsMargin / rates.length).toFixed(0);
+
+      document.getElementById('kpiAvgLineMargin').innerText = `+${avgLine}%`;
+      document.getElementById('kpiAvgCallMargin').innerText = `+${avgCall}%`;
+      document.getElementById('kpiAvgSmsMargin').innerText = `+${avgSms}%`;
     }
 
-    async function handleCreatePromo(e) {
+    function filterCountryRatesTable(query) {
+      const q = (query || '').toLowerCase().trim();
+      if (!q) {
+        renderCountryRatesTable(cachedCountryRates);
+        return;
+      }
+      const filtered = cachedCountryRates.filter(r => 
+        r.countryName.toLowerCase().includes(q) ||
+        r.countryCode.toLowerCase().includes(q) ||
+        r.dialCode.includes(q)
+      );
+      renderCountryRatesTable(filtered);
+    }
+
+    function openEditCountryRateModal(countryCode) {
+      const rate = cachedCountryRates.find(r => r.countryCode === countryCode);
+      if (!rate) return;
+
+      document.getElementById('rateCountryCode').value = rate.countryCode;
+      document.getElementById('rateCountryName').value = rate.countryName;
+      document.getElementById('rateFlagEmoji').value = rate.flagEmoji || '🌐';
+      document.getElementById('rateDialCode').value = rate.dialCode;
+      document.getElementById('rateNumMonthly').value = rate.numberMonthlySellPrice;
+      document.getElementById('rateNumYearly').value = rate.numberYearlySellPrice;
+      document.getElementById('rateNum7Day').value = rate.number7DaySellPrice;
+      document.getElementById('rateNumWholesale').value = rate.numberWholesaleCost;
+      document.getElementById('rateCallSell').value = rate.callSellPricePerMin;
+      document.getElementById('rateCallWholesale').value = rate.callWholesaleCostPerMin;
+      document.getElementById('rateSmsSell').value = rate.smsSellPrice;
+      document.getElementById('rateSmsWholesale').value = rate.smsWholesaleCost;
+      document.getElementById('rateIsActive').checked = rate.isActive;
+      document.getElementById('rateAllowCalls').checked = rate.allowOutboundCalls;
+      document.getElementById('rateAllowSms').checked = rate.allowOutboundSms;
+
+      document.getElementById('modalCountryFlag').innerText = rate.flagEmoji || '🌐';
+      document.getElementById('modalCountryTitle').innerText = `Edit ${rate.countryName} Rate Deck`;
+      document.getElementById('modalCountrySubtitle').innerText = `Route: ${rate.dialCode} (${rate.countryCode})`;
+      document.getElementById('btnDeleteRateDeck').classList.remove('hidden');
+
+      calculateModalMargins();
+      document.getElementById('editCountryRateModal').classList.remove('hidden');
+    }
+
+    function openAddCountryRateModal() {
+      document.getElementById('rateCountryCode').value = '';
+      document.getElementById('rateCountryName').value = '';
+      document.getElementById('rateFlagEmoji').value = '🌐';
+      document.getElementById('rateDialCode').value = '+';
+      document.getElementById('rateNumMonthly').value = '2.00';
+      document.getElementById('rateNumYearly').value = '20.00';
+      document.getElementById('rateNum7Day').value = '1.00';
+      document.getElementById('rateNumWholesale').value = '1.00';
+      document.getElementById('rateCallSell').value = '0.030';
+      document.getElementById('rateCallWholesale').value = '0.015';
+      document.getElementById('rateSmsSell').value = '0.030';
+      document.getElementById('rateSmsWholesale').value = '0.010';
+      document.getElementById('rateIsActive').checked = true;
+      document.getElementById('rateAllowCalls').checked = true;
+      document.getElementById('rateAllowSms').checked = true;
+
+      document.getElementById('modalCountryFlag').innerText = '🌐';
+      document.getElementById('modalCountryTitle').innerText = 'Add New Country Route';
+      document.getElementById('modalCountrySubtitle').innerText = 'Configure pricing and carrier wholesale base cost';
+      document.getElementById('btnDeleteRateDeck').classList.add('hidden');
+
+      calculateModalMargins();
+      document.getElementById('editCountryRateModal').classList.remove('hidden');
+    }
+
+    function closeEditCountryRateModal() {
+      document.getElementById('editCountryRateModal').classList.add('hidden');
+    }
+
+    function calculateModalMargins() {
+      const numSell = parseFloat(document.getElementById('rateNumMonthly').value) || 0;
+      const numCost = parseFloat(document.getElementById('rateNumWholesale').value) || 0;
+      const callSell = parseFloat(document.getElementById('rateCallSell').value) || 0;
+      const callCost = parseFloat(document.getElementById('rateCallWholesale').value) || 0;
+      const smsSell = parseFloat(document.getElementById('rateSmsSell').value) || 0;
+      const smsCost = parseFloat(document.getElementById('rateSmsWholesale').value) || 0;
+
+      const numMargin = numSell > 0 ? (((numSell - numCost) / numSell) * 100).toFixed(0) : 0;
+      const callMargin = callSell > 0 ? (((callSell - callCost) / callSell) * 100).toFixed(0) : 0;
+      const smsMargin = smsSell > 0 ? (((smsSell - smsCost) / smsSell) * 100).toFixed(0) : 0;
+
+      document.getElementById('rateLineMarginBadge').innerText = `+${numMargin}% Margin ($${(numSell - numCost).toFixed(2)}/mo net)`;
+      document.getElementById('rateCallMarginBadge').innerText = `+${callMargin}% Margin ($${(callSell - callCost).toFixed(3)}/min net)`;
+      document.getElementById('rateSmsMarginBadge').innerText = `+${smsMargin}% Margin ($${(smsSell - smsCost).toFixed(3)}/msg net)`;
+    }
+
+    async function handleSaveCountryRate(e) {
       e.preventDefault();
-      const code = document.getElementById('promoCodeInput').value;
-      const bonus = document.getElementById('promoBonusInput').value;
+      const codeInput = document.getElementById('rateCountryCode').value.trim();
+      const countryCode = codeInput || prompt('Enter 2-letter ISO Country Code (e.g. US, GB, AU, DE):');
+      if (!countryCode) return;
+
+      const payload = {
+        countryCode: countryCode.toUpperCase(),
+        countryName: document.getElementById('rateCountryName').value.trim(),
+        flagEmoji: document.getElementById('rateFlagEmoji').value.trim() || '🌐',
+        dialCode: document.getElementById('rateDialCode').value.trim(),
+        numberMonthlySellPrice: parseFloat(document.getElementById('rateNumMonthly').value),
+        numberYearlySellPrice: parseFloat(document.getElementById('rateNumYearly').value),
+        number7DaySellPrice: parseFloat(document.getElementById('rateNum7Day').value),
+        numberWholesaleCost: parseFloat(document.getElementById('rateNumWholesale').value),
+        callSellPricePerMin: parseFloat(document.getElementById('rateCallSell').value),
+        callWholesaleCostPerMin: parseFloat(document.getElementById('rateCallWholesale').value),
+        smsSellPrice: parseFloat(document.getElementById('rateSmsSell').value),
+        smsWholesaleCost: parseFloat(document.getElementById('rateSmsWholesale').value),
+        isActive: document.getElementById('rateIsActive').checked,
+        allowOutboundCalls: document.getElementById('rateAllowCalls').checked,
+        allowOutboundSms: document.getElementById('rateAllowSms').checked
+      };
 
       try {
-        const res = await adminFetch('/api/admin/promos/create', {
+        const res = await adminFetch('/api/admin/rates', {
           method: 'POST',
-          body: JSON.stringify({ code, bonus, maxUses: 500 })
+          body: JSON.stringify(payload)
         });
+
         if (res.success) {
-          document.getElementById('promoCodeInput').value = '';
-          document.getElementById('promoBonusInput').value = '';
+          showToast(res.message, 'success');
+          closeEditCountryRateModal();
+          loadPricing();
+        } else {
+          showToast(res.error || 'Failed to save rate deck', 'error');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function toggleCountryRateActive(code) {
+      try {
+        const res = await adminFetch(`/api/admin/rates/${code}/toggle`, { method: 'POST' });
+        if (res.success) {
+          showToast(res.message, 'success');
           loadPricing();
         }
       } catch (err) {
-        alert(err.message);
+        showToast(err.message, 'error');
       }
     }
 
-    async function togglePromoActive(id) {
+    async function handleDeleteCountryRate() {
+      const code = document.getElementById('rateCountryCode').value;
+      if (!code) return;
+      if (!confirm(`Are you sure you want to delete the rate deck for ${code}?`)) return;
+
       try {
-        const res = await adminFetch('/api/admin/promos/toggle', {
-          method: 'POST',
-          body: JSON.stringify({ id })
-        });
-        if (res.success) loadPricing();
+        const res = await adminFetch(`/api/admin/rates/${code}`, { method: 'DELETE' });
+        if (res.success) {
+          showToast(res.message, 'success');
+          closeEditCountryRateModal();
+          loadPricing();
+        }
       } catch (err) {
-        alert(err.message);
+        showToast(err.message, 'error');
       }
     }
 
+    // (Old handleSavePricing replaced with Dynamic Rate Deck Manager)
     // ============================================================
     // 📢 ANNOUNCEMENT POP-UPS & PUSH NOTIFICATIONS CONTROLLER
     // ============================================================
@@ -6730,6 +7003,133 @@ setInterval(() => {
           <button onclick="closeKpiBreakdownModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold transition-all">Close</button>
         </div>
       </div>
+    </div>
+  </div>
+
+
+  <!-- 📝 EDIT COUNTRY RATE DECK MODAL -->
+  <div id="editCountryRateModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-xl rounded-3xl p-6 shadow-2xl space-y-5 my-8">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div class="flex items-center gap-3">
+          <div id="modalCountryFlag" class="text-3xl">🌐</div>
+          <div>
+            <h3 id="modalCountryTitle" class="text-base font-bold text-white">Edit Country Rate Deck</h3>
+            <p id="modalCountrySubtitle" class="text-xs text-slate-400">Live PostgreSQL Rate Synchronization</p>
+          </div>
+        </div>
+        <button onclick="closeEditCountryRateModal()" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <form id="editCountryRateForm" onsubmit="handleSaveCountryRate(event)" class="space-y-4 text-xs">
+        <input type="hidden" id="rateCountryCode">
+
+        <!-- Country Metadata -->
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">Flag Emoji</label>
+            <input type="text" id="rateFlagEmoji" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white text-center text-base focus:outline-none focus:border-pink-500">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">Country Name</label>
+            <input type="text" id="rateCountryName" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-pink-500">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">Dial Code</label>
+            <input type="text" id="rateDialCode" required placeholder="+1" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-pink-500">
+          </div>
+        </div>
+
+        <!-- 1. Virtual Line Pricing -->
+        <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 space-y-3">
+          <div class="font-bold text-white text-[11px] uppercase tracking-wider flex items-center justify-between">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-phone text-emerald-400"></i> Virtual Number Pricing</span>
+            <span id="rateLineMarginBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">+0% Margin</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <label class="block text-slate-400 text-[10px] mb-1">Monthly Sell ($)</label>
+              <input type="number" step="0.01" id="rateNumMonthly" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+              <label class="block text-slate-400 text-[10px] mb-1">Yearly Sell ($)</label>
+              <input type="number" step="0.01" id="rateNumYearly" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+              <label class="block text-slate-400 text-[10px] mb-1">7-Day Sell ($)</label>
+              <input type="number" step="0.01" id="rateNum7Day" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+              <label class="block text-slate-400 text-[10px] mb-1">Carrier Cost/Mo ($)</label>
+              <input type="number" step="0.01" id="rateNumWholesale" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-slate-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Voice Calling Rates -->
+        <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 space-y-3">
+          <div class="font-bold text-white text-[11px] uppercase tracking-wider flex items-center justify-between">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-microphone text-cyan-400"></i> Outbound Voice Calling Rates (Per Minute)</span>
+            <span id="rateCallMarginBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 font-bold border border-cyan-500/20">+0% Margin</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-400 text-[10px] mb-1">Retail Call Rate / Min ($)</label>
+              <input type="number" step="0.001" id="rateCallSell" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-cyan-400 focus:outline-none focus:border-cyan-500">
+            </div>
+            <div>
+              <label class="block text-slate-400 text-[10px] mb-1">Carrier Wholesale Cost / Min ($)</label>
+              <input type="number" step="0.001" id="rateCallWholesale" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-slate-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. SMS Messaging Rates -->
+        <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 space-y-3">
+          <div class="font-bold text-white text-[11px] uppercase tracking-wider flex items-center justify-between">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-comment-dots text-purple-400"></i> Outbound SMS Messaging Rates (Per SMS)</span>
+            <span id="rateSmsMarginBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 font-bold border border-purple-500/20">+0% Margin</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-400 text-[10px] mb-1">Retail SMS Rate / Msg ($)</label>
+              <input type="number" step="0.001" id="rateSmsSell" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-purple-400 focus:outline-none focus:border-purple-500">
+            </div>
+            <div>
+              <label class="block text-slate-400 text-[10px] mb-1">Carrier Wholesale Cost / Msg ($)</label>
+              <input type="number" step="0.001" id="rateSmsWholesale" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-slate-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- Switches -->
+        <div class="grid grid-cols-3 gap-3 p-3 bg-slate-950 rounded-2xl border border-slate-800">
+          <label class="flex items-center gap-2 cursor-pointer text-slate-300">
+            <input type="checkbox" id="rateIsActive" checked class="rounded border-slate-800 bg-slate-900 text-pink-500">
+            <span>Route Active</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer text-slate-300">
+            <input type="checkbox" id="rateAllowCalls" checked class="rounded border-slate-800 bg-slate-900 text-cyan-500">
+            <span>Allow Calls</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer text-slate-300">
+            <input type="checkbox" id="rateAllowSms" checked class="rounded border-slate-800 bg-slate-900 text-purple-500">
+            <span>Allow SMS</span>
+          </label>
+        </div>
+
+        <div class="flex justify-between items-center pt-2">
+          <button type="button" id="btnDeleteRateDeck" onclick="handleDeleteCountryRate()" class="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-semibold border border-rose-500/20 transition-all flex items-center gap-1.5">
+            <i class="fa-solid fa-trash"></i> <span>Delete Route</span>
+          </button>
+          <div class="flex gap-2">
+            <button type="button" onclick="closeEditCountryRateModal()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+            <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-pink-500 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 flex items-center gap-2">
+              <i class="fa-solid fa-floppy-disk"></i> <span>Save Rate Deck</span>
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
 

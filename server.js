@@ -5289,6 +5289,7 @@ app.post('/api/admin/rates', requireAdmin, async (req, res) => {
       callWholesaleCostPerMin,
       smsSellPrice,
       smsWholesaleCost,
+      customPlanPrices,
       isActive = true,
       allowOutboundCalls = true,
       allowOutboundSms = true
@@ -5299,6 +5300,10 @@ app.post('/api/admin/rates', requireAdmin, async (req, res) => {
     }
 
     const cc = countryCode.trim().toUpperCase();
+    const customPricesStr = customPlanPrices !== undefined 
+      ? (typeof customPlanPrices === 'string' ? customPlanPrices : JSON.stringify(customPlanPrices))
+      : undefined;
+
     const saved = await prisma.countryRate.upsert({
       where: { countryCode: cc },
       update: {
@@ -5313,6 +5318,7 @@ app.post('/api/admin/rates', requireAdmin, async (req, res) => {
         callWholesaleCostPerMin: parseFloat(callWholesaleCostPerMin) || 0.007,
         smsSellPrice: parseFloat(smsSellPrice) || 0.02,
         smsWholesaleCost: parseFloat(smsWholesaleCost) || 0.004,
+        customPlanPrices: customPricesStr,
         isActive: Boolean(isActive),
         allowOutboundCalls: Boolean(allowOutboundCalls),
         allowOutboundSms: Boolean(allowOutboundSms)
@@ -5330,6 +5336,7 @@ app.post('/api/admin/rates', requireAdmin, async (req, res) => {
         callWholesaleCostPerMin: parseFloat(callWholesaleCostPerMin) || 0.007,
         smsSellPrice: parseFloat(smsSellPrice) || 0.02,
         smsWholesaleCost: parseFloat(smsWholesaleCost) || 0.004,
+        customPlanPrices: customPricesStr || '{}',
         isActive: Boolean(isActive),
         allowOutboundCalls: Boolean(allowOutboundCalls),
         allowOutboundSms: Boolean(allowOutboundSms)
@@ -5367,6 +5374,9 @@ app.put('/api/admin/rates/:countryCode', requireAdmin, async (req, res) => {
     if (req.body.callWholesaleCostPerMin !== undefined) updates.callWholesaleCostPerMin = parseFloat(req.body.callWholesaleCostPerMin);
     if (req.body.smsSellPrice !== undefined) updates.smsSellPrice = parseFloat(req.body.smsSellPrice);
     if (req.body.smsWholesaleCost !== undefined) updates.smsWholesaleCost = parseFloat(req.body.smsWholesaleCost);
+    if (req.body.customPlanPrices !== undefined) {
+      updates.customPlanPrices = typeof req.body.customPlanPrices === 'string' ? req.body.customPlanPrices : JSON.stringify(req.body.customPlanPrices);
+    }
     if (req.body.isActive !== undefined) updates.isActive = Boolean(req.body.isActive);
     if (req.body.allowOutboundCalls !== undefined) updates.allowOutboundCalls = Boolean(req.body.allowOutboundCalls);
     if (req.body.allowOutboundSms !== undefined) updates.allowOutboundSms = Boolean(req.body.allowOutboundSms);

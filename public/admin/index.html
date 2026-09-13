@@ -4139,6 +4139,168 @@
         showToast(err.message, 'error');
       }
     }
+
+    // ============================================================
+    // 💎 SUBSCRIPTION PLAN TIERS CONTROLLER (ADMIN CRUD & TOGGLES)
+    // ============================================================
+    let cachedPlanTiers = [];
+
+    async function loadPlanTiers() {
+      try {
+        const res = await adminFetch('/api/admin/plan-tiers');
+        if (!res || !res.success) return;
+
+        cachedPlanTiers = res.tiers || [];
+        renderPlanTiersGrid(cachedPlanTiers);
+      } catch (err) {
+        console.error('Failed to load plan tiers:', err);
+      }
+    }
+
+    function renderPlanTiersGrid(tiers) {
+      const grid = document.getElementById('planTiersGrid');
+      if (!grid) return;
+
+      if (!tiers || tiers.length === 0) {
+        grid.innerHTML = '<div class="col-span-full text-center text-slate-500 py-6 text-xs">No subscription plan tiers defined. Click "+ Add Custom Tier" to create one.</div>';
+        return;
+      }
+
+      grid.innerHTML = tiers.map(t => {
+        const isActive = t.isActive !== false;
+        return `
+          <div class="p-4 rounded-2xl border transition-all ${isActive ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-950/40 border-slate-800/40 opacity-60'} flex flex-col justify-between group hover:border-slate-700">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-slate-800 text-slate-500'} font-mono">${escapeHtml(t.badge || '🌟 Plan')}</span>
+                <div class="flex items-center gap-1">
+                  <button onclick="openEditPlanTierModal('${t.id || t.key}')" title="Edit Plan Tier" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all text-[11px]">
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button onclick="togglePlanTierActive('${t.id || t.key}')" title="${isActive ? 'Click to Disable Tier' : 'Click to Enable Tier'}" class="px-2 py-0.5 rounded-full text-[10px] font-bold transition-all ${isActive ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20'}">
+                    ${isActive ? 'ACTIVE 🟢' : 'OFF 🔴'}
+                  </button>
+                </div>
+              </div>
+              <div class="font-bold text-white text-sm flex items-center gap-1.5">
+                <span>${escapeHtml(t.name)}</span>
+                <span class="text-[10px] text-slate-500 font-mono">(${t.durationDays}d)</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-0.5 line-clamp-2">${escapeHtml(t.subtitle || '')}</p>
+            </div>
+            <div class="pt-3 mt-3 border-t border-slate-800/60 flex items-center justify-between text-[10px]">
+              <span class="text-slate-500">Carrier Ratio: <strong class="text-slate-300 font-mono">${t.wholesaleDayRatio}x</strong></span>
+              <span class="text-slate-500">Key: <strong class="text-indigo-400 font-mono">${escapeHtml(t.key)}</strong></span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openAddPlanTierModal() {
+      document.getElementById('tierId').value = '';
+      document.getElementById('tierKey').value = '';
+      document.getElementById('tierKey').readOnly = false;
+      document.getElementById('tierName').value = '';
+      document.getElementById('tierBadge').value = '🌟 Plan';
+      document.getElementById('tierSubtitle').value = 'Flexible line validity';
+      document.getElementById('tierDurationDays').value = '30';
+      document.getElementById('tierWholesaleRatio').value = '1.0';
+      document.getElementById('tierPriceRatio').value = '1.0';
+      document.getElementById('tierIsActive').checked = true;
+
+      document.getElementById('planTierModalTitle').innerText = 'Add Subscription Tier';
+      document.getElementById('btnDeletePlanTier').classList.add('hidden');
+      document.getElementById('planTierModal')?.classList.remove('hidden');
+    }
+
+    function openEditPlanTierModal(id) {
+      const t = cachedPlanTiers.find(x => x.id === id || x.key === id);
+      if (!t) return;
+
+      document.getElementById('tierId').value = t.id || t.key;
+      document.getElementById('tierKey').value = t.key;
+      document.getElementById('tierKey').readOnly = true;
+      document.getElementById('tierName').value = t.name;
+      document.getElementById('tierBadge').value = t.badge || '';
+      document.getElementById('tierSubtitle').value = t.subtitle || '';
+      document.getElementById('tierDurationDays').value = t.durationDays;
+      document.getElementById('tierWholesaleRatio').value = t.wholesaleDayRatio;
+      document.getElementById('tierPriceRatio').value = t.defaultPriceRatio;
+      document.getElementById('tierIsActive').checked = t.isActive !== false;
+
+      document.getElementById('planTierModalTitle').innerText = `Edit ${t.name} Plan Tier`;
+      document.getElementById('btnDeletePlanTier').classList.remove('hidden');
+      document.getElementById('planTierModal')?.classList.remove('hidden');
+    }
+
+    function closePlanTierModal() {
+      document.getElementById('planTierModal')?.classList.add('hidden');
+    }
+
+    async function handleSavePlanTier(e) {
+      e.preventDefault();
+      const payload = {
+        key: document.getElementById('tierKey').value.trim(),
+        name: document.getElementById('tierName').value.trim(),
+        badge: document.getElementById('tierBadge').value.trim(),
+        subtitle: document.getElementById('tierSubtitle').value.trim(),
+        durationDays: parseInt(document.getElementById('tierDurationDays').value),
+        wholesaleDayRatio: parseFloat(document.getElementById('tierWholesaleRatio').value),
+        defaultPriceRatio: parseFloat(document.getElementById('tierPriceRatio').value),
+        isActive: document.getElementById('tierIsActive').checked
+      };
+
+      try {
+        const res = await adminFetch('/api/admin/plan-tiers', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        if (res.success) {
+          showToast(res.message, 'success');
+          closePlanTierModal();
+          loadPlanTiers();
+        } else {
+          showToast(res.error || 'Failed to save tier', 'error');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function togglePlanTierActive(id) {
+      try {
+        const res = await adminFetch(`/api/admin/plan-tiers/${encodeURIComponent(id)}/toggle`, { method: 'POST' });
+        if (res.success) {
+          showToast(res.message, 'success');
+          loadPlanTiers();
+        } else {
+          showToast(res.error || 'Failed to toggle tier', 'error');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function handleDeletePlanTier() {
+      const id = document.getElementById('tierId').value;
+      if (!id) return;
+      if (!confirm('Are you sure you want to permanently delete this plan tier?')) return;
+
+      try {
+        const res = await adminFetch(`/api/admin/plan-tiers/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        if (res.success) {
+          showToast(res.message, 'success');
+          closePlanTierModal();
+          loadPlanTiers();
+        } else {
+          showToast(res.error || 'Failed to delete tier', 'error');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
     // 📢 ANNOUNCEMENT POP-UPS & PUSH NOTIFICATIONS CONTROLLER
     // ============================================================
     let announcementsList = [];

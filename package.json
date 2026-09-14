@@ -2,28 +2,20 @@
   "name": "simly-backend",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build": "npx prisma generate && npx prisma db push --accept-data-loss",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npx prisma generate"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "nodemailer": "^10.0.9",
+    "nodemailer": "^6.9.16",
     "pg": "^8.23.0",
     "prisma": "^6.19.3",
     "resend": "^6.28.0",
     "telnyx": "^7.19.0"
-  },
-  "devDependencies": {
-    "localtunnel": "^2.0.2"
   }
 }

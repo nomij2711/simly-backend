@@ -17,7 +17,9 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "pg": "^8.23.0",
     "prisma": "^6.19.3",
+    "resend": "^6.28.0",
     "telnyx": "^7.19.0"
   },
   "devDependencies": {

@@ -51,6 +51,10 @@ const nodemailer = require('nodemailer');
 
 const smtpTransporter = nodemailer.createTransport({
   service: 'gmail',
+  pool: true,
+  maxConnections: 5,
+  maxMessages: 100,
+  rateLimit: 10,
   auth: {
     user: process.env.SMTP_USER || 'nomijutt2711@gmail.com',
     pass: process.env.SMTP_PASS || 'cewbcfxnwxfa yrps'.replace(/\s+/g, '')
@@ -183,13 +187,13 @@ app.post('/api/auth/signup', async (req, res) => {
 
     console.log(`👤 [AUTH SIGNUP OTP] Generated OTP for ${cleanEmail}: [ ${code} ]`);
 
-    // Dispatch real email via Resend
-    await sendSimlyxEmail({
+    // Dispatch real email asynchronously (instant response)
+    sendSimlyxEmail({
       to: cleanEmail,
       subject: `${code} is your SimlyX verification code`,
       html: generateSimlyxOtpEmail({ name: user.name, otpCode: code, type: 'signup' }),
       text: `Welcome to SimlyX! Your verification code is: ${code} (Valid for 10 minutes).`
-    });
+    }).catch(e => console.error('[EMAIL BACKGROUND ERROR]', e));
 
     res.json({
       success: true,
@@ -288,12 +292,12 @@ app.post('/api/auth/send-otp', async (req, res) => {
     console.log(`📱 [SIMLYX OTP] Generated 6-digit OTP for ${cleanTarget}: [ ${code} ] (Type: ${type})`);
 
     if (isEmail) {
-      await sendSimlyxEmail({
+      sendSimlyxEmail({
         to: cleanTarget,
         subject: `${code} is your SimlyX verification code`,
         html: generateSimlyxOtpEmail({ name: 'SimlyX User', otpCode: code, type }),
         text: `Your SimlyX verification code is: ${code} (Valid for 10 minutes).`
-      });
+      }).catch(e => console.error('[EMAIL BACKGROUND ERROR]', e));
     }
 
     res.json({
@@ -479,13 +483,13 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
       console.log(`🔑 [PASSWORD RESET OTP] Generated for ${cleanEmail}: [ ${otpCode} ]`);
 
-      // Dispatch real email via Resend
-      await sendSimlyxEmail({
+      // Dispatch real email asynchronously (instant response)
+      sendSimlyxEmail({
         to: cleanEmail,
         subject: `${otpCode} is your SimlyX password reset code`,
         html: generateSimlyxOtpEmail({ name: user.name, otpCode, type: 'forgot_password' }),
         text: `Your SimlyX password reset code is: ${otpCode} (Valid for 10 minutes).`
-      });
+      }).catch(e => console.error('[EMAIL BACKGROUND ERROR]', e));
 
       return res.json({
         success: true,

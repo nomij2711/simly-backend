@@ -9,7 +9,7 @@ datasource db {
 
 model User {
   id            String    @id @default(uuid())
-  name          String?   @default("SimlyTel User")
+  name          String?   @default("SimlyX User")
   email         String    @unique
   phone         String?
   password      String?
@@ -151,7 +151,7 @@ model StaffUser {
 model SupportTicket {
   id                String    @id @default(uuid())
   userId            String    @unique
-  userName          String?   @default("SimlyTel User")
+  userName          String?   @default("SimlyX User")
   userEmail         String?
   status            String    @default("unassigned") // "unassigned", "in_progress", "resolved", "closed"
   priority          String    @default("normal") // "normal", "urgent"
@@ -165,6 +165,11 @@ model SupportTicket {
   unreadUserCount   Int       @default(0)
   unreadStaffCount  Int       @default(0)
   internalNotes     String?
+  isRated           Boolean   @default(false)
+  ratingSkipped     Boolean   @default(false)
+  ratingScore       Int?
+  ratingFeedback    String?
+  ratedAt           DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 }
@@ -173,7 +178,7 @@ model AuditLog {
   id          String   @id @default(uuid())
   staffId     String?
   staffName   String   @default("System / Master Admin")
-  staffEmail  String   @default("owner@simlytel.com")
+  staffEmail  String   @default("owner@simlyx.com")
   staffRole   String   @default("super_admin")
   action      String   // "STAFF_LOGIN", "REPLY_SUPPORT", "CLAIM_TICKET", "TRANSFER_TICKET", "RESOLVE_TICKET", "ADJUST_BALANCE", "EXTEND_NUMBER", "TOGGLE_NUMBER_STATUS", "SEND_BROADCAST", "CREATE_STAFF", "SUSPEND_STAFF", "UPDATE_PRICING", "DELETE_RECORD", "BAN_USER", "UNBAN_USER", "ADD_BLACKLIST", "REMOVE_BLACKLIST", "UPDATE_CONFIG", "UPDATE_ALERTS"
   targetId    String?
@@ -205,7 +210,7 @@ model SystemConfig {
 model AdminAlertSetting {
   id                        String   @id @default(uuid())
   primaryChannel            String   @default("EMAIL") // "EMAIL", "SMS", "WHATSAPP", "TELEGRAM", "DISCORD", "IN_APP"
-  ownerEmail                String?  @default("admin@simlytel.com")
+  ownerEmail                String?  @default("admin@simlyx.com")
   ownerPhone                String?
   webhookUrl                String?
   telegramBotToken          String?
@@ -264,6 +269,22 @@ model PromoCode {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model SupportRating {
+  id                String    @id @default(uuid())
+  ticketId          String?
+  userId            String
+  userName          String?   @default("SimlyX User")
+  userEmail         String?
+  staffId           String?
+  staffName         String?   @default("Unassigned")
+  staffRole         String?   @default("support_agent")
+  rating            Int       // 1 to 5, or 0 if skipped
+  feedback          String?   // User review comments
+  tags              String?   // Review tags e.g. "⚡ Fast Resolution, 🎧 Friendly Agent"
+  isSkipped         Boolean   @default(false)
+  createdAt         DateTime  @default(now())
 }
 
 

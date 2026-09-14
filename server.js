@@ -1502,25 +1502,92 @@ app.post('/api/sms/simulate-inbound', async (req, res) => {
 app.post('/api/telnyx/webhook', async (req, res) => {
   try {
     const event = req.body;
-    if (event.data && event.data.event_type === 'message.received') {
+    const eventType = event?.data?.event_type;
+
+    // A. Inbound SMS
+    if (eventType === 'message.received') {
       const incomingSMS = event.data.payload;
-      const to = incomingSMS.to && incomingSMS.to[0] ? incomingSMS.to[0].phone_number : null;
-      const from = incomingSMS.from ? incomingSMS.from.phone_number : null;
+      const to = incomingSMS.to && incomingSMS.to[0] ? normalizePhone(incomingSMS.to[0].phone_number) : null;
+      const from = incomingSMS.from ? normalizePhone(incomingSMS.from.phone_number) : null;
       const text = incomingSMS.text || '';
       const telnyxId = incomingSMS.id || null;
 
       if (to && from) {
         console.log(`📩 [INBOUND SMS] To: ${to} | From: ${from} | Text: ${text}`);
-        await prisma.message.create({
-          data: {
-            fromNumber: from,
-            toNumber: to,
-            text,
-            direction: 'inbound',
-            status: 'received',
-            telnyxMessageId: telnyxId
-          }
+
+        // Verify active virtual line ownership
+        const lineOwner = await prisma.purchasedNumber.findFirst({
+          where: { phoneNumber: to, status: 'active' }
         });
+
+        if (lineOwner) {
+          await prisma.message.create({
+            data: {
+              fromNumber: from,
+              toNumber: to,
+              text,
+              direction: 'inbound',
+              status: 'received',
+              telnyxMessageId: telnyxId
+            }
+          });
+        } else {
+          console.warn(`⚠️ [INBOUND SMS REJECTED] Line ${to} is inactive or unassigned.`);
+        }
+      }
+    }
+
+    // B. Inbound Call Initiated / Ringing
+    if (eventType === 'call.initiated' || eventType === 'call.ringing') {
+      const payload = event.data.payload;
+      const to = payload.to ? normalizePhone(payload.to) : null;
+      const from = payload.from ? normalizePhone(payload.from) : null;
+      const callControlId = payload.call_control_id;
+
+      if (to && from) {
+        console.log(`📲 [INBOUND CALL] To: ${to} | From: ${from} | Call ID: ${callControlId}`);
+
+        const lineOwner = await prisma.purchasedNumber.findFirst({
+          where: { phoneNumber: to, status: 'active' }
+        });
+
+        if (!lineOwner) {
+          console.warn(`⚠️ [INBOUND CALL REJECTED] Number ${to} has no active owner.`);
+          if (callControlId) {
+            try {
+              await telnyx.calls.create({
+                call_control_id: callControlId,
+                action: 'reject',
+                cause: 'USER_BUSY'
+              }).catch(() => {});
+            } catch (_) {}
+          }
+        } else {
+          await prisma.callLog.create({
+            data: {
+              myNumber: to,
+              contactNumber: from,
+              direction: 'inbound',
+              status: 'ringing',
+              durationSeconds: 0
+            }
+          });
+        }
+      }
+    }
+
+    // C. Call Hangup
+    if (eventType === 'call.hangup') {
+      const payload = event.data.payload;
+      const to = payload.to ? normalizePhone(payload.to) : null;
+      const from = payload.from ? normalizePhone(payload.from) : null;
+      const durationSec = parseInt(payload.call_duration_secs || payload.duration_secs || 0, 10);
+
+      if (to && from && durationSec > 0) {
+        await prisma.callLog.updateMany({
+          where: { myNumber: to, contactNumber: from, status: 'ringing' },
+          data: { status: 'completed', durationSeconds: durationSec }
+        }).catch(() => {});
       }
     }
   } catch (err) {
@@ -5382,7 +5449,7 @@ app.post('/api/admin/agent-actions/purchase-for-user', requireStaffPermission('c
     if (ticket && ticket.status === 'unassigned') {
       return res.status(403).json({
         success: false,
-        error: 'Chat accept / claim nahi hui! Pehle "Pick Up / Claim" par click karke ticket accept karein.'
+        error: 'This ticket is not yet claimed. Please click "Pick Up / Claim" first to assist the customer.'
       });
     }
     if (req.staff.role !== 'super_admin' && ticket && ticket.assignedStaffId && ticket.assignedStaffId !== req.staff.id) {
@@ -5525,7 +5592,7 @@ app.post('/api/admin/agent-actions/renew-for-user', requireStaffPermission('can_
     if (ticket && ticket.status === 'unassigned') {
       return res.status(403).json({
         success: false,
-        error: 'Chat accept / claim nahi hui! Pehle "Pick Up / Claim" par click karke ticket accept karein.'
+        error: 'This ticket is not yet claimed. Please click "Pick Up / Claim" first to assist the customer.'
       });
     }
     if (req.staff.role !== 'super_admin' && ticket && ticket.assignedStaffId && ticket.assignedStaffId !== req.staff.id) {

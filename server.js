@@ -46,57 +46,32 @@ app.get('/', (req, res) => {
 // 🔐 REAL AUTHENTICATION & VERIFICATION ENGINE (Resend Email OTP & Social Auth)
 // ============================================================================
 
-// 📧 Resend Email Dispatcher Helper
-const RESEND_API_KEY = process.env.RESEND_API_KEY || Buffer.from('cmVfNUJOUVhYU3VfQWlIVWhQUHI3VmpaM2ZSbnJRM3Y5cWs2', 'base64').toString('utf8');
+// 📧 Universal High-Delivery SMTP Email Engine (Nodemailer + Google Cloud SMTP)
+const nodemailer = require('nodemailer');
+
+const smtpTransporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.SMTP_USER || 'nomijutt2711@gmail.com',
+    pass: process.env.SMTP_PASS || 'cewbcfxnwxfa yrps'.replace(/\s+/g, '')
+  }
+});
 
 async function sendSimlyxEmail({ to, subject, html, text }) {
   try {
-    const https = require('https');
-    const payload = JSON.stringify({
-      from: process.env.RESEND_FROM_EMAIL || 'SimlyX Security <onboarding@resend.dev>',
-      to: Array.isArray(to) ? to : [to],
+    const mailOptions = {
+      from: `"SimlyX Security" <${process.env.SMTP_USER || 'nomijutt2711@gmail.com'}>`,
+      to: Array.isArray(to) ? to.join(', ') : to,
       subject,
       html,
       text: text || subject
-    });
-
-    const apiKey = process.env.RESEND_API_KEY || RESEND_API_KEY;
-
-    const options = {
-      hostname: 'api.resend.com',
-      port: 443,
-      path: '/emails',
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(payload)
-      }
     };
 
-    return new Promise((resolve) => {
-      const req = https.request(options, (res) => {
-        let data = '';
-        res.on('data', chunk => data += chunk);
-        res.on('end', () => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            console.log(`📧 [RESEND SUCCESS] Sent email to ${to}: ${subject}`);
-            resolve({ success: true, data });
-          } else {
-            console.warn(`⚠️ [RESEND NOTICE] Status ${res.statusCode}: ${data}`);
-            resolve({ success: false, error: data });
-          }
-        });
-      });
-      req.on('error', (err) => {
-        console.error('❌ [RESEND ERROR]', err.message);
-        resolve({ success: false, error: err.message });
-      });
-      req.write(payload);
-      req.end();
-    });
+    const info = await smtpTransporter.sendMail(mailOptions);
+    console.log(`📧 [SMTP SUCCESS] Delivered email to ${to}: ${subject} (MsgId: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
   } catch (err) {
-    console.error('❌ [RESEND EXCEPTION]', err);
+    console.error('❌ [SMTP ERROR]', err.message);
     return { success: false, error: err.message };
   }
 }

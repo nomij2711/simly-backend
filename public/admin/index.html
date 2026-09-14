@@ -3290,8 +3290,8 @@
             badgeHTML = `<span title="Erased by user on ${u.deletedAt ? new Date(u.deletedAt).toLocaleDateString() : ''}" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1 w-fit"><i class="fa-solid fa-triangle-exclamation text-[9px]"></i> SELF-ERASED</span>`;
           } else if (u.displayStatus === 'admin_deleted') {
             badgeHTML = `<span title="Archived by admin" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1 w-fit"><i class="fa-solid fa-box-archive text-[9px]"></i> DELETED</span>`;
-          } else if (u.displayStatus === 'blocked') {
-            badgeHTML = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 w-fit">BLOCKED 🔴</span>`;
+          } else if (u.displayStatus === 'blocked' || u.displayStatus === 'banned' || u.isBanned || u.isVerified === false) {
+            badgeHTML = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 w-fit">${u.isBanned || u.displayStatus === 'banned' ? 'BANNED 🛑' : 'BLOCKED 🔴'}</span>`;
           } else {
             badgeHTML = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 w-fit">ACTIVE 🟢</span>`;
           }
@@ -3425,13 +3425,14 @@
           if (btnRestore) btnRestore.classList.add('hidden');
           document.getElementById('udBtnBlock').classList.remove('hidden');
 
-          if (user.isVerified !== false) {
+          const isBlockedAccount = user.isBanned || user.isVerified === false;
+          if (!isBlockedAccount) {
             statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
             statusBadge.innerText = 'ACTIVE 🟢';
             document.getElementById('udBtnBlock').innerHTML = '<i class="fa-solid fa-user-slash mr-1"></i> Block Account';
           } else {
             statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20';
-            statusBadge.innerText = 'BLOCKED 🔴';
+            statusBadge.innerText = user.isBanned ? 'BANNED 🛑' : 'BLOCKED 🔴';
             document.getElementById('udBtnBlock').innerHTML = '<i class="fa-solid fa-user-check mr-1"></i> Unblock Account';
           }
         }

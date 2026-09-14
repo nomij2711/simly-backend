@@ -4855,18 +4855,27 @@ app.post('/api/support/rate', async (req, res) => {
 
     // 2. User chose to SKIP rating
     if (isSkipped === true || isSkipped === 'true') {
-      if (ticket) {
-        await prisma.supportTicket.update({
-          where: { userId },
-          data: {
-            isRated: true,
-            ratingSkipped: true,
-            ratingScore: null,
-            ratingFeedback: 'Skipped by customer',
-            ratedAt: new Date()
-          }
-        });
-      }
+      await prisma.supportTicket.upsert({
+        where: { userId },
+        update: {
+          isRated: true,
+          ratingSkipped: true,
+          ratingScore: null,
+          ratingFeedback: 'Skipped by customer',
+          ratedAt: new Date()
+        },
+        create: {
+          userId,
+          userName: userId.includes('@') ? userId.split('@')[0] : 'SimlyX User',
+          userEmail: userId.includes('@') ? userId : null,
+          status: 'resolved',
+          isRated: true,
+          ratingSkipped: true,
+          ratingScore: null,
+          ratingFeedback: 'Skipped by customer',
+          ratedAt: new Date()
+        }
+      });
 
       const ratingRecord = await prisma.supportRating.create({
         data: {
@@ -4897,19 +4906,29 @@ app.post('/api/support/rate', async (req, res) => {
     const starCount = Math.min(5, Math.max(1, parseInt(rating, 10) || 5));
     const starsEmoji = '⭐'.repeat(starCount);
 
-    if (ticket) {
-      await prisma.supportTicket.update({
-        where: { userId },
-        data: {
-          isRated: true,
-          ratingSkipped: false,
-          ratingScore: starCount,
-          ratingFeedback: cleanFeedback || null,
-          ratedAt: new Date(),
-          internalNotes: `Rating: ${starCount}/5 Stars ${starsEmoji}. Feedback: ${cleanFeedback || 'No text review'}`
-        }
-      });
-    }
+    await prisma.supportTicket.upsert({
+      where: { userId },
+      update: {
+        isRated: true,
+        ratingSkipped: false,
+        ratingScore: starCount,
+        ratingFeedback: cleanFeedback || null,
+        ratedAt: new Date(),
+        internalNotes: `Rating: ${starCount}/5 Stars ${starsEmoji}. Feedback: ${cleanFeedback || 'No text review'}`
+      },
+      create: {
+        userId,
+        userName: userId.includes('@') ? userId.split('@')[0] : 'SimlyX User',
+        userEmail: userId.includes('@') ? userId : null,
+        status: 'resolved',
+        isRated: true,
+        ratingSkipped: false,
+        ratingScore: starCount,
+        ratingFeedback: cleanFeedback || null,
+        ratedAt: new Date(),
+        internalNotes: `Rating: ${starCount}/5 Stars ${starsEmoji}. Feedback: ${cleanFeedback || 'No text review'}`
+      }
+    });
 
     const ratingRecord = await prisma.supportRating.create({
       data: {
@@ -5144,7 +5163,7 @@ app.get('/api/admin/support/ratings/:id/transcript', requireStaffPermission('can
             { email: rating.userId.toLowerCase() }
           ]
         },
-        select: { id: true, name: true, email: true, balance: true, isBanned: true }
+        select: { id: true, name: true, email: true, walletBalance: true, isBanned: true }
       })
     ]);
 

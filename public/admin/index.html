@@ -3306,8 +3306,8 @@
                   <i class="fa-solid fa-rotate-left"></i>
                 </button>
               ` : `
-                <button onclick="toggleBlockUser('${u.id}')" title="${u.isVerified !== false ? 'Block' : 'Unblock'}" class="p-1.5 ${u.isVerified !== false ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400'} rounded-lg text-xs">
-                  <i class="fa-solid ${u.isVerified !== false ? 'fa-user-slash' : 'fa-user-check'}"></i>
+                <button onclick="toggleBlockUser('${u.id}')" title="${(u.isBanned || u.isVerified === false) ? 'Unblock' : 'Block'}" class="p-1.5 ${(u.isBanned || u.isVerified === false) ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400'} rounded-lg text-xs">
+                  <i class="fa-solid ${(u.isBanned || u.isVerified === false) ? 'fa-user-check' : 'fa-user-slash'}"></i>
                 </button>
                 <button onclick="softDeleteUser('${u.id}', '${u.email}')" title="Archive / Soft-Delete" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs">
                   <i class="fa-solid fa-box-archive"></i>
@@ -6092,7 +6092,7 @@
         if (btnAdjust) btnAdjust.classList.toggle('hidden', !canAdjust);
         if (btnBlock) {
           btnBlock.classList.toggle('hidden', !canBlock);
-          if (blockText) blockText.innerText = u.isBanned ? 'Unblock User' : 'Block User';
+          if (blockText) blockText.innerText = (u.isBanned || u.isVerified === false) ? 'Unblock User' : 'Block User';
         }
 
         // 4. Render Active Numbers List

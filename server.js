@@ -90,8 +90,12 @@ app.post('/api/auth/signup', async (req, res) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        avatarUrl: user.avatarUrl,
         walletBalance: user.walletBalance,
         authProvider: user.authProvider,
+        isVerified: user.isVerified,
+        isBanned: user.isBanned,
+        isBlocked: !user.isVerified || user.isBanned || user.isDeleted,
         createdAt: user.createdAt
       },
       token: `jwt_simlyx_${user.id}_${Date.now()}`
@@ -129,8 +133,12 @@ app.post('/api/auth/login', async (req, res) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        avatarUrl: user.avatarUrl,
         walletBalance: user.walletBalance,
         authProvider: user.authProvider,
+        isVerified: user.isVerified,
+        isBanned: user.isBanned,
+        isBlocked: !user.isVerified || user.isBanned || user.isDeleted,
         createdAt: user.createdAt
       },
       token: `jwt_simlyx_${user.id}_${Date.now()}`
@@ -231,8 +239,12 @@ app.post('/api/auth/verify-otp', async (req, res) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        avatarUrl: user.avatarUrl,
         walletBalance: user.walletBalance,
         authProvider: user.authProvider,
+        isVerified: user.isVerified,
+        isBanned: user.isBanned,
+        isBlocked: !user.isVerified || user.isBanned || user.isDeleted,
         createdAt: user.createdAt
       },
       token: `jwt_simlyx_${user.id}_${Date.now()}`
@@ -276,6 +288,9 @@ app.post('/api/auth/social-login', async (req, res) => {
         avatarUrl: user.avatarUrl,
         walletBalance: user.walletBalance,
         authProvider: user.authProvider,
+        isVerified: user.isVerified,
+        isBanned: user.isBanned,
+        isBlocked: !user.isVerified || user.isBanned || user.isDeleted,
         createdAt: user.createdAt
       },
       token: `jwt_simlyx_${user.id}_${Date.now()}`
@@ -360,6 +375,7 @@ app.get('/api/auth/me', async (req, res) => {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
+    const isBlocked = !user.isVerified || user.isBanned || user.isDeleted;
     res.json({
       success: true,
       user: {
@@ -370,6 +386,9 @@ app.get('/api/auth/me', async (req, res) => {
         avatarUrl: user.avatarUrl,
         walletBalance: user.walletBalance,
         authProvider: user.authProvider,
+        isVerified: user.isVerified,
+        isBanned: user.isBanned,
+        isBlocked,
         createdAt: user.createdAt
       }
     });
@@ -782,11 +801,11 @@ const handleBuyTest = async (req, res) => {
     }
 
     // Blocked / Suspended User Check
-    if (user.isBanned || user.isDeleted) {
+    if (user.isBanned || !user.isVerified || user.isDeleted) {
       return res.status(403).json({
         success: false,
         isBlocked: true,
-        error: 'Your account has been restricted by administrator. You cannot purchase virtual lines. Please contact support.'
+        error: 'Your account has been restricted by administrator. You cannot purchase virtual lines. Please contact customer support.'
       });
     }
 
@@ -959,11 +978,11 @@ app.post('/api/numbers/renew', async (req, res) => {
     }
 
     // Blocked / Suspended User Check
-    if (user.isBanned || user.isDeleted) {
+    if (user.isBanned || !user.isVerified || user.isDeleted) {
       return res.status(403).json({
         success: false,
         isBlocked: true,
-        error: 'Your account has been restricted by administrator. Number renewal is disabled. Please contact support.'
+        error: 'Your account has been restricted by administrator. Number renewal is disabled. Please contact customer support.'
       });
     }
 
@@ -1239,11 +1258,11 @@ app.post('/api/sms/send', async (req, res) => {
     }
 
     // Blocked / Suspended User Check
-    if (user.isBanned || user.isDeleted) {
+    if (user.isBanned || !user.isVerified || user.isDeleted) {
       return res.status(403).json({
         success: false,
         isBlocked: true,
-        error: 'Your account has been restricted by administrator. Outbound SMS is disabled. Please contact support.'
+        error: 'Your account has been restricted by administrator. Outbound SMS is disabled. Please contact customer support.'
       });
     }
 
@@ -1648,11 +1667,11 @@ app.post('/api/calls/log', async (req, res) => {
       }
 
       // Blocked / Suspended User Check
-      if (user.isBanned || user.isDeleted) {
+      if (user.isBanned || !user.isVerified || user.isDeleted) {
         return res.status(403).json({
           success: false,
           isBlocked: true,
-          error: 'Your account has been restricted by administrator. Outbound calling is disabled. Please contact support.'
+          error: 'Your account has been restricted by administrator. Outbound calling is disabled. Please contact customer support.'
         });
       }
 
@@ -3235,11 +3254,7 @@ async function ensureSuperAdminExists() {
       }).catch(() => {});
       console.log(`👑 [STAFF SYNCED] Super Admin ${superAdmin.name} synced (${resolvedCount} resolved tickets)`);
 
-      // Ensure all non-banned users have isVerified: true so they are not blocked
-      await prisma.user.updateMany({
-        where: { isBanned: false, isVerified: false },
-        data: { isVerified: true }
-      }).catch(() => {});
+      // System startup initialized
     }
   } catch (e) {
     console.error('Seed staff check error:', e);
@@ -3642,9 +3657,9 @@ app.get('/api/admin/users', requireStaffPermission(['can_view_users', 'can_manag
     }
 
     if (filter === 'active') {
-      andConditions.push({ isDeleted: false, isVerified: true });
+      andConditions.push({ isDeleted: false, isVerified: true, isBanned: false });
     } else if (filter === 'blocked') {
-      andConditions.push({ isDeleted: false, isVerified: false });
+      andConditions.push({ isDeleted: false, OR: [{ isVerified: false }, { isBanned: true }] });
     } else if (filter === 'erased' || filter === 'deleted') {
       andConditions.push({ isDeleted: true });
     }
@@ -3653,8 +3668,8 @@ app.get('/api/admin/users', requireStaffPermission(['can_view_users', 'can_manag
 
     const [totalUsers, activeCount, blockedCount, erasedCount] = await Promise.all([
       prisma.user.count(),
-      prisma.user.count({ where: { isDeleted: false, isVerified: true } }),
-      prisma.user.count({ where: { isDeleted: false, isVerified: false } }),
+      prisma.user.count({ where: { isDeleted: false, isVerified: true, isBanned: false } }),
+      prisma.user.count({ where: { isDeleted: false, OR: [{ isVerified: false }, { isBanned: true }] } }),
       prisma.user.count({ where: { isDeleted: true } })
     ]);
 
@@ -3949,14 +3964,43 @@ app.post('/api/admin/users/:id/toggle-block', requireAdmin, async (req, res) => 
       return res.status(404).json({ success: false, error: 'User not found.' });
     }
 
+    const isCurrentlyBlocked = user.isBanned || !user.isVerified;
+    const nextBlockedState = !isCurrentlyBlocked; // if blocked -> activate(false), if active -> block(true)
+
     const updated = await prisma.user.update({
       where: { id: user.id },
-      data: { isVerified: !user.isVerified }
+      data: {
+        isBanned: nextBlockedState,
+        isVerified: !nextBlockedState,
+        banReason: nextBlockedState ? 'Account restricted by administrator' : null
+      }
     });
+
+    // Auto update/reactivate numbers if needed
+    if (nextBlockedState) {
+      await prisma.purchasedNumber.updateMany({
+        where: { userId: user.id, status: 'active' },
+        data: { status: 'suspended' }
+      }).catch(() => {});
+    } else {
+      await prisma.purchasedNumber.updateMany({
+        where: { userId: user.id, status: 'suspended' },
+        data: { status: 'active' }
+      }).catch(() => {});
+    }
+
+    await logAuditEvent(
+      req,
+      nextBlockedState ? 'BAN_USER' : 'UNBAN_USER',
+      user.id,
+      'user',
+      `${nextBlockedState ? 'Restricted/Blocked' : 'Restored/Unblocked'} user account ${user.email}`
+    );
 
     res.json({
       success: true,
-      message: `User ${user.email} is now ${updated.isVerified ? 'ACTIVE (Unblocked)' : 'BLOCKED'}`,
+      isBlocked: nextBlockedState,
+      message: `User ${user.email} is now ${nextBlockedState ? 'BLOCKED 🔴' : 'ACTIVE 🟢'}`,
       user: updated
     });
   } catch (error) {
@@ -3981,8 +4025,16 @@ app.post('/api/admin/users/bulk-action', requireAdmin, async (req, res) => {
     if (action === 'block') {
       await prisma.user.updateMany({
         where: { id: { in: userIds } },
-        data: { isVerified: false }
+        data: {
+          isBanned: true,
+          isVerified: false,
+          banReason: reason || 'Bulk restricted by administrator'
+        }
       });
+      await prisma.purchasedNumber.updateMany({
+        where: { userId: { in: userIds }, status: 'active' },
+        data: { status: 'suspended' }
+      }).catch(() => {});
       return res.json({
         success: true,
         message: `Successfully BLOCKED ${userIds.length} user accounts.`
@@ -3992,8 +4044,19 @@ app.post('/api/admin/users/bulk-action', requireAdmin, async (req, res) => {
     if (action === 'unblock') {
       await prisma.user.updateMany({
         where: { id: { in: userIds } },
-        data: { isVerified: true, isDeleted: false, deletedReason: null, deletedAt: null }
+        data: {
+          isBanned: false,
+          isVerified: true,
+          banReason: null,
+          isDeleted: false,
+          deletedReason: null,
+          deletedAt: null
+        }
       });
+      await prisma.purchasedNumber.updateMany({
+        where: { userId: { in: userIds }, status: 'suspended' },
+        data: { status: 'active' }
+      }).catch(() => {});
       return res.json({
         success: true,
         message: `Successfully UNBLOCKED & ACTIVATED ${userIds.length} user accounts.`

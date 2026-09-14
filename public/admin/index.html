@@ -6176,27 +6176,15 @@
 
     function calculateNumberPrice(countryCode, planType) {
       const cc = (countryCode || 'US').toUpperCase();
-      const isAU = cc === 'AU';
-      const isGB = cc === 'GB';
-      const isOther = cc !== 'US' && cc !== 'CA' && !isGB && !isAU;
-
-      if (planType === '7_days') {
-        if (isAU) return 2.00;     // Australia 7 Days = $2.00
-        if (isGB) return 1.00;     // UK 7 Days = $1.00
-        if (isOther) return 1.50;  // Other 7 Days = $1.50
-        return 0.50;               // US / CA 7 Days = $0.50
-      } else if (planType === '365_days') {
-        if (isAU) return 75.00;    // Australia 1 Year = $75.00
-        if (isGB) return 30.00;    // UK 1 Year = $30.00
-        if (isOther) return 45.00; // Other 1 Year = $45.00
-        return 15.00;              // US / CA 1 Year = $15.00
+      const rate = (cachedCountryRates || []).find(r => r.countryCode === cc);
+      if (rate) {
+        if (planType === '7_days') return rate.number7DaySellPrice !== undefined ? rate.number7DaySellPrice : (rate.numberMonthlySellPrice * 0.5);
+        if (planType === '365_days') return rate.numberYearlySellPrice !== undefined ? rate.numberYearlySellPrice : (rate.numberMonthlySellPrice * 10);
+        return rate.numberMonthlySellPrice !== undefined ? rate.numberMonthlySellPrice : 1.50;
       }
-
-      // 30 Days Standard Plan
-      if (isAU) return 7.00;       // Australia 30 Days = $7.00
-      if (isGB) return 3.00;       // UK 30 Days = $3.00
-      if (isOther) return 4.50;    // Other 30 Days = $4.50
-      return 1.50;                 // US / CA 30 Days = $1.50
+      if (planType === '7_days') return 0.50;
+      if (planType === '365_days') return 12.00;
+      return 1.50;
     }
 
     async function openBuyNumberForUserModal(userId) {
@@ -6246,13 +6234,24 @@
       if (avatarEl) avatarEl.innerText = (u?.name || u?.email || 'U')[0].toUpperCase();
       if (balEl) balEl.innerText = `${(u?.walletBalance || 0).toFixed(2)}`;
 
-      // Populate Country Dropdown
+      // Populate Country Dropdown Dynamically from PostgreSQL Database
+      try {
+        if (!cachedCountryRates || cachedCountryRates.length === 0) {
+          const ratesData = await adminFetch('/api/admin/rates');
+          if (ratesData && ratesData.rates) cachedCountryRates = ratesData.rates;
+        }
+      } catch (e) {}
+
+      const activeRates = (cachedCountryRates || []).filter(r => r.isActive !== false);
+      const ratesList = activeRates.length > 0 ? activeRates : cachedCountryRates;
+
       const countrySelect = document.getElementById('agentBuyCountrySelect');
-      if (countrySelect) {
-        countrySelect.innerHTML = SIMLY_ACTIVE_COUNTRIES.map(c => `
-          <option value="${c.code}">${c.flag} ${c.country} (${c.dialCode})</option>
+      if (countrySelect && ratesList && ratesList.length > 0) {
+        countrySelect.innerHTML = ratesList.map(c => `
+          <option value="${c.countryCode}">${c.flagEmoji || '🌐'} ${c.countryName} (${c.dialCode})</option>
         `).join('');
-        countrySelect.value = 'US';
+        const hasUS = ratesList.some(c => c.countryCode === 'US');
+        countrySelect.value = hasUS ? 'US' : ratesList[0].countryCode;
       }
 
       // Reset selection state
@@ -6498,6 +6497,9 @@
           showLiveToast('Line Activated!', res.message, 'circle-check', 'emerald');
           closeBuyNumberForUserModal();
           
+          if (currentActiveTab === 'user-detail') {
+            await inspectUserDossier(userId);
+          }
           if (currentDossierUserId === userId) {
             await openInChatUserDossier(userId);
           }

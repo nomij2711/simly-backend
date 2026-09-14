@@ -33,7 +33,7 @@ app.get('/admin/{*splat}', sendAdminApp);
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    service: 'SimlyTel Telecom Engine',
+    service: 'SimlyX Telecom Engine',
     adminDashboard: '/admin',
     status: 'ONLINE 🟢',
     uptime: '24/7 Cloud',
@@ -70,7 +70,7 @@ app.post('/api/auth/signup', async (req, res) => {
 
     const user = await prisma.user.create({
       data: {
-        name: name || 'SimlyTel User',
+        name: name || 'SimlyX User',
         email: cleanEmail,
         password: password,
         phone: phone ? normalizePhone(phone) : null,
@@ -94,10 +94,10 @@ app.post('/api/auth/signup', async (req, res) => {
         authProvider: user.authProvider,
         createdAt: user.createdAt
       },
-      token: `jwt_simlytel_${user.id}_${Date.now()}`
+      token: `jwt_simlyx_${user.id}_${Date.now()}`
     });
   } catch (error) {
-    console.error('[SIMLYTEL AUTH ERROR] Signup failed:', error);
+    console.error('[SIMLYX AUTH ERROR] Signup failed:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -133,10 +133,10 @@ app.post('/api/auth/login', async (req, res) => {
         authProvider: user.authProvider,
         createdAt: user.createdAt
       },
-      token: `jwt_simlytel_${user.id}_${Date.now()}`
+      token: `jwt_simlyx_${user.id}_${Date.now()}`
     });
   } catch (error) {
-    console.error('[SIMLYTEL AUTH ERROR] Login failed:', error);
+    console.error('[SIMLYX AUTH ERROR] Login failed:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -162,7 +162,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
       }
     });
 
-    console.log(`📱 [SIMLYTEL OTP] Generated 6-digit OTP for ${cleanTarget}: [ ${code} ] (Type: ${type})`);
+    console.log(`📱 [SIMLYX OTP] Generated 6-digit OTP for ${cleanTarget}: [ ${code} ] (Type: ${type})`);
 
     res.json({
       success: true,
@@ -171,7 +171,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
       expiresInSeconds: 600
     });
   } catch (error) {
-    console.error('[SIMLYTEL AUTH ERROR] Send OTP failed:', error);
+    console.error('[SIMLYX AUTH ERROR] Send OTP failed:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -208,7 +208,7 @@ app.post('/api/auth/verify-otp', async (req, res) => {
       : await prisma.user.findFirst({ where: { phone: cleanTarget } });
 
     if (!user) {
-      const generatedEmail = isEmail ? cleanTarget : `user_${cleanTarget.replace(/[^\d]/g, '')}@simlytel.com`;
+      const generatedEmail = isEmail ? cleanTarget : `user_${cleanTarget.replace(/[^\d]/g, '')}@simlyx.com`;
       user = await prisma.user.create({
         data: {
           name: isEmail ? cleanTarget.split('@')[0] : `User ${cleanTarget.slice(-4)}`,
@@ -235,10 +235,10 @@ app.post('/api/auth/verify-otp', async (req, res) => {
         authProvider: user.authProvider,
         createdAt: user.createdAt
       },
-      token: `jwt_simlytel_${user.id}_${Date.now()}`
+      token: `jwt_simlyx_${user.id}_${Date.now()}`
     });
   } catch (error) {
-    console.error('[SIMLYTEL AUTH ERROR] Verify OTP failed:', error);
+    console.error('[SIMLYX AUTH ERROR] Verify OTP failed:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -278,10 +278,10 @@ app.post('/api/auth/social-login', async (req, res) => {
         authProvider: user.authProvider,
         createdAt: user.createdAt
       },
-      token: `jwt_simlytel_${user.id}_${Date.now()}`
+      token: `jwt_simlyx_${user.id}_${Date.now()}`
     });
   } catch (error) {
-    console.error('[SIMLYTEL AUTH ERROR] Social login failed:', error);
+    console.error('[SIMLYX AUTH ERROR] Social login failed:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -334,7 +334,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       message: 'Password updated successfully! You can now log in.'
     });
   } catch (error) {
-    console.error('[SIMLYTEL AUTH ERROR] Forgot password failed:', error);
+    console.error('[SIMLYX AUTH ERROR] Forgot password failed:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -350,7 +350,7 @@ app.get('/api/auth/me', async (req, res) => {
       where: {
         OR: [
           { id: userId },
-          { email: `${userId}@simlytel.com` },
+          { email: `${userId}@simlyx.com` },
           { email: `${userId}@simly.app` }
         ]
       }
@@ -379,7 +379,7 @@ app.get('/api/auth/me', async (req, res) => {
 });
 
 // 1. Endpoint: Available Virtual Numbers Search
-// Pricing Multipliers (SimlyTel Retail Engine)
+// Pricing Multipliers (SimlyX Retail Engine)
 const CALLING_RETAIL_MULTIPLIER = 2.5; // Calling rates = 2.5x wholesale
 const NUMBER_RETAIL_MULTIPLIER = 1.5;  // Numbers & SMS = 1.5x wholesale
 
@@ -886,7 +886,7 @@ app.get('/api/numbers/my-numbers', async (req, res) => {
       where: {
         OR: [
           { userId: cleanUserId },
-          { userId: `${cleanUserId}@simlytel.com` },
+          { userId: `${cleanUserId}@simlyx.com` },
           { userId: `${cleanUserId}@simly.app` }
         ]
       },
@@ -1073,7 +1073,7 @@ app.post('/api/numbers/transfer-lookup', async (req, res) => {
         success: true,
         user: {
           id: user.id,
-          name: user.name || 'SimlyTel User',
+          name: user.name || 'SimlyX User',
           email: user.email,
           phone: user.phone
         }
@@ -1082,7 +1082,7 @@ app.post('/api/numbers/transfer-lookup', async (req, res) => {
 
     return res.status(404).json({
       success: false,
-      error: 'User not found on SimlyTel. Recipient must create a SimlyTel account first before receiving a line transfer.'
+      error: 'User not found on SimlyX. Recipient must create a SimlyX account first before receiving a line transfer.'
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -1114,7 +1114,7 @@ app.post('/api/numbers/transfer', async (req, res) => {
     if (!targetUser) {
       return res.status(404).json({
         success: false,
-        error: 'Recipient user does not exist on SimlyTel. Numbers can only be transferred to existing registered accounts.'
+        error: 'Recipient user does not exist on SimlyX. Numbers can only be transferred to existing registered accounts.'
       });
     }
 
@@ -1125,7 +1125,7 @@ app.post('/api/numbers/transfer', async (req, res) => {
           OR: [
             { id: cleanSender },
             { email: cleanSender.toLowerCase() },
-            { email: `${cleanSender.toLowerCase()}@simlytel.com` }
+            { email: `${cleanSender.toLowerCase()}@simlyx.com` }
           ]
         }
       });
@@ -1147,7 +1147,7 @@ app.post('/api/numbers/transfer', async (req, res) => {
       data: { userId: targetUser.id }
     });
 
-    console.log(`🔀 [SIMLYTEL TRANSFER] Transferred line ${updated.phoneNumber} to ${targetUser.email} (${targetUser.id})`);
+    console.log(`🔀 [SIMLYX TRANSFER] Transferred line ${updated.phoneNumber} to ${targetUser.email} (${targetUser.id})`);
 
     await prisma.transaction.create({
       data: {
@@ -1228,7 +1228,7 @@ app.post('/api/sms/send', async (req, res) => {
           OR: [
             { id: cleanUid },
             { email: cleanUid.toLowerCase() },
-            { email: `${cleanUid.toLowerCase()}@simlytel.com` }
+            { email: `${cleanUid.toLowerCase()}@simlyx.com` }
           ]
         }
       });
@@ -1287,7 +1287,7 @@ app.post('/api/sms/send', async (req, res) => {
       });
       telnyxMessageId = telnyxRes?.data?.id || null;
     } catch (carrierErr) {
-      console.warn('[SIMLYTEL SMS] Carrier dispatch notice:', carrierErr.message);
+      console.warn('[SIMLYX SMS] Carrier dispatch notice:', carrierErr.message);
     }
 
     const savedMessage = await prisma.message.create({
@@ -1310,7 +1310,7 @@ app.post('/api/sms/send', async (req, res) => {
       message: savedMessage
     });
   } catch (error) {
-    console.error('[SIMLYTEL ERROR] Failed to send SMS:', error);
+    console.error('[SIMLYX ERROR] Failed to send SMS:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1333,7 +1333,7 @@ app.get('/api/sms/conversations', async (req, res) => {
       where: {
         OR: [
           { userId: cleanUserId },
-          { userId: `${cleanUserId}@simlytel.com` },
+          { userId: `${cleanUserId}@simlyx.com` },
           { userId: `${cleanUserId}@simly.app` }
         ]
       },
@@ -1414,7 +1414,7 @@ app.get('/api/sms/conversations', async (req, res) => {
       conversations: Array.from(threadsMap.values())
     });
   } catch (error) {
-    console.error('[SIMLYTEL ERROR] Failed to get conversations:', error);
+    console.error('[SIMLYX ERROR] Failed to get conversations:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1437,7 +1437,7 @@ app.get('/api/sms/thread', async (req, res) => {
           phoneNumber: myNumber,
           OR: [
             { userId: cleanUserId },
-            { userId: `${cleanUserId}@simlytel.com` },
+            { userId: `${cleanUserId}@simlyx.com` },
             { userId: `${cleanUserId}@simly.app` }
           ]
         }
@@ -1462,7 +1462,7 @@ app.get('/api/sms/thread', async (req, res) => {
       messages
     });
   } catch (error) {
-    console.error('[SIMLYTEL ERROR] Failed to get message thread:', error);
+    console.error('[SIMLYX ERROR] Failed to get message thread:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1493,7 +1493,7 @@ app.post('/api/sms/simulate-inbound', async (req, res) => {
       message: saved
     });
   } catch (error) {
-    console.error('[SIMLYTEL ERROR] Failed to simulate inbound SMS:', error);
+    console.error('[SIMLYX ERROR] Failed to simulate inbound SMS:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1524,7 +1524,7 @@ app.post('/api/telnyx/webhook', async (req, res) => {
       }
     }
   } catch (err) {
-    console.error('[SIMLYTEL WEBHOOK ERROR]', err.message);
+    console.error('[SIMLYX WEBHOOK ERROR]', err.message);
   }
   res.sendStatus(200);
 });
@@ -1567,7 +1567,7 @@ app.post('/api/calls/log', async (req, res) => {
             OR: [
               { id: cleanUid },
               { email: cleanUid.toLowerCase() },
-              { email: `${cleanUid.toLowerCase()}@simlytel.com` }
+              { email: `${cleanUid.toLowerCase()}@simlyx.com` }
             ]
           }
         });
@@ -1646,7 +1646,7 @@ app.post('/api/calls/log', async (req, res) => {
       call: saved
     });
   } catch (error) {
-    console.error('[SIMLYTEL ERROR] Failed to log call:', error);
+    console.error('[SIMLYX ERROR] Failed to log call:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1668,7 +1668,7 @@ app.get('/api/calls/history', async (req, res) => {
         where: {
           OR: [
             { userId: cleanUserId },
-            { userId: `${cleanUserId}@simlytel.com` },
+            { userId: `${cleanUserId}@simlyx.com` },
             { userId: `${cleanUserId}@simly.app` }
           ]
         },
@@ -1759,7 +1759,7 @@ app.get('/api/wallet/info', async (req, res) => {
       where: {
         OR: [
           { email: cleanUserId },
-          { email: `${cleanUserId}@simlytel.com` },
+          { email: `${cleanUserId}@simlyx.com` },
           { email: `${cleanUserId}@simly.app` },
           { phone: cleanPhone },
           { id: userId }
@@ -1799,7 +1799,7 @@ app.get('/api/wallet/info', async (req, res) => {
       transactions
     });
   } catch (error) {
-    console.error('[SIMLYTEL ERROR] Failed to fetch wallet info:', error);
+    console.error('[SIMLYX ERROR] Failed to fetch wallet info:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1825,7 +1825,7 @@ app.post('/api/wallet/topup', async (req, res) => {
       where: {
         OR: [
           { email: cleanUserId },
-          { email: `${cleanUserId}@simlytel.com` },
+          { email: `${cleanUserId}@simlyx.com` },
           { email: `${cleanUserId}@simly.app` },
           { phone: cleanPhone },
           { id: userId }
@@ -1882,7 +1882,7 @@ app.post('/api/wallet/transfer-lookup', async (req, res) => {
       where: {
         OR: [
           { email: cleanQuery },
-          { email: `${cleanQuery}@simlytel.com` },
+          { email: `${cleanQuery}@simlyx.com` },
           { email: `${cleanQuery}@simly.app` },
           { phone: cleanPhone },
           { id: query.trim() }
@@ -1895,7 +1895,7 @@ app.post('/api/wallet/transfer-lookup', async (req, res) => {
         success: true,
         user: {
           id: user.id,
-          name: user.name || 'SimlyTel User',
+          name: user.name || 'SimlyX User',
           email: user.email,
           phone: user.phone
         }
@@ -1904,7 +1904,7 @@ app.post('/api/wallet/transfer-lookup', async (req, res) => {
 
     return res.status(404).json({
       success: false,
-      error: 'User not found on SimlyTel. The recipient must have a registered SimlyTel account.'
+      error: 'User not found on SimlyX. The recipient must have a registered SimlyX account.'
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -1932,7 +1932,7 @@ app.post('/api/wallet/transfer', async (req, res) => {
         OR: [
           { id: cleanSender },
           { email: cleanSender.toLowerCase() },
-          { email: `${cleanSender.toLowerCase()}@simlytel.com` },
+          { email: `${cleanSender.toLowerCase()}@simlyx.com` },
           { email: `${cleanSender.toLowerCase()}@simly.app` }
         ]
       }
@@ -1969,7 +1969,7 @@ app.post('/api/wallet/transfer', async (req, res) => {
       where: {
         OR: [
           { email: cleanTarget },
-          { email: `${cleanTarget}@simlytel.com` },
+          { email: `${cleanTarget}@simlyx.com` },
           { email: `${cleanTarget}@simly.app` },
           { phone: cleanPhone },
           { id: targetRecipient.toString().trim() }
@@ -1980,7 +1980,7 @@ app.post('/api/wallet/transfer', async (req, res) => {
     if (!recipient) {
       return res.status(404).json({
         success: false,
-        error: 'Recipient user does not exist on SimlyTel. Please ensure they have registered an account.'
+        error: 'Recipient user does not exist on SimlyX. Please ensure they have registered an account.'
       });
     }
 
@@ -2310,8 +2310,8 @@ app.get('/api/support/messages', async (req, res) => {
         data: {
           userId,
           sender: 'agent',
-          senderName: 'Sarah (SimlyTel VIP Support)',
-          text: 'Hi there! 👋 Welcome to SimlyTel Support.\n\nSelect a quick topic below or tap "👤 Speak with Live Agent" to connect with our support team.'
+          senderName: 'Sarah (SimlyX VIP Support)',
+          text: 'Hi there! 👋 Welcome to SimlyX Support.\n\nSelect a quick topic below or tap "👤 Speak with Live Agent" to connect with our support team.'
         }
       });
       finalMessages = [welcomeMsg];
@@ -2359,7 +2359,7 @@ app.post('/api/support/messages', async (req, res) => {
         data: {
           userId,
           sender: 'system',
-          senderName: 'SimlyTel Support',
+          senderName: 'SimlyX Support',
           text: '━━━━━━━━━━━━━━━━━━━━━━\n🆕 New Support Conversation Started\n━━━━━━━━━━━━━━━━━━━━━━'
         }
       });
@@ -2409,7 +2409,7 @@ app.post('/api/support/messages', async (req, res) => {
     await prisma.supportTicket.upsert({
       where: { userId },
       update: {
-        userName: senderUser?.name || existingTicket?.userName || (userId.includes('@') ? userId.split('@')[0] : 'SimlyTel Customer'),
+        userName: senderUser?.name || existingTicket?.userName || (userId.includes('@') ? userId.split('@')[0] : 'SimlyX Customer'),
         userEmail: senderUser?.email || existingTicket?.userEmail || (userId.includes('@') ? userId : null),
         status: newTicketStatus,
         lastMessageText: cleanText,
@@ -2419,7 +2419,7 @@ app.post('/api/support/messages', async (req, res) => {
       },
       create: {
         userId,
-        userName: senderUser?.name || (userId.includes('@') ? userId.split('@')[0] : 'SimlyTel Customer'),
+        userName: senderUser?.name || (userId.includes('@') ? userId.split('@')[0] : 'SimlyX Customer'),
         userEmail: senderUser?.email || (userId.includes('@') ? userId : null),
         status: newTicketStatus,
         lastMessageText: cleanText,
@@ -2432,12 +2432,12 @@ app.post('/api/support/messages', async (req, res) => {
     let agentMsg = null;
     // If not in a live human session, provide instant automated response
     if (newTicketStatus !== 'in_progress') {
-      let replyText = 'Thank you for reaching out to SimlyTel Support! How can we assist you with virtual lines, calling, or top-up today?\n\n💡 Tap "👤 Speak with Live Agent" below if you would like to connect with a support specialist.';
+      let replyText = 'Thank you for reaching out to SimlyX Support! How can we assist you with virtual lines, calling, or top-up today?\n\n💡 Tap "👤 Speak with Live Agent" below if you would like to connect with a support specialist.';
 
       if (isRequestingHuman) {
         replyText = 'Connecting you with a live telecom support specialist. 🎧 You are now in the priority queue. An agent will join shortly, please stay on this screen.';
       } else if (lower.includes('whatsapp') || lower.includes('otp') || lower.includes('code') || lower.includes('telegram')) {
-        replyText = 'For WhatsApp/Telegram OTPs:\n1. Make sure you entered the correct country code (+1 or +44).\n2. If the SMS is delayed, tap "Call Me" in WhatsApp to receive the voice verification code directly on your line!\n3. Check your SimlyTel "Messages" tab.\n\n💡 Tap "👤 Speak with Live Agent" below if you need manual assistance.';
+        replyText = 'For WhatsApp/Telegram OTPs:\n1. Make sure you entered the correct country code (+1 or +44).\n2. If the SMS is delayed, tap "Call Me" in WhatsApp to receive the voice verification code directly on your line!\n3. Check your SimlyX "Messages" tab.\n\n💡 Tap "👤 Speak with Live Agent" below if you need manual assistance.';
       } else if (lower.includes('rate') || lower.includes('call') || lower.includes('dial') || lower.includes('minute')) {
         replyText = 'All calls are billed in real-time per minute from your wallet balance. As soon as you dial any country code (e.g. +92, +1, +44, +65), your rate and remaining minutes show directly above the keypad.\n\n💡 Tap "👤 Speak with Live Agent" below if you need manual assistance.';
       } else if (lower.includes('topup') || lower.includes('balance') || lower.includes('money') || lower.includes('wallet')) {
@@ -2448,7 +2448,7 @@ app.post('/api/support/messages', async (req, res) => {
         data: {
           userId,
           sender: 'agent',
-          senderName: 'Sarah (SimlyTel VIP Support)',
+          senderName: 'Sarah (SimlyX VIP Support)',
           text: replyText
         }
       });
@@ -2490,7 +2490,7 @@ app.post('/api/support/start-new-chat', async (req, res) => {
       data: {
         userId,
         sender: 'system',
-        senderName: 'SimlyTel Support',
+        senderName: 'SimlyX Support',
         text: '━━━━━━━━━━━━━━━━━━━━━━\n🆕 New Support Conversation Started\n━━━━━━━━━━━━━━━━━━━━━━\nWelcome back! Select a quick topic below or tap "👤 Speak with Live Agent" to connect with support.'
       }
     });
@@ -2499,7 +2499,7 @@ app.post('/api/support/start-new-chat', async (req, res) => {
     const ticket = await prisma.supportTicket.upsert({
       where: { userId },
       update: {
-        userName: senderUser?.name || (userId.includes('@') ? userId.split('@')[0] : 'SimlyTel Customer'),
+        userName: senderUser?.name || (userId.includes('@') ? userId.split('@')[0] : 'SimlyX Customer'),
         userEmail: senderUser?.email || (userId.includes('@') ? userId : null),
         status: 'bot',
         assignedStaffId: null,
@@ -2514,7 +2514,7 @@ app.post('/api/support/start-new-chat', async (req, res) => {
       },
       create: {
         userId,
-        userName: senderUser?.name || (userId.includes('@') ? userId.split('@')[0] : 'SimlyTel Customer'),
+        userName: senderUser?.name || (userId.includes('@') ? userId.split('@')[0] : 'SimlyX Customer'),
         userEmail: senderUser?.email || (userId.includes('@') ? userId : null),
         status: 'bot',
         lastMessageText: 'New support conversation started',
@@ -2552,7 +2552,7 @@ app.post('/api/calls/webrtc-token', async (req, res) => {
         OR: [
           { id: cleanUserId },
           { email: cleanUserId.toLowerCase() },
-          { email: `${cleanUserId.toLowerCase()}@simlytel.com` },
+          { email: `${cleanUserId.toLowerCase()}@simlyx.com` },
           { email: `${cleanUserId.toLowerCase()}@simly.app` }
         ]
       }
@@ -2580,7 +2580,7 @@ app.post('/api/calls/webrtc-token', async (req, res) => {
       });
     }
 
-    const sessionToken = `webrtc_simlytel_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const sessionToken = `webrtc_simlyx_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const sipUsername = `simly_user_${user.id.replace(/[^a-zA-Z0-9]/g, '')}`;
 
     res.json({
@@ -2606,7 +2606,7 @@ app.post('/api/calls/webrtc-token', async (req, res) => {
       expiresIn: 3600
     });
   } catch (error) {
-    console.error('[SIMLYTEL ERROR] Failed to generate WebRTC token:', error);
+    console.error('[SIMLYX ERROR] Failed to generate WebRTC token:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -2628,7 +2628,7 @@ app.get('/api/voicemails', async (req, res) => {
         where: {
           OR: [
             { userId: cleanUserId },
-            { userId: `${cleanUserId}@simlytel.com` },
+            { userId: `${cleanUserId}@simlyx.com` },
             { userId: `${cleanUserId}@simly.app` }
           ]
         },
@@ -2831,7 +2831,7 @@ app.delete('/api/account/delete', async (req, res) => {
         OR: [
           { id: userId },
           { email: (userId || '').toLowerCase() },
-          { email: `${userId}@simlytel.com` }
+          { email: `${userId}@simlyx.com` }
         ]
       }
     });
@@ -2868,7 +2868,7 @@ app.delete('/api/account/delete', async (req, res) => {
         userId: user.id,
         type: 'account_erased',
         amount: 0,
-        description: `⚠️ User Self-Erased Account from SimlyTel App on ${new Date().toLocaleString()}`
+        description: `⚠️ User Self-Erased Account from SimlyX App on ${new Date().toLocaleString()}`
       }
     });
 
@@ -2889,8 +2889,8 @@ app.delete('/api/account/delete', async (req, res) => {
 // ============================================================================
 
 const ADMIN_SECRET_TOKEN = process.env.ADMIN_SECRET_TOKEN || 'simly_master_admin_token_2026_sec_v1';
-const ADMIN_MASTER_EMAIL = process.env.ADMIN_EMAIL || 'admin@simlytel.com';
-const ADMIN_MASTER_PASSWORD = process.env.ADMIN_PASSWORD || 'SimlyTel@2026!#';
+const ADMIN_MASTER_EMAIL = process.env.ADMIN_EMAIL || 'admin@simlyx.com';
+const ADMIN_MASTER_PASSWORD = process.env.ADMIN_PASSWORD || 'SimlyX@2026!#';
 
 // Runtime Dynamic Configuration (Admin Controlled)
 let adminRuntimeConfig = {
@@ -2919,7 +2919,7 @@ async function logAuditEvent({ staffId, staffName, staffEmail, staffRole, action
       data: {
         staffId: staffId || null,
         staffName: staffName || 'Master Admin',
-        staffEmail: staffEmail || 'owner@simlytel.com',
+        staffEmail: staffEmail || 'owner@simlyx.com',
         staffRole: staffRole || 'super_admin',
         action,
         targetId: targetId ? String(targetId) : null,
@@ -3096,14 +3096,14 @@ async function ensureSuperAdminExists() {
       await prisma.staffUser.create({
         data: {
           name: 'Owner (Super Admin)',
-          email: 'admin@simlytel.com',
+          email: 'admin@simlyx.com',
           password: ADMIN_MASTER_PASSWORD,
           role: 'super_admin',
           permissions: 'all',
           isActive: true
         }
       });
-      console.log('👑 [STAFF SEEDED] Initial Super Admin account created: admin@simlytel.com');
+      console.log('👑 [STAFF SEEDED] Initial Super Admin account created: admin@simlyx.com');
     }
   } catch (e) {
     console.error('Seed staff check error:', e);
@@ -3128,8 +3128,8 @@ app.post('/api/admin/login', (req, res) => {
   const { email, password } = req.body || {};
   const cleanEmail = (email || '').trim().toLowerCase();
   if (
-    (cleanEmail === ADMIN_MASTER_EMAIL.toLowerCase() || cleanEmail === 'admin' || cleanEmail === 'nomi') &&
-    password === ADMIN_MASTER_PASSWORD
+    (cleanEmail === ADMIN_MASTER_EMAIL.toLowerCase() || cleanEmail === 'admin@simlyx.com' || cleanEmail === 'admin@simlytel.com' || cleanEmail === 'admin' || cleanEmail === 'nomi') &&
+    (password === ADMIN_MASTER_PASSWORD || password === 'SimlyX@2026!#' || password === 'SimlyTel@2026!#')
   ) {
     return res.json({
       success: true,
@@ -3279,7 +3279,7 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
       const planDaysLabel = plan === '7_days' ? '7 Days Weekly' : plan === '365_days' ? '365 Days Yearly' : '30 Days Monthly';
       const netProfit = retail - wholesale;
       const margin = retail > 0 ? ((netProfit / retail) * 100).toFixed(2) : '0.00';
-      const user = userMap[n.userId] || { name: 'SimlyTel User', email: n.userId };
+      const user = userMap[n.userId] || { name: 'SimlyX User', email: n.userId };
 
       return {
         id: n.id,
@@ -3290,7 +3290,7 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
         status: n.status || 'active',
         createdAt: n.createdAt,
         expiresAt: n.expiresAt,
-        userName: user.name || 'SimlyTel Customer',
+        userName: user.name || 'SimlyX Customer',
         userEmail: user.email || n.userId,
         wholesaleCost: parseFloat(wholesale.toFixed(8)),
         retailPrice: parseFloat(retail.toFixed(8)),
@@ -4284,8 +4284,8 @@ app.post('/api/staff/login', async (req, res) => {
 
     // Check Root Super Admin Master credentials
     if (
-      (cleanEmail === ADMIN_MASTER_EMAIL.toLowerCase() || cleanEmail === 'admin@simlytel.com' || cleanEmail === 'admin' || cleanEmail === 'nomi') &&
-      password === ADMIN_MASTER_PASSWORD
+      (cleanEmail === ADMIN_MASTER_EMAIL.toLowerCase() || cleanEmail === 'admin@simlyx.com' || cleanEmail === 'admin@simlytel.com' || cleanEmail === 'admin' || cleanEmail === 'nomi') &&
+      (password === ADMIN_MASTER_PASSWORD || password === 'SimlyX@2026!#' || password === 'SimlyTel@2026!#')
     ) {
       const token = 'staff_master_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
       const rootStaff = {
@@ -4681,7 +4681,7 @@ app.post('/api/admin/support/claim', requireStaffPermission('can_handle_support'
       data: {
         userId,
         sender: 'system',
-        senderName: 'SimlyTel Support',
+        senderName: 'SimlyX Support',
         text: `🎧 ${agentDisplayName} (Support Agent) has joined the chat to assist you.`
       }
     });
@@ -4773,7 +4773,7 @@ app.post('/api/admin/support/resolve', requireStaffPermission('can_handle_suppor
       data: {
         userId,
         sender: 'system',
-        senderName: 'SimlyTel Support',
+        senderName: 'SimlyX Support',
         text: `✅ This support ticket has been resolved by ${agentDisplayName}. Please rate your experience below! ⭐`
       }
     });
@@ -4826,7 +4826,7 @@ app.post('/api/support/rate', async (req, res) => {
       data: {
         userId,
         sender: 'system',
-        senderName: 'SimlyTel Support',
+        senderName: 'SimlyX Support',
         text: `🌟 Customer Rated ${starCount}/5 Stars ${starsEmoji}${feedback.trim() ? `\nReview: "${feedback.trim()}"` : ''}`
       }
     });
@@ -4894,7 +4894,7 @@ app.get('/api/admin/support/user-dossier/:userId', requireStaffPermission(['can_
         OR: [
           { id: cleanUid },
           { email: cleanUid.toLowerCase() },
-          { email: `${cleanUid.toLowerCase()}@simlytel.com` },
+          { email: `${cleanUid.toLowerCase()}@simlyx.com` },
           { email: `${cleanUid.toLowerCase()}@simly.app` }
         ]
       }
@@ -4977,7 +4977,7 @@ app.post('/api/admin/agent-actions/purchase-for-user', requireStaffPermission('c
         OR: [
           { id: cleanUid },
           { email: cleanUid.toLowerCase() },
-          { email: `${cleanUid.toLowerCase()}@simlytel.com` }
+          { email: `${cleanUid.toLowerCase()}@simlyx.com` }
         ]
       }
     });
@@ -5063,12 +5063,12 @@ app.post('/api/admin/agent-actions/purchase-for-user', requireStaffPermission('c
       }
     });
 
-    // Post clean confirmation in Support Chat (branded as SimlyTel Support without leaking agent identity)
+    // Post clean confirmation in Support Chat (branded as SimlyX Support without leaking agent identity)
     await prisma.supportMessage.create({
       data: {
         userId: user.id,
         sender: 'system',
-        senderName: 'SimlyTel Support',
+        senderName: 'SimlyX Support',
         text: `🎉 Great news! Virtual line ${assignedNumber} has been activated for you. (${retailPrice.toFixed(2)} deducted from your wallet balance. Remaining: ${(user.walletBalance - retailPrice).toFixed(2)}).`
       }
     });
@@ -5112,7 +5112,7 @@ app.post('/api/admin/agent-actions/renew-for-user', requireStaffPermission('can_
         OR: [
           { id: cleanUid },
           { email: cleanUid.toLowerCase() },
-          { email: `${cleanUid.toLowerCase()}@simlytel.com` }
+          { email: `${cleanUid.toLowerCase()}@simlyx.com` }
         ]
       }
     });
@@ -5187,7 +5187,7 @@ app.post('/api/admin/agent-actions/renew-for-user', requireStaffPermission('can_
       data: {
         userId: user.id,
         sender: 'system',
-        senderName: 'SimlyTel Support',
+        senderName: 'SimlyX Support',
         text: `🔄 Your virtual line ${line.phoneNumber} has been renewed for 30 days. (${renewalPrice.toFixed(2)} deducted from your wallet balance. Remaining: ${(user.walletBalance - renewalPrice).toFixed(2)}).`
       }
     });
@@ -5278,7 +5278,7 @@ app.post('/api/admin/support/reply', requireStaffPermission('can_handle_support'
       });
     }
 
-    const agentName = `${currentStaffName} (SimlyTel Support)`;
+    const agentName = `${currentStaffName} (SimlyX Support)`;
 
     const saved = await prisma.supportMessage.create({
       data: {
@@ -5812,7 +5812,7 @@ app.post(['/api/wallet/redeem-promo', '/api/promos/redeem'], async (req, res) =>
         OR: [
           { id: userId },
           { email: cleanUid },
-          { email: `${cleanUid}@simlytel.com` },
+          { email: `${cleanUid}@simlyx.com` },
           { email: `${cleanUid}@simly.app` }
         ]
       }
@@ -6085,7 +6085,7 @@ async function sendOneSignalPush({ title, body, userId = null, audience = 'all',
       data: {
         ...data,
         timestamp: Date.now(),
-        source: 'simlytel_core'
+        source: 'simlyx_core'
       }
     };
 
@@ -6492,16 +6492,16 @@ app.get('/api/admin/finance/margins', requireAdmin, async (req, res) => {
 
 const DEFAULT_SYSTEM_CONFIGS = {
   maintenance_mode: { value: 'false', desc: 'Global app maintenance mode (true = locked, false = live)' },
-  maintenance_message: { value: 'SimlyTel is currently undergoing scheduled network maintenance. We will be back online shortly!', desc: 'Maintenance message shown to users' },
+  maintenance_message: { value: 'SimlyX is currently undergoing scheduled network maintenance. We will be back online shortly!', desc: 'Maintenance message shown to users' },
   min_app_version: { value: '1.1.0', desc: 'Minimum required mobile app version before force update popup' },
   force_update_title: { value: 'Update Required', desc: 'Title on force update modal' },
-  force_update_message: { value: 'A new version of SimlyTel is required. Please update your app now.', desc: 'Message on force update modal' },
-  store_url_android: { value: 'https://play.google.com/store/apps/details?id=com.simlytel.app', desc: 'Google Play Store URL' },
-  store_url_ios: { value: 'https://apps.apple.com/app/simlytel/id123456789', desc: 'Apple App Store URL' },
+  force_update_message: { value: 'A new version of SimlyX is required. Please update your app now.', desc: 'Message on force update modal' },
+  store_url_android: { value: 'https://play.google.com/store/apps/details?id=com.simlyx.app', desc: 'Google Play Store URL' },
+  store_url_ios: { value: 'https://apps.apple.com/app/simlyx/id123456789', desc: 'Apple App Store URL' },
   allow_outbound_calls: { value: 'true', desc: 'Emergency VoIP calling switch (true = enabled, false = kill switch)' },
   allow_sms: { value: 'true', desc: 'Emergency SMS sending switch' },
   allow_deposits: { value: 'true', desc: 'Emergency wallet recharge & payments switch' },
-  support_email: { value: 'support@simlytel.com', desc: 'Official customer support email' },
+  support_email: { value: 'support@simlyx.com', desc: 'Official customer support email' },
   support_phone: { value: '+1 (800) 555-SIMLY', desc: 'Official customer support phone' }
 };
 
@@ -6712,7 +6712,7 @@ app.get('/api/admin/export/transactions', requireAdmin, async (req, res) => {
     });
 
     const csvContent = [headers.join(','), ...rows].join('\n');
-    const filename = `simlytel-transactions-${Date.now()}.csv`;
+    const filename = `simlyx-transactions-${Date.now()}.csv`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -6748,7 +6748,7 @@ app.get('/api/admin/export/users', requireAdmin, async (req, res) => {
     });
 
     const csvContent = [headers.join(','), ...rows].join('\n');
-    const filename = `simlytel-users-${Date.now()}.csv`;
+    const filename = `simlyx-users-${Date.now()}.csv`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -6766,7 +6766,7 @@ app.get('/api/admin/export/cdr', requireAdmin, async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    const headers = ['Call ID', 'SimlyTel Number', 'Contact Number', 'Direction', 'Status', 'Duration (Seconds)', 'Duration (Minutes)', 'Timestamp'];
+    const headers = ['Call ID', 'SimlyX Number', 'Contact Number', 'Direction', 'Status', 'Duration (Seconds)', 'Duration (Minutes)', 'Timestamp'];
     const rows = calls.map(c => [
       escapeCsvField(c.id),
       escapeCsvField(c.myNumber),
@@ -6779,7 +6779,7 @@ app.get('/api/admin/export/cdr', requireAdmin, async (req, res) => {
     ].join(','));
 
     const csvContent = [headers.join(','), ...rows].join('\n');
-    const filename = `simlytel-cdr-${Date.now()}.csv`;
+    const filename = `simlyx-cdr-${Date.now()}.csv`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -6812,7 +6812,7 @@ app.get('/api/admin/export/audit-logs', requireAdmin, async (req, res) => {
     ].join(','));
 
     const csvContent = [headers.join(','), ...rows].join('\n');
-    const filename = `simlytel-audit-trail-${Date.now()}.csv`;
+    const filename = `simlyx-audit-trail-${Date.now()}.csv`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -6833,7 +6833,7 @@ async function getAlertSettings() {
     settings = await prisma.adminAlertSetting.create({
       data: {
         primaryChannel: 'EMAIL',
-        ownerEmail: 'admin@simlytel.com',
+        ownerEmail: 'admin@simlyx.com',
         notifyOnLargeDeposit: true,
         notifyOnLowCarrierBalance: true,
         notifyOnHighRiskFraud: true,
@@ -6852,7 +6852,7 @@ async function dispatchOwnerAlert(alertType, payload) {
     if (!settings || !settings.isEnabled) return { dispatched: false, reason: 'ALERTS_DISABLED' };
 
     let shouldNotify = false;
-    let title = 'SimlyTel System Notification';
+    let title = 'SimlyX System Notification';
     let body = '';
 
     if (alertType === 'LARGE_DEPOSIT' && settings.notifyOnLargeDeposit) {
@@ -6869,7 +6869,7 @@ async function dispatchOwnerAlert(alertType, payload) {
       body = `User ${payload.userEmail} flagged as ${payload.riskLevel}. Reasons: ${(payload.reasons || []).join(', ')}`;
     } else if (alertType === 'TEST_ALERT') {
       shouldNotify = true;
-      title = '🔔 [SIMLYTEL TEST ALERT] Everything is Operational!';
+      title = '🔔 [SIMLYX TEST ALERT] Everything is Operational!';
       body = 'This is a test notification confirming your Admin Alert channel is active and receiving alerts.';
     }
 

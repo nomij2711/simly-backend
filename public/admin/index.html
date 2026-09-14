@@ -905,7 +905,7 @@
           </div>
 
           <!-- Queue Filter Tabs -->
-          <div class="flex items-center gap-2 border-b border-slate-800 pb-2">
+          <div class="flex items-center gap-2 border-b border-slate-800 pb-2 flex-wrap">
             <button onclick="switchQueueFilter('unassigned')" id="qtab-btn-unassigned" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-2">
               <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
               <span>Incoming Queue</span>
@@ -920,10 +920,15 @@
               <i class="fa-solid fa-layer-group text-indigo-400"></i>
               <span>All Threads & History</span>
             </button>
+            <button onclick="switchQueueFilter('ratings_csat')" id="qtab-btn-ratings_csat" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center gap-2">
+              <i class="fa-solid fa-star text-amber-400"></i>
+              <span>⭐ Agent CSAT & Ratings</span>
+              <span id="badgeCsatAvg" class="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 text-[10px]">5.0★</span>
+            </button>
           </div>
 
           <!-- Helpdesk Workstation -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-[580px]">
+          <div id="helpdeskWorkstation" class="grid grid-cols-1 md:grid-cols-3 gap-6 h-[580px]">
             <!-- Left: Threads List -->
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col overflow-hidden shadow-xl">
               <div class="flex items-center justify-between mb-3 px-1">
@@ -992,6 +997,167 @@
                   <i class="fa-solid fa-paper-plane text-[11px]"></i>
                 </button>
               </form>
+            </div>
+          </div>
+
+          <!-- ⭐ AGENT CSAT & RATINGS ANALYTICS VIEW (Visible when ratings_csat selected) -->
+          <div id="helpdeskCsatView" class="hidden space-y-6">
+            <!-- 1. Top KPI Summary Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <!-- Overall CSAT -->
+              <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg relative overflow-hidden">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Overall CSAT Score</span>
+                  <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-face-smile"></i>
+                  </div>
+                </div>
+                <div class="flex items-baseline gap-2">
+                  <span id="csatOverallPercent" class="text-2xl font-black text-white">100%</span>
+                  <span class="text-xs text-emerald-400 font-bold font-mono">Satisfaction</span>
+                </div>
+                <div class="mt-3 w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div id="csatProgressBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full" style="width: 100%;"></div>
+                </div>
+                <div class="mt-2 text-[10px] text-slate-500 flex justify-between">
+                  <span id="csatPositiveCount">0 positive (4-5★)</span>
+                  <span id="csatNeutralNegativeCount">0 neutral/neg</span>
+                </div>
+              </div>
+
+              <!-- Average Star Rating -->
+              <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Average Star Rating</span>
+                  <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-star"></i>
+                  </div>
+                </div>
+                <div class="flex items-baseline gap-2">
+                  <span id="csatAvgStars" class="text-2xl font-black text-amber-400">5.0</span>
+                  <span class="text-xs text-slate-400 font-medium">/ 5.0 Stars</span>
+                </div>
+                <div class="mt-2 flex items-center gap-1 text-amber-400 text-xs" id="csatStarStarsVisual">
+                  <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                </div>
+                <div class="mt-1 text-[10px] text-slate-500" id="csatTotalRatedText">Based on customer feedback</div>
+              </div>
+
+              <!-- Total Reviews & Skips -->
+              <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Customer Reviews</span>
+                  <div class="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-comments"></i>
+                  </div>
+                </div>
+                <div class="flex items-baseline gap-2">
+                  <span id="csatTotalReviews" class="text-2xl font-black text-white">0</span>
+                  <span class="text-xs text-indigo-400 font-bold">Rated</span>
+                </div>
+                <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">
+                  <span>Skipped Rating:</span>
+                  <span id="csatTotalSkipped" class="font-bold text-slate-300">0</span>
+                </div>
+                <div class="mt-1 text-[10px] text-slate-500">1 rating strictly per resolved ticket</div>
+              </div>
+
+              <!-- Flagged Dissatisfied Reviews (1-2★) -->
+              <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Low Ratings (1-2★)</span>
+                  <div class="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                  </div>
+                </div>
+                <div class="flex items-baseline gap-2">
+                  <span id="csatFlaggedCount" class="text-2xl font-black text-rose-400">0</span>
+                  <span class="text-xs text-rose-300/80 font-semibold">Flagged for Audit</span>
+                </div>
+                <div class="mt-2">
+                  <button onclick="filterReviewsByRating('low')" class="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span>Inspect Dissatisfied Chats</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Support Agent Scorecards Leaderboard Table -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                <div>
+                  <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-ranking-star text-amber-400"></i>
+                    <span>Support Agent Performance & CSAT Scorecards</span>
+                  </h3>
+                  <p class="text-[11px] text-slate-400">Monitor each support agent's quality, customer satisfaction %, rating breakdown, and flagged complaints.</p>
+                </div>
+                <button onclick="loadCsatDashboard()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all self-start sm:self-auto">
+                  <i class="fa-solid fa-rotate text-xs"></i> <span>Refresh Scorecards</span>
+                </button>
+              </div>
+
+              <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="border-b border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      <th class="py-3 px-3">Agent</th>
+                      <th class="py-3 px-3">Resolved</th>
+                      <th class="py-3 px-3">Reviews</th>
+                      <th class="py-3 px-3">Avg Star</th>
+                      <th class="py-3 px-3">CSAT %</th>
+                      <th class="py-3 px-3">Rating Breakdown (5★ &rarr; 1★)</th>
+                      <th class="py-3 px-3">Dissatisfied (1-2★)</th>
+                      <th class="py-3 px-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="agentScorecardTbody" class="divide-y divide-slate-800/60 text-xs">
+                    <tr><td colspan="8" class="text-center py-8 text-slate-500">Loading agent scorecards...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 3. Live Customer Reviews Feed -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+              <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <div>
+                  <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-comment-dots text-indigo-400"></i>
+                    <span>Live Customer Reviews & Feedback Feed</span>
+                  </h3>
+                  <p class="text-[11px] text-slate-400">Click "View Full Chat Transcript" on any review to inspect the exact chat conversation between the customer and agent.</p>
+                </div>
+
+                <!-- Filters -->
+                <div class="flex items-center gap-2 flex-wrap">
+                  <div class="relative">
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                    <input type="text" id="csatSearchInput" oninput="debounceCsatSearch()" placeholder="Search review text, customer..." class="bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-48 sm:w-60">
+                  </div>
+
+                  <select id="csatRatingFilter" onchange="applyCsatFilters()" class="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    <option value="all">All Ratings (⭐ 1-5 & Skip)</option>
+                    <option value="5">⭐⭐⭐⭐⭐ 5 Stars Only</option>
+                    <option value="4">⭐⭐⭐⭐ 4 Stars Only</option>
+                    <option value="3">⭐⭐⭐ 3 Stars Only</option>
+                    <option value="2">⭐⭐ 2 Stars Only</option>
+                    <option value="1">⭐ 1 Star Only</option>
+                    <option value="low">🚨 Flagged (1-2 Stars)</option>
+                    <option value="skipped">⚪ Skipped Rating</option>
+                  </select>
+
+                  <select id="csatAgentFilter" onchange="applyCsatFilters()" class="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    <option value="all">All Agents</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Reviews Feed Table / Cards Container -->
+              <div id="csatReviewsFeedContainer" class="space-y-3">
+                <div class="text-center py-12 text-slate-500 text-xs">Loading customer reviews...</div>
+              </div>
             </div>
           </div>
         </div>
@@ -2066,6 +2232,47 @@
           <button type="submit" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold">Apply to All Selected</button>
         </div>
       </form>
+    </div>
+  <!-- 💬 FULL CHAT TRANSCRIPT MODAL -->
+  <div id="chatTranscriptModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-sm">
+            <i class="fa-solid fa-comments"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <span id="transcriptModalTitle">Full Chat Conversation Transcript</span>
+              <span id="transcriptRatingBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">⭐ 5/5</span>
+            </h3>
+            <p id="transcriptModalMeta" class="text-[11px] text-slate-400">Customer: user@test.com • Handled by: Sarah</p>
+          </div>
+        </div>
+        <button onclick="closeChatTranscriptModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"><i class="fa-solid fa-xmark text-base"></i></button>
+      </div>
+
+      <!-- Rating & Feedback Banner -->
+      <div id="transcriptFeedbackBanner" class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex flex-col gap-1 text-xs">
+        <div class="flex items-center justify-between">
+          <span class="font-bold text-white flex items-center gap-1.5" id="transcriptBannerRatingStars">⭐⭐⭐⭐⭐ 5/5 Stars</span>
+          <span class="text-[10px] text-slate-500" id="transcriptBannerTime">2026-09-14 12:00</span>
+        </div>
+        <div class="text-slate-300 italic" id="transcriptBannerFeedback">"Great and fast service!"</div>
+        <div id="transcriptBannerTags" class="flex gap-1 flex-wrap mt-1"></div>
+      </div>
+
+      <!-- Messages Transcript Scroll Area -->
+      <div id="transcriptMessagesBody" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3 bg-slate-950/60 rounded-xl border border-slate-800/80 min-h-[260px] max-h-[400px]">
+        <div class="text-center py-12 text-slate-500 text-xs">Loading transcript messages...</div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+        <span class="text-[11px] text-slate-500">Read-only transcript audit for QA & management</span>
+        <button onclick="closeChatTranscriptModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition-all">Close Transcript</button>
+      </div>
     </div>
   </div>
 
@@ -4893,29 +5100,45 @@
     let activeSupportUserId = null;
     let activeTicketData = null;
 
+    // ⭐ CSAT STATE
+    let rawCsatStats = null;
+    let rawCsatReviews = [];
+    let csatSearchTimeout = null;
+
     async function loadSupportQueue() {
       try {
-        const res = await adminFetch('/api/admin/support/queue');
-        if (!res.success) return;
+        const [res, csatRes] = await Promise.all([
+          adminFetch('/api/admin/support/queue'),
+          adminFetch('/api/admin/support/ratings/stats').catch(() => null)
+        ]);
 
-        rawQueueData = res;
+        if (res && res.success) {
+          rawQueueData = res;
 
-        // Update Counter Badges
-        const unassignedBadge = document.getElementById('badgeUnassignedCount');
-        const myChatsBadge = document.getElementById('badgeMyChatsCount');
-        if (unassignedBadge) unassignedBadge.innerText = res.stats?.unassignedCount || 0;
-        if (myChatsBadge) myChatsBadge.innerText = res.stats?.myChatsCount || 0;
+          // Update Counter Badges
+          const unassignedBadge = document.getElementById('badgeUnassignedCount');
+          const myChatsBadge = document.getElementById('badgeMyChatsCount');
+          if (unassignedBadge) unassignedBadge.innerText = res.stats?.unassignedCount || 0;
+          if (myChatsBadge) myChatsBadge.innerText = res.stats?.myChatsCount || 0;
 
-        renderQueueThreads();
+          renderQueueThreads();
 
-        // If a customer chat is currently open, refresh its messages live
-        if (activeSupportUserId) {
-          const freshTicket = (res.allChats || []).find(x => x.userId === activeSupportUserId) || 
-                              (res.unassigned || []).find(x => x.userId === activeSupportUserId) || 
-                              (res.myChats || []).find(x => x.userId === activeSupportUserId);
-          if (freshTicket) {
-            activeTicketData = freshTicket;
-            renderChatMessages(freshTicket.messages || []);
+          // If a customer chat is currently open, refresh its messages live
+          if (activeSupportUserId) {
+            const freshTicket = (res.allChats || []).find(x => x.userId === activeSupportUserId) || 
+                                (res.unassigned || []).find(x => x.userId === activeSupportUserId) || 
+                                (res.myChats || []).find(x => x.userId === activeSupportUserId);
+            if (freshTicket) {
+              activeTicketData = freshTicket;
+              renderChatMessages(freshTicket.messages || []);
+            }
+          }
+        }
+
+        if (csatRes && csatRes.success && csatRes.stats) {
+          const badgeCsat = document.getElementById('badgeCsatAvg');
+          if (badgeCsat) {
+            badgeCsat.innerText = `${(csatRes.stats.averageRating || 5.0).toFixed(1)}★ (${csatRes.stats.totalReviews || 0})`;
           }
         }
       } catch (err) {
@@ -4925,7 +5148,7 @@
 
     function switchQueueFilter(filter) {
       currentQueueFilter = filter;
-      ['unassigned', 'my_chats', 'all'].forEach(f => {
+      ['unassigned', 'my_chats', 'all', 'ratings_csat'].forEach(f => {
         const btn = document.getElementById('qtab-btn-' + f);
         if (btn) {
           if (f === filter) {
@@ -4936,12 +5159,405 @@
         }
       });
 
+      const workstation = document.getElementById('helpdeskWorkstation');
+      const csatView = document.getElementById('helpdeskCsatView');
+
+      if (filter === 'ratings_csat') {
+        if (workstation) workstation.classList.add('hidden');
+        if (csatView) csatView.classList.remove('hidden');
+        loadCsatDashboard();
+        return;
+      } else {
+        if (workstation) workstation.classList.remove('hidden');
+        if (csatView) csatView.classList.add('hidden');
+      }
+
       const headerEl = document.getElementById('queueListHeader');
       if (headerEl) {
         headerEl.innerText = filter === 'unassigned' ? 'Incoming Queue' : filter === 'my_chats' ? 'My Assigned Chats' : 'All Conversations';
       }
 
       renderQueueThreads();
+    }
+
+    // ============================================================
+    // ⭐ AGENT CSAT & RATINGS ANALYTICS LOGIC
+    // ============================================================
+    async function loadCsatDashboard() {
+      try {
+        const [statsRes, reviewsRes] = await Promise.all([
+          adminFetch('/api/admin/support/ratings/stats'),
+          adminFetch('/api/admin/support/ratings?limit=100')
+        ]);
+
+        if (statsRes && statsRes.success) {
+          rawCsatStats = statsRes;
+          renderCsatMetrics(statsRes.stats);
+          renderAgentScorecards(statsRes.agentScorecards || []);
+          populateAgentFilterDropdown(statsRes.agentScorecards || []);
+
+          const badgeCsat = document.getElementById('badgeCsatAvg');
+          if (badgeCsat) {
+            badgeCsat.innerText = `${(statsRes.stats?.averageRating || 5.0).toFixed(1)}★ (${statsRes.stats?.totalReviews || 0})`;
+          }
+        }
+
+        if (reviewsRes && reviewsRes.success) {
+          rawCsatReviews = reviewsRes.ratings || [];
+          renderCsatReviewsFeed(rawCsatReviews);
+        }
+      } catch (err) {
+        console.error('CSAT load error:', err);
+      }
+    }
+
+    function renderCsatMetrics(stats) {
+      if (!stats) return;
+      
+      const overallEl = document.getElementById('csatOverallPercent');
+      const progressEl = document.getElementById('csatProgressBar');
+      const posEl = document.getElementById('csatPositiveCount');
+      const negEl = document.getElementById('csatNeutralNegativeCount');
+      const avgStarsEl = document.getElementById('csatAvgStars');
+      const totalReviewsEl = document.getElementById('csatTotalReviews');
+      const totalSkippedEl = document.getElementById('csatTotalSkipped');
+      const flaggedCountEl = document.getElementById('csatFlaggedCount');
+      const ratedTextEl = document.getElementById('csatTotalRatedText');
+      const starVisualEl = document.getElementById('csatStarStarsVisual');
+
+      if (overallEl) overallEl.innerText = `${stats.csatPercentage || 100}%`;
+      if (progressEl) progressEl.style.width = `${Math.min(100, Math.max(0, stats.csatPercentage || 100))}%`;
+      if (posEl) posEl.innerText = `${stats.positiveCount || 0} positive (4-5★)`;
+      if (negEl) negEl.innerText = `${(stats.neutralCount || 0) + (stats.negativeCount || 0)} neutral/neg (1-3★)`;
+      if (avgStarsEl) avgStarsEl.innerText = `${(stats.averageRating || 5.0).toFixed(1)}`;
+      if (totalReviewsEl) totalReviewsEl.innerText = `${stats.totalReviews || 0}`;
+      if (totalSkippedEl) totalSkippedEl.innerText = `${stats.totalSkipped || 0}`;
+      if (flaggedCountEl) flaggedCountEl.innerText = `${stats.flaggedCount || 0}`;
+      if (ratedTextEl) ratedTextEl.innerText = `Based on ${stats.totalReviews || 0} customer reviews`;
+
+      if (starVisualEl) {
+        const rounded = Math.round(stats.averageRating || 5);
+        starVisualEl.innerHTML = Array.from({ length: 5 }, (_, i) => 
+          `<i class="fa-solid fa-star ${i < rounded ? 'text-amber-400' : 'text-slate-700'}"></i>`
+        ).join('');
+      }
+    }
+
+    function renderAgentScorecards(agents) {
+      const tbody = document.getElementById('agentScorecardTbody');
+      if (!tbody) return;
+
+      if (!agents || agents.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-slate-500">No agent data recorded yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = agents.map(a => {
+        const csatColor = a.csatPercentage >= 90 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' :
+                          a.csatPercentage >= 75 ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' :
+                          'text-rose-400 bg-rose-500/10 border-rose-500/20';
+        
+        const stars = a.starCounts || { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        const totalStars = (stars[5] || 0) + (stars[4] || 0) + (stars[3] || 0) + (stars[2] || 0) + (stars[1] || 0) || 1;
+        const p5 = Math.round(((stars[5] || 0) / totalStars) * 100);
+        const p4 = Math.round(((stars[4] || 0) / totalStars) * 100);
+        const p3 = Math.round(((stars[3] || 0) / totalStars) * 100);
+        const p2 = Math.round(((stars[2] || 0) / totalStars) * 100);
+        const p1 = Math.round(((stars[1] || 0) / totalStars) * 100);
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition-all">
+            <td class="py-3 px-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-xs uppercase">
+                  ${escapeHtml((a.name || 'A')[0])}
+                </div>
+                <div>
+                  <div class="font-bold text-white flex items-center gap-1.5">
+                    <span>${escapeHtml(a.name || 'Agent')}</span>
+                    <span class="w-2 h-2 rounded-full ${a.isOnline ? 'bg-emerald-400' : 'bg-slate-600'}" title="${a.isOnline ? 'Online' : 'Offline'}"></span>
+                  </div>
+                  <div class="text-[10px] text-slate-400">${escapeHtml(a.email || '')} • <span class="capitalize text-slate-500">${escapeHtml((a.role || 'agent').replace('_', ' '))}</span></div>
+                </div>
+              </div>
+            </td>
+            <td class="py-3 px-3 font-semibold text-slate-300">${a.ticketsResolved || 0}</td>
+            <td class="py-3 px-3">
+              <span class="font-bold text-white">${a.totalReviews || 0}</span>
+              ${a.skippedCount > 0 ? `<span class="text-[10px] text-slate-500 ml-1">(${a.skippedCount} skipped)</span>` : ''}
+            </td>
+            <td class="py-3 px-3">
+              <span class="font-bold text-amber-400 flex items-center gap-1">
+                ⭐ ${(a.averageRating || 5.0).toFixed(1)}
+              </span>
+            </td>
+            <td class="py-3 px-3">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${csatColor}">
+                ${a.csatPercentage || 100}% CSAT
+              </span>
+            </td>
+            <td class="py-3 px-3 min-w-[140px]">
+              <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden flex">
+                <div style="width: ${p5}%" class="bg-emerald-500 h-full" title="5★: ${stars[5] || 0}"></div>
+                <div style="width: ${p4}%" class="bg-teal-400 h-full" title="4★: ${stars[4] || 0}"></div>
+                <div style="width: ${p3}%" class="bg-amber-400 h-full" title="3★: ${stars[3] || 0}"></div>
+                <div style="width: ${p2}%" class="bg-orange-500 h-full" title="2★: ${stars[2] || 0}"></div>
+                <div style="width: ${p1}%" class="bg-rose-500 h-full" title="1★: ${stars[1] || 0}"></div>
+              </div>
+              <div class="text-[9px] text-slate-500 flex justify-between mt-1">
+                <span>5★: ${stars[5] || 0}</span>
+                <span>4★: ${stars[4] || 0}</span>
+                <span>3★: ${stars[3] || 0}</span>
+                <span>2★: ${stars[2] || 0}</span>
+                <span>1★: ${stars[1] || 0}</span>
+              </div>
+            </td>
+            <td class="py-3 px-3">
+              ${a.flaggedCount > 0 
+                ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">🚨 ${a.flaggedCount} Bad Reviews</span>` 
+                : `<span class="text-[11px] text-emerald-400/80 font-medium">✨ Clean (0)</span>`}
+            </td>
+            <td class="py-3 px-3 text-right">
+              <button onclick="filterReviewsByAgent('${a.staffId}')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-bold transition-all inline-flex items-center gap-1">
+                <i class="fa-solid fa-filter text-indigo-400"></i>
+                <span>Filter Reviews</span>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function populateAgentFilterDropdown(agents) {
+      const select = document.getElementById('csatAgentFilter');
+      if (!select) return;
+      const currentVal = select.value;
+      select.innerHTML = '<option value="all">All Agents</option>' + 
+        (agents || []).map(a => `<option value="${a.staffId}">${escapeHtml(a.name || 'Agent')} (${a.email || ''})</option>`).join('');
+      if (currentVal) select.value = currentVal;
+    }
+
+    function renderCsatReviewsFeed(reviews) {
+      const container = document.getElementById('csatReviewsFeedContainer');
+      if (!container) return;
+
+      if (!reviews || reviews.length === 0) {
+        container.innerHTML = `
+          <div class="text-center text-slate-500 text-xs py-12 flex flex-col items-center gap-2">
+            <i class="fa-solid fa-face-smile text-slate-600 text-3xl"></i>
+            <span>No customer reviews match your search or filter criteria.</span>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = reviews.map(r => {
+        const isSkip = r.isSkipped || r.rating === 0;
+        const timeAgo = formatTimeAgo(new Date(r.createdAt));
+        const exactDate = new Date(r.createdAt).toLocaleString();
+        const starsHtml = isSkip 
+          ? '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">⚪ Skipped Feedback</span>'
+          : `<span class="text-amber-400 font-bold text-xs">${'⭐'.repeat(r.rating)} ${r.rating}/5</span>`;
+
+        const isLow = !isSkip && r.rating <= 2;
+        const borderClass = isLow ? 'border-rose-500/40 bg-rose-950/10' : 'border-slate-800 bg-slate-950/60';
+
+        const tagList = (r.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+
+        return `
+          <div class="p-4 rounded-2xl border ${borderClass} shadow-md space-y-3 transition-all hover:border-slate-700">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl ${isLow ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'} flex items-center justify-center font-bold text-xs">
+                  ${escapeHtml((r.userName || r.userEmail || 'U')[0].toUpperCase())}
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-bold text-white text-xs">${escapeHtml(r.userName || 'SimlyX User')}</span>
+                    ${r.userEmail ? `<span class="text-[11px] text-slate-400">(${escapeHtml(r.userEmail)})</span>` : ''}
+                    ${isLow ? '<span class="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">🚨 Flagged Low Rating</span>' : ''}
+                  </div>
+                  <div class="text-[10px] text-slate-400 flex items-center gap-1.5">
+                    <span>Handled by: <b class="text-slate-300">${escapeHtml(r.staffName || 'SimlyX Support')}</b></span>
+                    <span>•</span>
+                    <span title="${exactDate}">${timeAgo}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 self-start sm:self-auto">
+                ${starsHtml}
+                <button onclick="openChatTranscriptModal('${r.id}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/20 flex items-center gap-1.5">
+                  <i class="fa-solid fa-comments text-xs"></i>
+                  <span>View Full Chat Transcript</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Feedback Body -->
+            <div class="pl-12 text-xs">
+              <div class="text-slate-200 bg-slate-900/80 p-3 rounded-xl border border-slate-800/80 italic">
+                "${escapeHtml(r.feedback || (isSkip ? 'Customer skipped rating submission' : 'No written feedback provided'))}"
+              </div>
+
+              ${tagList.length > 0 ? `
+                <div class="flex gap-1.5 flex-wrap mt-2">
+                  ${tagList.map(t => `<span class="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">${escapeHtml(t)}</span>`).join('')}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function debounceCsatSearch() {
+      clearTimeout(csatSearchTimeout);
+      csatSearchTimeout = setTimeout(() => {
+        applyCsatFilters();
+      }, 300);
+    }
+
+    function filterReviewsByRating(val) {
+      const select = document.getElementById('csatRatingFilter');
+      if (select) select.value = val;
+      applyCsatFilters();
+    }
+
+    function filterReviewsByAgent(agentId) {
+      const select = document.getElementById('csatAgentFilter');
+      if (select) select.value = agentId;
+      applyCsatFilters();
+    }
+
+    async function applyCsatFilters() {
+      const container = document.getElementById('csatReviewsFeedContainer');
+      if (container) container.innerHTML = '<div class="text-center py-12 text-slate-500 text-xs">Applying filters...</div>';
+
+      try {
+        const search = document.getElementById('csatSearchInput')?.value.trim() || '';
+        const ratingFilter = document.getElementById('csatRatingFilter')?.value || 'all';
+        const agentFilter = document.getElementById('csatAgentFilter')?.value || 'all';
+
+        const params = new URLSearchParams({ limit: '100' });
+        if (search) params.append('search', search);
+        if (agentFilter && agentFilter !== 'all') params.append('staffId', agentFilter);
+
+        if (ratingFilter === '5') { params.append('minRating', '5'); params.append('maxRating', '5'); params.append('isSkipped', 'false'); }
+        else if (ratingFilter === '4') { params.append('minRating', '4'); params.append('maxRating', '4'); params.append('isSkipped', 'false'); }
+        else if (ratingFilter === '3') { params.append('minRating', '3'); params.append('maxRating', '3'); params.append('isSkipped', 'false'); }
+        else if (ratingFilter === '2') { params.append('minRating', '2'); params.append('maxRating', '2'); params.append('isSkipped', 'false'); }
+        else if (ratingFilter === '1') { params.append('minRating', '1'); params.append('maxRating', '1'); params.append('isSkipped', 'false'); }
+        else if (ratingFilter === 'low') { params.append('minRating', '1'); params.append('maxRating', '2'); params.append('isSkipped', 'false'); }
+        else if (ratingFilter === 'skipped') { params.append('isSkipped', 'true'); }
+
+        const res = await adminFetch(`/api/admin/support/ratings?${params.toString()}`);
+        if (res && res.success) {
+          rawCsatReviews = res.ratings || [];
+          renderCsatReviewsFeed(rawCsatReviews);
+        }
+      } catch (err) {
+        console.error('Filter error:', err);
+      }
+    }
+
+    async function openChatTranscriptModal(ratingId) {
+      const modal = document.getElementById('chatTranscriptModal');
+      const titleEl = document.getElementById('transcriptModalTitle');
+      const badgeEl = document.getElementById('transcriptRatingBadge');
+      const metaEl = document.getElementById('transcriptModalMeta');
+      const bodyEl = document.getElementById('transcriptMessagesBody');
+      const starBanner = document.getElementById('transcriptBannerRatingStars');
+      const timeBanner = document.getElementById('transcriptBannerTime');
+      const feedbackBanner = document.getElementById('transcriptBannerFeedback');
+      const tagsBanner = document.getElementById('transcriptBannerTags');
+
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      if (bodyEl) bodyEl.innerHTML = '<div class="text-center py-12 text-slate-500 text-xs">Loading complete conversation transcript...</div>';
+
+      try {
+        const res = await adminFetch(`/api/admin/support/ratings/${encodeURIComponent(ratingId)}/transcript`);
+        if (!res.success || !res.rating) {
+          if (bodyEl) bodyEl.innerHTML = '<div class="text-center py-8 text-rose-400 text-xs">Failed to load transcript.</div>';
+          return;
+        }
+
+        const r = res.rating;
+        const isSkip = r.isSkipped || r.rating === 0;
+
+        if (titleEl) titleEl.innerText = `Full Chat Conversation Transcript`;
+        if (badgeEl) {
+          badgeEl.innerText = isSkip ? '⚪ Skipped Rating' : `⭐ ${r.rating}/5 Stars`;
+          badgeEl.className = `px-2 py-0.5 rounded-full text-[10px] font-bold ${isSkip ? 'bg-slate-800 text-slate-400 border border-slate-700' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}`;
+        }
+        if (metaEl) {
+          metaEl.innerText = `Customer: ${r.userName || r.userEmail || r.userId} • Handled by: ${r.staffName || 'SimlyX Support'}`;
+        }
+
+        if (starBanner) {
+          starBanner.innerText = isSkip ? 'Customer chose to skip star rating' : `🌟 ${r.rating}/5 Stars (${'⭐'.repeat(r.rating)})`;
+        }
+        if (timeBanner) {
+          timeBanner.innerText = new Date(r.createdAt).toLocaleString();
+        }
+        if (feedbackBanner) {
+          feedbackBanner.innerText = `"${r.feedback || (isSkip ? 'Skipped by customer' : 'No written review')}"`;
+        }
+        if (tagsBanner) {
+          const tags = (r.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+          tagsBanner.innerHTML = tags.map(t => `<span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">${escapeHtml(t)}</span>`).join('');
+        }
+
+        // Render messages
+        const msgs = res.messages || [];
+        if (msgs.length === 0) {
+          if (bodyEl) bodyEl.innerHTML = '<div class="text-center py-8 text-slate-500 text-xs">No chat messages found for this user session.</div>';
+          return;
+        }
+
+        if (bodyEl) {
+          bodyEl.innerHTML = msgs.map(m => {
+            const isUser = m.sender === 'user';
+            const isSystem = m.sender === 'system';
+            const timeStr = m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+            if (isSystem) {
+              return `
+                <div class="flex justify-center my-2">
+                  <div class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[11px] text-slate-400 text-center max-w-[85%] whitespace-pre-wrap">
+                    ℹ️ ${escapeHtml(m.text || '')}
+                    <div class="text-[9px] text-slate-600 mt-0.5">${escapeHtml(timeStr)}</div>
+                  </div>
+                </div>
+              `;
+            }
+
+            const senderLabel = isUser ? (r.userName || 'Customer') : (m.senderName || r.staffName || 'Support Agent');
+
+            return `
+              <div class="flex flex-col ${isUser ? 'items-start' : 'items-end'}">
+                <div class="flex items-center gap-1.5 mb-1 px-1">
+                  <span class="text-[10px] font-bold ${isUser ? 'text-indigo-400' : 'text-emerald-400'}">
+                    ${escapeHtml(senderLabel)}
+                  </span>
+                  <span class="text-[9px] text-slate-500">${escapeHtml(timeStr)}</span>
+                </div>
+                <div class="max-w-[80%] rounded-2xl px-4 py-2 text-xs whitespace-pre-wrap break-words ${isUser ? 'bg-slate-900 text-slate-200 border border-slate-800 rounded-tl-sm' : 'bg-indigo-600 text-white rounded-tr-sm shadow-md'}">
+                  ${escapeHtml(m.text || '')}
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (err) {
+        if (bodyEl) bodyEl.innerHTML = `<div class="text-center py-8 text-rose-400 text-xs">Error loading transcript: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    function closeChatTranscriptModal() {
+      const modal = document.getElementById('chatTranscriptModal');
+      if (modal) modal.classList.add('hidden');
     }
 
     function renderQueueThreads() {

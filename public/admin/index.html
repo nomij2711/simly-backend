@@ -2892,77 +2892,7 @@
       }
 
       if (currentActiveTab === 'users') {
-        const c = data.counts || {};
-        if (document.getElementById('crmTotalUsersBadge')) document.getElementById('crmTotalUsersBadge').innerText = c.total || newTotal;
-        if (document.getElementById('filterCountAll')) document.getElementById('filterCountAll').innerText = `(${c.total || 0})`;
-        if (document.getElementById('filterCountActive')) document.getElementById('filterCountActive').innerText = `(${c.active || 0})`;
-        if (document.getElementById('filterCountBlocked')) document.getElementById('filterCountBlocked').innerText = `(${c.blocked || 0})`;
-        if (document.getElementById('filterCountErased')) document.getElementById('filterCountErased').innerText = `(${c.erased || 0})`;
-
-        const tbody = document.getElementById('usersTableBody');
-        if (tbody) {
-          tbody.innerHTML = (data.users || []).map(u => {
-            const isSel = selectedUserIds.has(u.id);
-            const isErased = u.isDeleted;
-            let badgeHTML = '';
-            if (u.displayStatus === 'self_erased') {
-              badgeHTML = `<span title="Erased by user on ${u.deletedAt ? new Date(u.deletedAt).toLocaleDateString() : ''}" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1 w-fit"><i class="fa-solid fa-triangle-exclamation text-[9px]"></i> SELF-ERASED</span>`;
-            } else if (u.displayStatus === 'admin_deleted') {
-              badgeHTML = `<span title="Archived by admin" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1 w-fit"><i class="fa-solid fa-box-archive text-[9px]"></i> DELETED</span>`;
-            } else if (u.displayStatus === 'blocked') {
-              badgeHTML = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 w-fit">BLOCKED 🔴</span>`;
-            } else {
-              badgeHTML = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 w-fit">ACTIVE 🟢</span>`;
-            }
-
-            return `
-            <tr class="hover:bg-slate-800/40 transition-all cursor-pointer group ${isSel ? 'bg-indigo-950/20' : ''}">
-              <td class="py-3 px-4 text-center" onclick="event.stopPropagation()">
-                <input type="checkbox" class="user-row-checkbox rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4" value="${u.id}" ${isSel ? 'checked' : ''} onchange="toggleUserSelection('${u.id}', this.checked, event)">
-              </td>
-              <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4 flex items-center gap-3">
-                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr ${isErased ? 'from-amber-500/20 to-rose-500/20 text-amber-400 border-amber-500/30' : 'from-indigo-500/20 to-purple-500/20 text-indigo-400 border-indigo-500/30'} flex items-center justify-center font-bold text-xs border group-hover:scale-105 transition-all">
-                  ${(u.name || 'U')[0]}
-                </div>
-                <div>
-                  <div class="font-bold text-white text-xs group-hover:text-indigo-300 flex items-center gap-1.5">
-                    <span>${escapeHtml(u.name || 'SimlyX User')}</span>
-                    <i class="fa-solid fa-arrow-up-right-from-square text-[9px] text-slate-500 group-hover:text-indigo-400"></i>
-                  </div>
-                  <div class="text-[11px] text-slate-400 font-mono">${escapeHtml(u.email)}</div>
-                </div>
-              </td>
-              <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4 font-mono font-bold text-emerald-400">${formatUSD8(u.walletBalance)}</td>
-              <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4">
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                  ${u.numbersCount || 0} Lines
-                </span>
-              </td>
-              <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4">
-                ${badgeHTML}
-              </td>
-              <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4 text-slate-400 text-[11px]">${new Date(u.createdAt).toLocaleDateString()}</td>
-              <td class="py-3 px-4 text-right space-x-1" onclick="event.stopPropagation()">
-                <button onclick="inspectUserDossier('${u.id}')" title="Inspect Full Telecom & Financial Dossier" class="p-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 transition-all text-xs">
-                  <i class="fa-solid fa-id-card"></i>
-                </button>
-                <button onclick="openBanUserModal('${u.id}', '${escapeHtml(u.name || '')}', '${escapeHtml(u.email || '')}')" title="Ban User" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-all text-xs">
-                  <i class="fa-solid fa-ban"></i>
-                </button>
-                ${isErased ? `
-                  <button onclick="restoreUser('${u.id}')" title="Restore Account" class="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-all text-xs">
-                    <i class="fa-solid fa-trash-can-arrow-up"></i>
-                  </button>
-                ` : `
-                  <button onclick="softDeleteUser('${u.id}', '${escapeHtml(u.email || '')}')" title="Archive / Soft Delete" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-rose-400 transition-all text-xs">
-                    <i class="fa-solid fa-trash"></i>
-                  </button>
-                `}
-              </td>
-            </tr>
-            `;
-          }).join('') || '<tr><td colspan="7" class="py-8 text-center text-slate-500">No users found.</td></tr>';
-        }
+        await loadUsers();
       }
     }
 

@@ -3033,10 +3033,14 @@ const requireStaffPermission = (requiredPermission = null) => {
 
       // Master Fail-Safe Admin Token
       if (token === ADMIN_SECRET_TOKEN) {
+        const superAdmin = await prisma.staffUser.findFirst({
+          where: { role: 'super_admin' }
+        });
+
         req.staff = {
-          id: 'root_super_admin',
-          name: 'Owner (Super Admin)',
-          email: ADMIN_MASTER_EMAIL,
+          id: superAdmin?.id || 'root_super_admin',
+          name: superAdmin?.name || 'Owner (Super Admin)',
+          email: superAdmin?.email || ADMIN_MASTER_EMAIL,
           role: 'super_admin',
           permissions: 'all'
         };
@@ -3051,7 +3055,13 @@ const requireStaffPermission = (requiredPermission = null) => {
 
       // If Root Super Admin Session
       if (sessionStaff.id === 'root_super_admin') {
-        req.staff = sessionStaff;
+        const superAdmin = await prisma.staffUser.findFirst({
+          where: { role: 'super_admin' }
+        });
+        req.staff = {
+          ...sessionStaff,
+          id: superAdmin?.id || 'root_super_admin'
+        };
         return next();
       }
 
@@ -3109,12 +3119,14 @@ const requireStaffPermission = (requiredPermission = null) => {
   };
 };
 
-// Seed default owner account if database has zero staff
+// Seed default owner account if database has zero staff & sync support stats
 async function ensureSuperAdminExists() {
   try {
-    const count = await prisma.staffUser.count();
-    if (count === 0) {
-      await prisma.staffUser.create({
+    let superAdmin = await prisma.staffUser.findFirst({
+      where: { role: 'super_admin' }
+    });
+    if (!superAdmin) {
+      superAdmin = await prisma.staffUser.create({
         data: {
           name: 'Owner (Super Admin)',
           email: 'admin@simlyx.com',
@@ -3125,6 +3137,36 @@ async function ensureSuperAdminExists() {
         }
       });
       console.log('👑 [STAFF SEEDED] Initial Super Admin account created: admin@simlyx.com');
+    }
+
+    // Sync legacy root_super_admin tickets and ratings to superAdmin ID
+    if (superAdmin) {
+      await prisma.supportTicket.updateMany({
+        where: { assignedStaffId: 'root_super_admin' },
+        data: { assignedStaffId: superAdmin.id, assignedStaffName: superAdmin.name }
+      }).catch(() => {});
+
+      await prisma.supportRating.updateMany({
+        where: { staffId: 'root_super_admin' },
+        data: { staffId: superAdmin.id, staffName: superAdmin.name }
+      }).catch(() => {});
+
+      const resolvedCount = await prisma.supportTicket.count({
+        where: {
+          status: 'resolved',
+          OR: [
+            { assignedStaffId: superAdmin.id },
+            { assignedStaffId: 'root_super_admin' },
+            { assignedStaffId: null }
+          ]
+        }
+      });
+
+      await prisma.staffUser.update({
+        where: { id: superAdmin.id },
+        data: { ticketsResolved: resolvedCount }
+      }).catch(() => {});
+      console.log(`👑 [STAFF SYNCED] Super Admin ${superAdmin.name} synced (${resolvedCount} resolved tickets)`);
     }
   } catch (e) {
     console.error('Seed staff check error:', e);
@@ -4800,11 +4842,18 @@ app.post('/api/admin/support/resolve', requireStaffPermission('can_handle_suppor
     });
 
     // Increment agent's resolved count
-    if (req.staff.id !== 'root_super_admin') {
-      await prisma.staffUser.update({
-        where: { id: req.staff.id },
-        data: { ticketsResolved: { increment: 1 } }
-      }).catch(() => {});
+    if (req.staff?.id) {
+      let targetStaffId = req.staff.id;
+      if (targetStaffId === 'root_super_admin') {
+        const superAdmin = await prisma.staffUser.findFirst({ where: { role: 'super_admin' } });
+        if (superAdmin) targetStaffId = superAdmin.id;
+      }
+      if (targetStaffId && targetStaffId !== 'root_super_admin') {
+        await prisma.staffUser.update({
+          where: { id: targetStaffId },
+          data: { ticketsResolved: { increment: 1 } }
+        }).catch(() => {});
+      }
     }
 
     await logAuditEvent({
@@ -4991,13 +5040,17 @@ app.post('/api/support/rate', async (req, res) => {
 // 12c. Endpoint: Get Support Ratings & CSAT Analytics Stats for Admin
 app.get('/api/admin/support/ratings/stats', requireStaffPermission('can_handle_support'), async (req, res) => {
   try {
-    const [allRatings, staffList] = await Promise.all([
+    const [allRatings, staffList, resolvedTickets] = await Promise.all([
       prisma.supportRating.findMany({
         orderBy: { createdAt: 'desc' }
       }),
       prisma.staffUser.findMany({
         where: { isActive: true },
         select: { id: true, name: true, email: true, role: true, isOnline: true, ticketsResolved: true }
+      }),
+      prisma.supportTicket.findMany({
+        where: { status: 'resolved' },
+        select: { assignedStaffId: true, assignedStaffName: true }
       })
     ]);
 
@@ -5029,7 +5082,10 @@ app.get('/api/admin/support/ratings/stats', requireStaffPermission('can_handle_s
 
     // Per-Agent breakdown
     const agentScorecards = staffList.map(agent => {
-      const agentRatings = allRatings.filter(r => r.staffId === agent.id);
+      const isSuper = agent.role === 'super_admin';
+      const agentRatings = allRatings.filter(r => 
+        r.staffId === agent.id || (isSuper && (r.staffId === 'root_super_admin' || r.staffName === agent.name))
+      );
       const agentNonSkipped = agentRatings.filter(r => !r.isSkipped && r.rating > 0);
       const agentSkipped = agentRatings.filter(r => r.isSkipped).length;
       const aTotalRated = agentNonSkipped.length;
@@ -5049,13 +5105,19 @@ app.get('/api/admin/support/ratings/stats', requireStaffPermission('can_handle_s
       const aAvgRating = aTotalRated > 0 ? parseFloat((aTotalScore / aTotalRated).toFixed(2)) : 5.0;
       const aCsat = aTotalRated > 0 ? Math.round((aPositive / aTotalRated) * 100) : 100;
 
+      // Count actual resolved tickets from DB
+      const resolvedFromTickets = resolvedTickets.filter(t => 
+        t.assignedStaffId === agent.id || (isSuper && (t.assignedStaffId === 'root_super_admin' || !t.assignedStaffId))
+      ).length;
+      const effectiveResolved = Math.max(agent.ticketsResolved || 0, resolvedFromTickets);
+
       return {
         staffId: agent.id,
         name: agent.name,
         email: agent.email,
         role: agent.role,
         isOnline: agent.isOnline,
-        ticketsResolved: agent.ticketsResolved,
+        ticketsResolved: effectiveResolved,
         totalReviews: aTotalRated,
         skippedCount: agentSkipped,
         averageRating: aAvgRating,
@@ -5093,7 +5155,16 @@ app.get('/api/admin/support/ratings', requireStaffPermission('can_handle_support
 
     const where = {};
     if (staffId && staffId !== 'all') {
-      where.staffId = staffId;
+      const selectedStaff = await prisma.staffUser.findUnique({ where: { id: staffId } });
+      if (selectedStaff && selectedStaff.role === 'super_admin') {
+        where.OR = [
+          { staffId: staffId },
+          { staffId: 'root_super_admin' },
+          { staffName: selectedStaff.name }
+        ];
+      } else {
+        where.staffId = staffId;
+      }
     }
     if (isSkipped === 'true') {
       where.isSkipped = true;
@@ -5107,12 +5178,21 @@ app.get('/api/admin/support/ratings', requireStaffPermission('can_handle_support
     }
     if (search && search.trim()) {
       const q = search.trim();
-      where.OR = [
+      const searchConditions = [
         { userName: { contains: q, mode: 'insensitive' } },
         { userEmail: { contains: q, mode: 'insensitive' } },
         { feedback: { contains: q, mode: 'insensitive' } },
         { staffName: { contains: q, mode: 'insensitive' } }
       ];
+      if (where.OR) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: searchConditions }
+        ];
+        delete where.OR;
+      } else {
+        where.OR = searchConditions;
+      }
     }
 
     const take = Math.min(200, Math.max(1, parseInt(limit, 10) || 100));

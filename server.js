@@ -3938,8 +3938,21 @@ app.post('/api/admin/users/:id/adjust-balance', requireAdmin, async (req, res) =
         userId: user.id,
         type: numAmount > 0 ? 'topup' : 'admin_deduction',
         amount: numAmount,
-        description: `Admin Adjustment: ${reason || (numAmount > 0 ? 'Manual Credit Gift' : 'Manual Debit')} ($${Math.abs(numAmount).toFixed(2)})`
+        description: `Admin Adjustment: ${reason || (numAmount > 0 ? 'Manual Credit Gift' : 'Manual Debit')} (${Math.abs(numAmount).toFixed(2)})`
       }
+    });
+
+    // Record System Audit Log
+    await logAuditEvent({
+      staffId: req.staffUser?.id || null,
+      staffName: req.staffUser?.name || 'Master Admin',
+      staffEmail: req.staffUser?.email || 'owner@simlyx.com',
+      staffRole: req.staffUser?.role || 'super_admin',
+      action: 'ADJUST_BALANCE',
+      targetId: user.id,
+      targetType: 'user',
+      details: `${numAmount > 0 ? 'Credited' : 'Debited'} ${Math.abs(numAmount).toFixed(2)} for ${user.email}. New Balance: ${newBalance.toFixed(2)}. Reason: ${reason || 'Admin Adjustment'}`,
+      req
     });
 
     res.json({

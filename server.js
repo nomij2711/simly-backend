@@ -30,6 +30,18 @@ app.get('/admin/', sendAdminApp);
 app.get('/admin/{*splat}', sendAdminApp);
 
 // Root Health Check Route
+app.get('/api/test-email', async (req, res) => {
+  const targetEmail = req.query.to || 'nomijutt2711@gmail.com';
+  const testCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const result = await sendSimlyxEmail({
+    to: targetEmail,
+    subject: `SimlyX Live Test Code: ${testCode}`,
+    html: generateSimlyxOtpEmail({ name: 'SimlyX User', otpCode: testCode, type: 'signup' }),
+    text: `Your SimlyX verification code is: ${testCode}`
+  });
+  res.json({ success: result.success, email: targetEmail, code: testCode, result });
+});
+
 app.get('/', (req, res) => {
   res.json({
     success: true,
@@ -50,14 +62,15 @@ app.get('/', (req, res) => {
 const nodemailer = require('nodemailer');
 
 const smtpTransporter = nodemailer.createTransport({
-  service: 'gmail',
-  pool: true,
-  maxConnections: 5,
-  maxMessages: 100,
-  rateLimit: 10,
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.SMTP_USER || 'nomijutt2711@gmail.com',
-    pass: process.env.SMTP_PASS || 'cewbcfxnwxfa yrps'.replace(/\s+/g, '')
+    pass: (process.env.SMTP_PASS || 'cewbcfxnwxfayrps').replace(/\s+/g, '')
+  },
+  tls: {
+    rejectUnauthorized: false
   }
 });
 

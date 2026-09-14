@@ -2318,17 +2318,28 @@ app.get('/api/support/messages', async (req, res) => {
     }
 
     const isResolved = ticket?.status === 'resolved';
+    const isRated = ticket?.isRated || false;
+    const ratingSkipped = ticket?.ratingSkipped || false;
+    const ratingScore = ticket?.ratingScore || null;
 
     res.json({
       success: true,
       count: finalMessages.length,
       isResolved,
+      isRated,
+      ratingSkipped,
+      ratingScore,
       status: ticket?.status || 'bot',
       canReply: !isResolved,
       ticket: ticket ? {
         id: ticket.id,
         status: ticket.status,
         isResolved,
+        isRated: ticket.isRated || false,
+        ratingSkipped: ticket.ratingSkipped || false,
+        ratingScore: ticket.ratingScore || null,
+        ratingFeedback: ticket.ratingFeedback || null,
+        ratedAt: ticket.ratedAt || null,
         assignedStaffName: ticket.assignedStaffName,
         resolvedAt: ticket.resolvedAt
       } : null,
@@ -2506,6 +2517,11 @@ app.post('/api/support/start-new-chat', async (req, res) => {
         assignedStaffName: null,
         claimedAt: null,
         resolvedAt: null,
+        isRated: false,
+        ratingSkipped: false,
+        ratingScore: null,
+        ratingFeedback: null,
+        ratedAt: null,
         lastMessageText: 'New support conversation started',
         lastMessageSender: 'system',
         lastMessageAt: new Date(),
@@ -2517,6 +2533,11 @@ app.post('/api/support/start-new-chat', async (req, res) => {
         userName: senderUser?.name || (userId.includes('@') ? userId.split('@')[0] : 'SimlyX Customer'),
         userEmail: senderUser?.email || (userId.includes('@') ? userId : null),
         status: 'bot',
+        isRated: false,
+        ratingSkipped: false,
+        ratingScore: null,
+        ratingFeedback: null,
+        ratedAt: null,
         lastMessageText: 'New support conversation started',
         lastMessageSender: 'system',
         lastMessageAt: new Date(),
@@ -4808,63 +4829,334 @@ app.post('/api/admin/support/resolve', requireStaffPermission('can_handle_suppor
   }
 });
 
-// 12b. Endpoint: Submit Customer Satisfaction (CSAT) Star Rating & Review
+// 12b. Endpoint: Submit Customer Satisfaction (CSAT) Star Rating & Review (Strictly Idempotent)
 app.post('/api/support/rate', async (req, res) => {
   try {
-    const { userId, rating, feedback = '' } = req.body;
-    if (!userId || !rating || isNaN(Number(rating))) {
-      return res.status(400).json({ success: false, error: 'User ID and valid rating (1-5) are required.' });
+    const { userId, rating = 0, feedback = '', tags = '', isSkipped = false } = req.body;
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'User ID is required.' });
     }
 
-    const starCount = Math.min(5, Math.max(1, parseInt(rating, 10)));
-    const starsEmoji = '⭐'.repeat(starCount);
-
     const ticket = await prisma.supportTicket.findUnique({ where: { userId } });
-    
-    // Post confirmation into chat
-    await prisma.supportMessage.create({
-      data: {
-        userId,
-        sender: 'system',
-        senderName: 'SimlyX Support',
-        text: `🌟 Customer Rated ${starCount}/5 Stars ${starsEmoji}${feedback.trim() ? `\nReview: "${feedback.trim()}"` : ''}`
+
+    // 1. Strict Idempotency: Prevent duplicate submissions or re-rating for the same session
+    if (ticket && (ticket.isRated || ticket.ratingSkipped)) {
+      return res.json({
+        success: true,
+        message: 'Feedback already recorded for this inquiry.',
+        isRated: true,
+        ratingSkipped: ticket.ratingSkipped,
+        ratingScore: ticket.ratingScore
+      });
+    }
+
+    const cleanFeedback = (typeof feedback === 'string' ? feedback : '').trim();
+    const cleanTags = Array.isArray(tags) ? tags.join(', ') : (typeof tags === 'string' ? tags.trim() : '');
+
+    // 2. User chose to SKIP rating
+    if (isSkipped === true || isSkipped === 'true') {
+      if (ticket) {
+        await prisma.supportTicket.update({
+          where: { userId },
+          data: {
+            isRated: true,
+            ratingSkipped: true,
+            ratingScore: null,
+            ratingFeedback: 'Skipped by customer',
+            ratedAt: new Date()
+          }
+        });
       }
-    });
+
+      const ratingRecord = await prisma.supportRating.create({
+        data: {
+          ticketId: ticket?.id || null,
+          userId,
+          userName: ticket?.userName || (userId.includes('@') ? userId.split('@')[0] : 'SimlyX User'),
+          userEmail: ticket?.userEmail || (userId.includes('@') ? userId : null),
+          staffId: ticket?.assignedStaffId || 'unassigned',
+          staffName: ticket?.assignedStaffName || 'SimlyX Support',
+          staffRole: 'support_agent',
+          rating: 0,
+          feedback: 'Skipped by customer',
+          tags: cleanTags || null,
+          isSkipped: true
+        }
+      });
+
+      return res.json({
+        success: true,
+        message: 'Rating skipped.',
+        isRated: true,
+        ratingSkipped: true,
+        ratingId: ratingRecord.id
+      });
+    }
+
+    // 3. User submitted a Star Rating (1 to 5)
+    const starCount = Math.min(5, Math.max(1, parseInt(rating, 10) || 5));
+    const starsEmoji = '⭐'.repeat(starCount);
 
     if (ticket) {
       await prisma.supportTicket.update({
         where: { userId },
         data: {
-          internalNotes: `Rating: ${starCount}/5 Stars ${starsEmoji}. Feedback: ${feedback.trim() || 'No text review'}`
+          isRated: true,
+          ratingSkipped: false,
+          ratingScore: starCount,
+          ratingFeedback: cleanFeedback || null,
+          ratedAt: new Date(),
+          internalNotes: `Rating: ${starCount}/5 Stars ${starsEmoji}. Feedback: ${cleanFeedback || 'No text review'}`
         }
       });
+    }
 
-      // Track in staff audit log
-      if (ticket.assignedStaffId && ticket.assignedStaffId !== 'root_super_admin') {
-        const staff = await prisma.staffUser.findUnique({ where: { id: ticket.assignedStaffId } });
-        if (staff) {
-          await logAuditEvent({
-            staffId: staff.id,
-            staffName: staff.name,
-            staffEmail: staff.email,
-            staffRole: staff.role,
-            action: 'RECEIVED_CUSTOMER_RATING',
-            targetId: userId,
-            targetType: 'staff',
-            details: `Received ${starCount}/5 ⭐ CSAT Rating from customer '${ticket.userName || userId}'. Review: "${feedback.trim()}"`,
-            req
-          });
-        }
+    const ratingRecord = await prisma.supportRating.create({
+      data: {
+        ticketId: ticket?.id || null,
+        userId,
+        userName: ticket?.userName || (userId.includes('@') ? userId.split('@')[0] : 'SimlyX User'),
+        userEmail: ticket?.userEmail || (userId.includes('@') ? userId : null),
+        staffId: ticket?.assignedStaffId || 'unassigned',
+        staffName: ticket?.assignedStaffName || 'SimlyX Support',
+        staffRole: 'support_agent',
+        rating: starCount,
+        feedback: cleanFeedback || null,
+        tags: cleanTags || null,
+        isSkipped: false
+      }
+    });
+
+    // Single system chat message
+    await prisma.supportMessage.create({
+      data: {
+        userId,
+        sender: 'system',
+        senderName: 'SimlyX Support',
+        text: `🌟 Customer Rated ${starCount}/5 Stars ${starsEmoji}${cleanFeedback ? `\nReview: "${cleanFeedback}"` : ''}`
+      }
+    });
+
+    // Track in staff audit log if assigned
+    if (ticket?.assignedStaffId && ticket.assignedStaffId !== 'root_super_admin') {
+      const staff = await prisma.staffUser.findUnique({ where: { id: ticket.assignedStaffId } });
+      if (staff) {
+        await logAuditEvent({
+          staffId: staff.id,
+          staffName: staff.name,
+          staffEmail: staff.email,
+          staffRole: staff.role,
+          action: 'RECEIVED_CUSTOMER_RATING',
+          targetId: userId,
+          targetType: 'staff',
+          details: `Received ${starCount}/5 ⭐ CSAT Rating from customer '${ticket.userName || userId}'. Review: "${cleanFeedback}"`,
+          req
+        });
       }
     }
 
     res.json({
       success: true,
       message: `Thank you! Your ${starCount}-star rating has been recorded.`,
-      rating: starCount
+      rating: starCount,
+      isRated: true,
+      ratingSkipped: false,
+      ratingId: ratingRecord.id
     });
   } catch (error) {
     console.error('[SIMLY ERROR] Failed to submit support rating:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 12c. Endpoint: Get Support Ratings & CSAT Analytics Stats for Admin
+app.get('/api/admin/support/ratings/stats', requireStaffPermission('can_handle_support'), async (req, res) => {
+  try {
+    const [allRatings, staffList] = await Promise.all([
+      prisma.supportRating.findMany({
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.staffUser.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, email: true, role: true, isOnline: true, ticketsResolved: true }
+      })
+    ]);
+
+    const nonSkipped = allRatings.filter(r => !r.isSkipped && r.rating > 0);
+    const skippedCount = allRatings.filter(r => r.isSkipped).length;
+    const totalRated = nonSkipped.length;
+
+    let totalScore = 0;
+    let positiveCount = 0; // 4 or 5 stars
+    let neutralCount = 0;  // 3 stars
+    let negativeCount = 0; // 1 or 2 stars
+    const starCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+
+    nonSkipped.forEach(r => {
+      totalScore += r.rating;
+      if (r.rating === 5) starCounts[5]++;
+      else if (r.rating === 4) starCounts[4]++;
+      else if (r.rating === 3) starCounts[3]++;
+      else if (r.rating === 2) starCounts[2]++;
+      else if (r.rating === 1) starCounts[1]++;
+
+      if (r.rating >= 4) positiveCount++;
+      else if (r.rating === 3) neutralCount++;
+      else negativeCount++;
+    });
+
+    const averageRating = totalRated > 0 ? parseFloat((totalScore / totalRated).toFixed(2)) : 5.0;
+    const csatPercentage = totalRated > 0 ? Math.round((positiveCount / totalRated) * 100) : 100;
+
+    // Per-Agent breakdown
+    const agentScorecards = staffList.map(agent => {
+      const agentRatings = allRatings.filter(r => r.staffId === agent.id);
+      const agentNonSkipped = agentRatings.filter(r => !r.isSkipped && r.rating > 0);
+      const agentSkipped = agentRatings.filter(r => r.isSkipped).length;
+      const aTotalRated = agentNonSkipped.length;
+
+      let aTotalScore = 0;
+      let aPositive = 0;
+      let aNegative = 0;
+      const aStars = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+
+      agentNonSkipped.forEach(r => {
+        aTotalScore += r.rating;
+        if (r.rating in aStars) aStars[r.rating]++;
+        if (r.rating >= 4) aPositive++;
+        else if (r.rating <= 2) aNegative++;
+      });
+
+      const aAvgRating = aTotalRated > 0 ? parseFloat((aTotalScore / aTotalRated).toFixed(2)) : 5.0;
+      const aCsat = aTotalRated > 0 ? Math.round((aPositive / aTotalRated) * 100) : 100;
+
+      return {
+        staffId: agent.id,
+        name: agent.name,
+        email: agent.email,
+        role: agent.role,
+        isOnline: agent.isOnline,
+        ticketsResolved: agent.ticketsResolved,
+        totalReviews: aTotalRated,
+        skippedCount: agentSkipped,
+        averageRating: aAvgRating,
+        csatPercentage: aCsat,
+        starCounts: aStars,
+        flaggedCount: aNegative
+      };
+    });
+
+    res.json({
+      success: true,
+      stats: {
+        totalReviews: totalRated,
+        totalSkipped: skippedCount,
+        averageRating,
+        csatPercentage,
+        positiveCount,
+        neutralCount,
+        negativeCount,
+        flaggedCount: negativeCount,
+        starCounts
+      },
+      agentScorecards
+    });
+  } catch (error) {
+    console.error('[SIMLY ERROR] Failed to get support rating stats:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 12d. Endpoint: Get Paginated/Filtered Support Ratings Reviews Feed
+app.get('/api/admin/support/ratings', requireStaffPermission('can_handle_support'), async (req, res) => {
+  try {
+    const { staffId, minRating, maxRating, isSkipped, search, limit = 100, page = 1 } = req.query;
+
+    const where = {};
+    if (staffId && staffId !== 'all') {
+      where.staffId = staffId;
+    }
+    if (isSkipped === 'true') {
+      where.isSkipped = true;
+    } else if (isSkipped === 'false') {
+      where.isSkipped = false;
+    }
+    if (minRating || maxRating) {
+      where.rating = {};
+      if (minRating) where.rating.gte = parseInt(minRating, 10);
+      if (maxRating) where.rating.lte = parseInt(maxRating, 10);
+    }
+    if (search && search.trim()) {
+      const q = search.trim();
+      where.OR = [
+        { userName: { contains: q, mode: 'insensitive' } },
+        { userEmail: { contains: q, mode: 'insensitive' } },
+        { feedback: { contains: q, mode: 'insensitive' } },
+        { staffName: { contains: q, mode: 'insensitive' } }
+      ];
+    }
+
+    const take = Math.min(200, Math.max(1, parseInt(limit, 10) || 100));
+    const skip = (Math.max(1, parseInt(page, 10) || 1) - 1) * take;
+
+    const [ratings, totalCount] = await Promise.all([
+      prisma.supportRating.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take,
+        skip
+      }),
+      prisma.supportRating.count({ where })
+    ]);
+
+    res.json({
+      success: true,
+      ratings,
+      totalCount,
+      page: parseInt(page, 10) || 1,
+      limit: take
+    });
+  } catch (error) {
+    console.error('[SIMLY ERROR] Failed to fetch ratings feed:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 12e. Endpoint: Get Full Chat Transcript for a Support Rating
+app.get('/api/admin/support/ratings/:id/transcript', requireStaffPermission('can_handle_support'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const rating = await prisma.supportRating.findUnique({ where: { id } });
+    if (!rating) {
+      return res.status(404).json({ success: false, error: 'Rating record not found.' });
+    }
+
+    const [messages, ticket, user] = await Promise.all([
+      prisma.supportMessage.findMany({
+        where: { userId: rating.userId },
+        orderBy: { createdAt: 'asc' }
+      }),
+      prisma.supportTicket.findUnique({ where: { userId: rating.userId } }),
+      prisma.user.findFirst({
+        where: {
+          OR: [
+            { id: rating.userId },
+            { email: rating.userId.toLowerCase() }
+          ]
+        },
+        select: { id: true, name: true, email: true, balance: true, isBanned: true }
+      })
+    ]);
+
+    res.json({
+      success: true,
+      rating,
+      messages,
+      ticket,
+      user
+    });
+  } catch (error) {
+    console.error('[SIMLY ERROR] Failed to load chat transcript:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

@@ -782,11 +782,11 @@ const handleBuyTest = async (req, res) => {
     }
 
     // Blocked / Suspended User Check
-    if (!user.isVerified || user.isBanned || user.isDeleted) {
+    if (user.isBanned || user.isDeleted) {
       return res.status(403).json({
         success: false,
         isBlocked: true,
-        error: 'Your account has been blocked by administrator. You cannot purchase virtual lines. Please contact support.'
+        error: 'Your account has been restricted by administrator. You cannot purchase virtual lines. Please contact support.'
       });
     }
 
@@ -959,11 +959,11 @@ app.post('/api/numbers/renew', async (req, res) => {
     }
 
     // Blocked / Suspended User Check
-    if (!user.isVerified || user.isBanned || user.isDeleted) {
+    if (user.isBanned || user.isDeleted) {
       return res.status(403).json({
         success: false,
         isBlocked: true,
-        error: 'Your account has been blocked by administrator. Number renewal is disabled. Please contact support.'
+        error: 'Your account has been restricted by administrator. Number renewal is disabled. Please contact support.'
       });
     }
 
@@ -1239,7 +1239,7 @@ app.post('/api/sms/send', async (req, res) => {
     }
 
     // Blocked / Suspended User Check
-    if (!user.isVerified || user.isBanned || user.isDeleted) {
+    if (user.isBanned || user.isDeleted) {
       return res.status(403).json({
         success: false,
         isBlocked: true,
@@ -1648,11 +1648,11 @@ app.post('/api/calls/log', async (req, res) => {
       }
 
       // Blocked / Suspended User Check
-      if (!user.isVerified || user.isBanned || user.isDeleted) {
+      if (user.isBanned || user.isDeleted) {
         return res.status(403).json({
           success: false,
           isBlocked: true,
-          error: 'Your account has been blocked by administrator. Outbound calling is disabled. Please contact support.'
+          error: 'Your account has been restricted by administrator. Outbound calling is disabled. Please contact support.'
         });
       }
 
@@ -3234,6 +3234,12 @@ async function ensureSuperAdminExists() {
         data: { ticketsResolved: resolvedCount }
       }).catch(() => {});
       console.log(`👑 [STAFF SYNCED] Super Admin ${superAdmin.name} synced (${resolvedCount} resolved tickets)`);
+
+      // Ensure all non-banned users have isVerified: true so they are not blocked
+      await prisma.user.updateMany({
+        where: { isBanned: false, isVerified: false },
+        data: { isVerified: true }
+      }).catch(() => {});
     }
   } catch (e) {
     console.error('Seed staff check error:', e);

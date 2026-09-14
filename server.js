@@ -63,8 +63,9 @@ const nodemailer = require('nodemailer');
 
 const smtpTransporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
+  port: 587,
+  secure: false, // Use STARTTLS (Port 587 standard)
+  requireTLS: true,
   auth: {
     user: process.env.SMTP_USER || 'nomijutt2711@gmail.com',
     pass: (process.env.SMTP_PASS || 'cewbcfxnwxfayrps').replace(/\s+/g, '')

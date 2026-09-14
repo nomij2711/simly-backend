@@ -2233,6 +2233,8 @@
         </div>
       </form>
     </div>
+  </div>
+
   <!-- 💬 FULL CHAT TRANSCRIPT MODAL -->
   <div id="chatTranscriptModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
     <div class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
@@ -5474,6 +5476,7 @@
 
       if (!modal) return;
       modal.classList.remove('hidden');
+      modal.classList.add('flex');
       if (bodyEl) bodyEl.innerHTML = '<div class="text-center py-12 text-slate-500 text-xs">Loading complete conversation transcript...</div>';
 
       try {
@@ -5557,7 +5560,10 @@
 
     function closeChatTranscriptModal() {
       const modal = document.getElementById('chatTranscriptModal');
-      if (modal) modal.classList.add('hidden');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
     }
 
     function renderQueueThreads() {
@@ -5589,14 +5595,14 @@
         const timeAgo = formatTimeAgo(new Date(t.lastMessageAt || t.updatedAt));
 
         let statusBadge = '';
-        if (t.status === 'unassigned') {
+        if (t.status === 'resolved') {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">✅ Resolved</span>';
+        } else if (t.status === 'unassigned') {
           statusBadge = '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">🟡 Waiting in Queue</span>';
         } else if (t.isMine) {
           statusBadge = '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">🟢 Handled by You</span>';
         } else if (t.isLockedByOther) {
           statusBadge = `<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-800 text-slate-400 border border-slate-700">🔒 ${t.assignedStaffName || 'Agent'}</span>`;
-        } else if (t.status === 'resolved') {
-          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">✅ Resolved</span>';
         }
 
         return `
@@ -5644,7 +5650,9 @@
       if (controlsEl) controlsEl.classList.remove('hidden');
 
       if (metaEl) {
-        if (ticket.status === 'unassigned') {
+        if (ticket.status === 'resolved') {
+          metaEl.innerText = `${ticket.userEmail || ticket.userId} • Resolved & Archived (Read-only)`;
+        } else if (ticket.status === 'unassigned') {
           metaEl.innerText = `${ticket.userEmail || ticket.userId} • Waiting in Queue (Claim ticket to assist & unlock actions)`;
         } else {
           metaEl.innerText = `${ticket.userEmail || ticket.userId} • Click header to view full dossier & actions`;
@@ -5661,7 +5669,7 @@
           balBadge.innerText = 'Checking...';
           adminFetch(`/api/admin/support/user-dossier/${encodeURIComponent(userId)}`).then(res => {
             if (res.success && res.user && activeSupportUserId === userId) {
-              balBadge.innerText = `${(res.user.walletBalance || 0).toFixed(2)}`;
+              balBadge.innerText = `$${(res.user.walletBalance || 0).toFixed(2)}`;
             }
           }).catch(() => {
             if (balBadge) balBadge.classList.add('hidden');
@@ -5670,7 +5678,35 @@
       }
 
       // Configure Action Buttons & Collision Lock Banner
-      if (ticket.status === 'unassigned') {
+      if (ticket.status === 'resolved') {
+        if (bannerEl) {
+          bannerEl.className = 'my-2 px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 flex items-center justify-between';
+          bannerEl.classList.remove('hidden');
+        }
+        if (bannerText) bannerText.innerHTML = '<i class="fa-solid fa-circle-check mr-1.5"></i> Ticket Resolved & Closed.';
+        if (bannerSub) bannerSub.innerText = 'Archived';
+        if (btnClaim) {
+          btnClaim.classList.remove('hidden');
+          btnClaim.innerHTML = '<i class="fa-solid fa-rotate-left"></i> <span>Re-open Ticket</span>';
+          btnClaim.disabled = false;
+        }
+        if (btnTransfer) btnTransfer.classList.add('hidden');
+        if (btnResolve) btnResolve.classList.add('hidden');
+        if (btnDossier) {
+          btnDossier.classList.remove('hidden');
+          btnDossier.className = 'px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer';
+          btnDossier.innerHTML = '<i class="fa-solid fa-address-card text-indigo-400"></i> <span>👤 View Dossier & Actions</span>';
+          btnDossier.disabled = false;
+        }
+        if (replyInput) {
+          replyInput.placeholder = 'Ticket resolved. Re-open to send message.';
+          replyInput.disabled = true;
+        }
+        if (btnSend) {
+          btnSend.disabled = true;
+          btnSend.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+      } else if (ticket.status === 'unassigned') {
         if (bannerEl) {
           bannerEl.className = 'my-2 px-3 py-2 rounded-xl text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20 flex items-center justify-between';
           bannerEl.classList.remove('hidden');
@@ -5765,33 +5801,6 @@
           btnSend.disabled = !canSend;
           btnSend.classList.toggle('opacity-50', !canSend);
           btnSend.classList.toggle('cursor-not-allowed', !canSend);
-        }
-      } else if (ticket.status === 'resolved') {
-        if (bannerEl) {
-          bannerEl.className = 'my-2 px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 flex items-center justify-between';
-          bannerEl.classList.remove('hidden');
-        }
-        if (bannerText) bannerText.innerHTML = '<i class="fa-solid fa-circle-check mr-1.5"></i> Ticket Resolved & Closed.';
-        if (bannerSub) bannerSub.innerText = 'Archived';
-        if (btnClaim) {
-          btnClaim.classList.remove('hidden');
-          btnClaim.innerHTML = '<i class="fa-solid fa-rotate-left"></i> <span>Re-open Ticket</span>';
-        }
-        if (btnTransfer) btnTransfer.classList.add('hidden');
-        if (btnResolve) btnResolve.classList.add('hidden');
-        if (btnDossier) {
-          btnDossier.classList.remove('hidden');
-          btnDossier.className = 'px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer';
-          btnDossier.innerHTML = '<i class="fa-solid fa-address-card text-indigo-400"></i> <span>👤 View Dossier & Actions</span>';
-          btnDossier.disabled = false;
-        }
-        if (replyInput) {
-          replyInput.placeholder = 'Ticket resolved. Re-open to send message.';
-          replyInput.disabled = true;
-        }
-        if (btnSend) {
-          btnSend.disabled = true;
-          btnSend.classList.add('opacity-50', 'cursor-not-allowed');
         }
       }
 

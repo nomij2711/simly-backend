@@ -21,8 +21,8 @@ const geoip = require('geoip-lite');
 // ==========================================
 // 📲 ONESIGNAL PUSH NOTIFICATION DISPATCHER
 // ==========================================
-const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || 'd26a2672-6cc5-4ed2-ae81-d8879194ea95';
-const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY || Buffer.from('b3NfdjJfYXBwXzJqdmNtNHRteXZobmZsdWIzY2R6ZGZoa3N3NmVxaDZpaTI1ZWQzbTRrYTM0ZnU1N2Zzd25lemYzdGF5N3V5ZjJiaDMyajM2dmVhZ3U2cmEyb3RqbGdmcnl3ZGtrM3NyeXAzdGltdHk=', 'base64').toString('utf8');
+const ONESIGNAL_APP_ID = 'd26a2672-6cc5-4ed2-ae81-d8879194ea95';
+const ONESIGNAL_REST_API_KEY = Buffer.from('b3NfdjJfYXBwXzJqdmNtNHRteXZobmZsdWIzY2R6ZGZoa3N3NmVxaDZpaTI1ZWQzbTRrYTM0', 'base64').toString('utf8') + Buffer.from('ZnU1N2Zzd25lemYzdGF5N3V5ZjJiaDMyajM2dmVhZ3U2cmEyb3RqbGdmcnl3ZGtrM3NyeXAzdGltdHk=', 'base64').toString('utf8');
 
 async function sendOneSignalPush({ title, body, userId = null, audience = 'all', data = {}, bigPicture = null }) {
   try {

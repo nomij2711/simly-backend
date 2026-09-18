@@ -2684,7 +2684,7 @@ app.post('/api/wallet/topup', async (req, res) => {
     sendOneSignalPush({
       title: '💳 Wallet Top-Up Successful!',
       body: `Your SimlyX wallet has been credited with $${topupAmount.toFixed(2)}. New Balance: $${user.walletBalance.toFixed(2)}`,
-      userId: user.id,
+      userId: [user.id, user.email].filter(Boolean),
       audience: 'user',
       data: {
         type: 'topup',

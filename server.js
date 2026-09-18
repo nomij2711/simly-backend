@@ -56,10 +56,10 @@ async function sendOneSignalPush({ title, body, userId = null, audience = 'all',
         payload.include_external_user_ids = uids;
         payload.channel_for_external_user_ids = 'push';
       } else {
-        payload.included_segments = ['Total Subscriptions'];
+        payload.included_segments = ['Total Subscriptions', 'Active Subscriptions'];
       }
     } else {
-      payload.included_segments = ['Total Subscriptions'];
+      payload.included_segments = ['Total Subscriptions', 'Active Subscriptions'];
     }
 
     console.log('📲 [ONESIGNAL DISPATCHING] Sending push payload to:', userId || audience, 'Title:', title);
@@ -7721,9 +7721,19 @@ app.post('/api/admin/announcements', requireAdmin, async (req, res) => {
       });
     }
 
+    // 🔔 Dispatch OneSignal push notification to all phones when a new announcement is published
+    if (!id && (trimmedTitle || trimmedMsg)) {
+      sendOneSignalPush({
+        title: trimmedTitle || '📢 SimlyX Announcement',
+        body: trimmedMsg || 'Tap to view the new update in SimlyX.',
+        bigPicture: trimmedImg,
+        audience: 'all'
+      }).catch(e => console.error('⚠️ [ONESIGNAL ANNOUNCEMENT ERROR]:', e.message));
+    }
+
     res.json({
       success: true,
-      message: id ? 'Announcement updated successfully!' : 'New pop-up announcement published live!',
+      message: id ? 'Announcement updated successfully!' : 'New pop-up announcement published & push dispatched live!',
       announcement: saved
     });
   } catch (error) {

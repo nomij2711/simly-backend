@@ -31,7 +31,8 @@ async function sendOneSignalPush({ title, body, userId = null, audience = 'all',
       headings: { en: title },
       contents: { en: body },
       priority: 10,
-      android_sound: 'notification',
+      android_visibility: 1,
+      android_accent_color: 'FF4F46E5',
       small_icon: 'ic_stat_onesignal_default',
       large_icon: 'ic_launcher',
       data: {
@@ -52,11 +53,8 @@ async function sendOneSignalPush({ title, body, userId = null, audience = 'all',
         .filter(Boolean);
 
       if (uids.length > 0) {
-        payload.include_aliases = {
-          external_id: uids
-        };
         payload.include_external_user_ids = uids;
-        payload.target_channel = 'push';
+        payload.channel_for_external_user_ids = 'push';
       } else {
         payload.included_segments = ['Total Subscriptions'];
       }

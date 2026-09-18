@@ -33,7 +33,7 @@ async function sendOneSignalPush({ title, body, userId = null, audience = 'all',
       priority: 10,
       android_visibility: 1,
       android_accent_color: 'FF4F46E5',
-      small_icon: 'ic_launcher',
+      small_icon: 'ic_stat_onesignal_default',
       large_icon: 'https://api.simlyx.com/logo.png',
       data: {
         ...data,

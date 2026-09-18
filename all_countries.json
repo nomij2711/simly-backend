@@ -1,0 +1,1838 @@
+[
+  {
+    "flag": "🇺🇸",
+    "name": "United States",
+    "code": "US",
+    "dialCode": "+1",
+    "callRate": 0.02,
+    "smsRate": 0.02,
+    "monthly": 1.5
+  },
+  {
+    "flag": "🇨🇦",
+    "name": "Canada",
+    "code": "CA",
+    "dialCode": "+1",
+    "callRate": 0.02,
+    "smsRate": 0.02,
+    "monthly": 1.5
+  },
+  {
+    "flag": "🇲🇽",
+    "name": "Mexico",
+    "code": "MX",
+    "dialCode": "+52",
+    "callRate": 0.038,
+    "smsRate": 0.05,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇵🇷",
+    "name": "Puerto Rico",
+    "code": "PR",
+    "dialCode": "+1787",
+    "callRate": 0.025,
+    "smsRate": 0.025,
+    "monthly": 2
+  },
+  {
+    "flag": "🇧🇸",
+    "name": "Bahamas",
+    "code": "BS",
+    "dialCode": "+1242",
+    "callRate": 0.12,
+    "smsRate": 0.06,
+    "monthly": 6
+  },
+  {
+    "flag": "🇧🇧",
+    "name": "Barbados",
+    "code": "BB",
+    "dialCode": "+1246",
+    "callRate": 0.15,
+    "smsRate": 0.07,
+    "monthly": 6
+  },
+  {
+    "flag": "🇯🇲",
+    "name": "Jamaica",
+    "code": "JM",
+    "dialCode": "+1876",
+    "callRate": 0.16,
+    "smsRate": 0.07,
+    "monthly": 6
+  },
+  {
+    "flag": "🇹🇹",
+    "name": "Trinidad and Tobago",
+    "code": "TT",
+    "dialCode": "+1868",
+    "callRate": 0.14,
+    "smsRate": 0.065,
+    "monthly": 6
+  },
+  {
+    "flag": "🇩🇴",
+    "name": "Dominican Republic",
+    "code": "DO",
+    "dialCode": "+1809",
+    "callRate": 0.075,
+    "smsRate": 0.05,
+    "monthly": 4
+  },
+  {
+    "flag": "🇭🇹",
+    "name": "Haiti",
+    "code": "HT",
+    "dialCode": "+509",
+    "callRate": 0.28,
+    "smsRate": 0.09,
+    "monthly": 7
+  },
+  {
+    "flag": "🇨🇺",
+    "name": "Cuba",
+    "code": "CU",
+    "dialCode": "+53",
+    "callRate": 0.75,
+    "smsRate": 0.15,
+    "monthly": 10
+  },
+  {
+    "flag": "🇰🇾",
+    "name": "Cayman Islands",
+    "code": "KY",
+    "dialCode": "+1345",
+    "callRate": 0.15,
+    "smsRate": 0.07,
+    "monthly": 7
+  },
+  {
+    "flag": "🇧🇲",
+    "name": "Bermuda",
+    "code": "BM",
+    "dialCode": "+1441",
+    "callRate": 0.08,
+    "smsRate": 0.05,
+    "monthly": 5
+  },
+  {
+    "flag": "🇦🇬",
+    "name": "Antigua and Barbuda",
+    "code": "AG",
+    "dialCode": "+1268",
+    "callRate": 0.16,
+    "smsRate": 0.07,
+    "monthly": 6
+  },
+  {
+    "flag": "🇱🇨",
+    "name": "Saint Lucia",
+    "code": "LC",
+    "dialCode": "+1758",
+    "callRate": 0.16,
+    "smsRate": 0.07,
+    "monthly": 6
+  },
+  {
+    "flag": "🇻🇨",
+    "name": "Saint Vincent",
+    "code": "VC",
+    "dialCode": "+1784",
+    "callRate": 0.16,
+    "smsRate": 0.07,
+    "monthly": 6
+  },
+  {
+    "flag": "🇬🇩",
+    "name": "Grenada",
+    "code": "GD",
+    "dialCode": "+1473",
+    "callRate": 0.16,
+    "smsRate": 0.07,
+    "monthly": 6
+  },
+  {
+    "flag": "🇰🇳",
+    "name": "Saint Kitts and Nevis",
+    "code": "KN",
+    "dialCode": "+1869",
+    "callRate": 0.16,
+    "smsRate": 0.07,
+    "monthly": 6
+  },
+  {
+    "flag": "🇩🇲",
+    "name": "Dominica",
+    "code": "DM",
+    "dialCode": "+1767",
+    "callRate": 0.16,
+    "smsRate": 0.07,
+    "monthly": 6
+  },
+  {
+    "flag": "🇹🇨",
+    "name": "Turks and Caicos",
+    "code": "TC",
+    "dialCode": "+1649",
+    "callRate": 0.18,
+    "smsRate": 0.075,
+    "monthly": 7
+  },
+  {
+    "flag": "🇻🇬",
+    "name": "British Virgin Islands",
+    "code": "VG",
+    "dialCode": "+1284",
+    "callRate": 0.18,
+    "smsRate": 0.075,
+    "monthly": 7
+  },
+  {
+    "flag": "🇦🇮",
+    "name": "Anguilla",
+    "code": "AI",
+    "dialCode": "+1264",
+    "callRate": 0.18,
+    "smsRate": 0.075,
+    "monthly": 7
+  },
+  {
+    "flag": "🇲🇸",
+    "name": "Montserrat",
+    "code": "MS",
+    "dialCode": "+1664",
+    "callRate": 0.18,
+    "smsRate": 0.075,
+    "monthly": 7
+  },
+  {
+    "flag": "🇦🇼",
+    "name": "Aruba",
+    "code": "AW",
+    "dialCode": "+297",
+    "callRate": 0.15,
+    "smsRate": 0.07,
+    "monthly": 6
+  },
+  {
+    "flag": "🇨🇼",
+    "name": "Curacao",
+    "code": "CW",
+    "dialCode": "+599",
+    "callRate": 0.15,
+    "smsRate": 0.07,
+    "monthly": 6
+  },
+  {
+    "flag": "🇧🇷",
+    "name": "Brazil",
+    "code": "BR",
+    "dialCode": "+55",
+    "callRate": 0.07,
+    "smsRate": 0.07,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇦🇷",
+    "name": "Argentina",
+    "code": "AR",
+    "dialCode": "+54",
+    "callRate": 0.088,
+    "smsRate": 0.075,
+    "monthly": 4
+  },
+  {
+    "flag": "🇨🇴",
+    "name": "Colombia",
+    "code": "CO",
+    "dialCode": "+57",
+    "callRate": 0.075,
+    "smsRate": 0.07,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇨🇱",
+    "name": "Chile",
+    "code": "CL",
+    "dialCode": "+56",
+    "callRate": 0.075,
+    "smsRate": 0.07,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇵🇪",
+    "name": "Peru",
+    "code": "PE",
+    "dialCode": "+51",
+    "callRate": 0.088,
+    "smsRate": 0.07,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇻🇪",
+    "name": "Venezuela",
+    "code": "VE",
+    "dialCode": "+58",
+    "callRate": 0.095,
+    "smsRate": 0.07,
+    "monthly": 4
+  },
+  {
+    "flag": "🇪🇨",
+    "name": "Ecuador",
+    "code": "EC",
+    "dialCode": "+593",
+    "callRate": 0.12,
+    "smsRate": 0.07,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇧🇴",
+    "name": "Bolivia",
+    "code": "BO",
+    "dialCode": "+591",
+    "callRate": 0.14,
+    "smsRate": 0.075,
+    "monthly": 5
+  },
+  {
+    "flag": "🇵🇾",
+    "name": "Paraguay",
+    "code": "PY",
+    "dialCode": "+595",
+    "callRate": 0.11,
+    "smsRate": 0.07,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇺🇾",
+    "name": "Uruguay",
+    "code": "UY",
+    "dialCode": "+598",
+    "callRate": 0.12,
+    "smsRate": 0.07,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇬🇾",
+    "name": "Guyana",
+    "code": "GY",
+    "dialCode": "+592",
+    "callRate": 0.22,
+    "smsRate": 0.085,
+    "monthly": 6
+  },
+  {
+    "flag": "🇸🇷",
+    "name": "Suriname",
+    "code": "SR",
+    "dialCode": "+597",
+    "callRate": 0.22,
+    "smsRate": 0.085,
+    "monthly": 6
+  },
+  {
+    "flag": "🇬🇹",
+    "name": "Guatemala",
+    "code": "GT",
+    "dialCode": "+502",
+    "callRate": 0.12,
+    "smsRate": 0.065,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇸🇻",
+    "name": "El Salvador",
+    "code": "SV",
+    "dialCode": "+503",
+    "callRate": 0.14,
+    "smsRate": 0.065,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇭🇳",
+    "name": "Honduras",
+    "code": "HN",
+    "dialCode": "+504",
+    "callRate": 0.14,
+    "smsRate": 0.065,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇳🇮",
+    "name": "Nicaragua",
+    "code": "NI",
+    "dialCode": "+505",
+    "callRate": 0.18,
+    "smsRate": 0.075,
+    "monthly": 5
+  },
+  {
+    "flag": "🇨🇷",
+    "name": "Costa Rica",
+    "code": "CR",
+    "dialCode": "+506",
+    "callRate": 0.075,
+    "smsRate": 0.055,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇵🇦",
+    "name": "Panama",
+    "code": "PA",
+    "dialCode": "+507",
+    "callRate": 0.08,
+    "smsRate": 0.055,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇧🇿",
+    "name": "Belize",
+    "code": "BZ",
+    "dialCode": "+501",
+    "callRate": 0.22,
+    "smsRate": 0.085,
+    "monthly": 6
+  },
+  {
+    "flag": "🇬🇧",
+    "name": "United Kingdom",
+    "code": "GB",
+    "dialCode": "+44",
+    "callRate": 0.04,
+    "smsRate": 0.05,
+    "monthly": 2
+  },
+  {
+    "flag": "🇩🇪",
+    "name": "Germany",
+    "code": "DE",
+    "dialCode": "+49",
+    "callRate": 0.05,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇫🇷",
+    "name": "France",
+    "code": "FR",
+    "dialCode": "+33",
+    "callRate": 0.05,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇮🇹",
+    "name": "Italy",
+    "code": "IT",
+    "dialCode": "+39",
+    "callRate": 0.06,
+    "smsRate": 0.07,
+    "monthly": 3
+  },
+  {
+    "flag": "🇪🇸",
+    "name": "Spain",
+    "code": "ES",
+    "dialCode": "+34",
+    "callRate": 0.05,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇳🇱",
+    "name": "Netherlands",
+    "code": "NL",
+    "dialCode": "+31",
+    "callRate": 0.055,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇨🇭",
+    "name": "Switzerland",
+    "code": "CH",
+    "dialCode": "+41",
+    "callRate": 0.063,
+    "smsRate": 0.075,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇸🇪",
+    "name": "Sweden",
+    "code": "SE",
+    "dialCode": "+46",
+    "callRate": 0.055,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇳🇴",
+    "name": "Norway",
+    "code": "NO",
+    "dialCode": "+47",
+    "callRate": 0.06,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇩🇰",
+    "name": "Denmark",
+    "code": "DK",
+    "dialCode": "+45",
+    "callRate": 0.055,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇫🇮",
+    "name": "Finland",
+    "code": "FI",
+    "dialCode": "+358",
+    "callRate": 0.063,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇧🇪",
+    "name": "Belgium",
+    "code": "BE",
+    "dialCode": "+32",
+    "callRate": 0.06,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇦🇹",
+    "name": "Austria",
+    "code": "AT",
+    "dialCode": "+43",
+    "callRate": 0.06,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇮🇪",
+    "name": "Ireland",
+    "code": "IE",
+    "dialCode": "+353",
+    "callRate": 0.055,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇵🇱",
+    "name": "Poland",
+    "code": "PL",
+    "dialCode": "+48",
+    "callRate": 0.063,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇵🇹",
+    "name": "Portugal",
+    "code": "PT",
+    "dialCode": "+351",
+    "callRate": 0.06,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇬🇷",
+    "name": "Greece",
+    "code": "GR",
+    "dialCode": "+30",
+    "callRate": 0.063,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇷🇴",
+    "name": "Romania",
+    "code": "RO",
+    "dialCode": "+40",
+    "callRate": 0.07,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇨🇿",
+    "name": "Czech Republic",
+    "code": "CZ",
+    "dialCode": "+420",
+    "callRate": 0.065,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇭🇺",
+    "name": "Hungary",
+    "code": "HU",
+    "dialCode": "+36",
+    "callRate": 0.065,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇸🇰",
+    "name": "Slovakia",
+    "code": "SK",
+    "dialCode": "+421",
+    "callRate": 0.065,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇧🇬",
+    "name": "Bulgaria",
+    "code": "BG",
+    "dialCode": "+359",
+    "callRate": 0.08,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇭🇷",
+    "name": "Croatia",
+    "code": "HR",
+    "dialCode": "+385",
+    "callRate": 0.085,
+    "smsRate": 0.07,
+    "monthly": 3
+  },
+  {
+    "flag": "🇸🇮",
+    "name": "Slovenia",
+    "code": "SI",
+    "dialCode": "+386",
+    "callRate": 0.08,
+    "smsRate": 0.07,
+    "monthly": 3
+  },
+  {
+    "flag": "🇱🇹",
+    "name": "Lithuania",
+    "code": "LT",
+    "dialCode": "+370",
+    "callRate": 0.075,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇱🇻",
+    "name": "Latvia",
+    "code": "LV",
+    "dialCode": "+371",
+    "callRate": 0.075,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇪🇪",
+    "name": "Estonia",
+    "code": "EE",
+    "dialCode": "+372",
+    "callRate": 0.075,
+    "smsRate": 0.07,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇨🇾",
+    "name": "Cyprus",
+    "code": "CY",
+    "dialCode": "+357",
+    "callRate": 0.06,
+    "smsRate": 0.065,
+    "monthly": 3
+  },
+  {
+    "flag": "🇲🇹",
+    "name": "Malta",
+    "code": "MT",
+    "dialCode": "+356",
+    "callRate": 0.07,
+    "smsRate": 0.07,
+    "monthly": 3
+  },
+  {
+    "flag": "🇱🇺",
+    "name": "Luxembourg",
+    "code": "LU",
+    "dialCode": "+352",
+    "callRate": 0.065,
+    "smsRate": 0.07,
+    "monthly": 3
+  },
+  {
+    "flag": "🇮🇸",
+    "name": "Iceland",
+    "code": "IS",
+    "dialCode": "+354",
+    "callRate": 0.07,
+    "smsRate": 0.07,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇦🇱",
+    "name": "Albania",
+    "code": "AL",
+    "dialCode": "+355",
+    "callRate": 0.15,
+    "smsRate": 0.075,
+    "monthly": 4
+  },
+  {
+    "flag": "🇷🇸",
+    "name": "Serbia",
+    "code": "RS",
+    "dialCode": "+381",
+    "callRate": 0.14,
+    "smsRate": 0.075,
+    "monthly": 4
+  },
+  {
+    "flag": "🇧🇦",
+    "name": "Bosnia and Herzegovina",
+    "code": "BA",
+    "dialCode": "+387",
+    "callRate": 0.15,
+    "smsRate": 0.075,
+    "monthly": 4
+  },
+  {
+    "flag": "🇲🇪",
+    "name": "Montenegro",
+    "code": "ME",
+    "dialCode": "+382",
+    "callRate": 0.15,
+    "smsRate": 0.075,
+    "monthly": 4
+  },
+  {
+    "flag": "🇲🇰",
+    "name": "North Macedonia",
+    "code": "MK",
+    "dialCode": "+389",
+    "callRate": 0.15,
+    "smsRate": 0.075,
+    "monthly": 4
+  },
+  {
+    "flag": "🇽🇰",
+    "name": "Kosovo",
+    "code": "XK",
+    "dialCode": "+383",
+    "callRate": 0.16,
+    "smsRate": 0.075,
+    "monthly": 4
+  },
+  {
+    "flag": "🇺🇦",
+    "name": "Ukraine",
+    "code": "UA",
+    "dialCode": "+380",
+    "callRate": 0.175,
+    "smsRate": 0.088,
+    "monthly": 4
+  },
+  {
+    "flag": "🇲🇩",
+    "name": "Moldova",
+    "code": "MD",
+    "dialCode": "+373",
+    "callRate": 0.18,
+    "smsRate": 0.08,
+    "monthly": 4
+  },
+  {
+    "flag": "🇧🇾",
+    "name": "Belarus",
+    "code": "BY",
+    "dialCode": "+375",
+    "callRate": 0.25,
+    "smsRate": 0.09,
+    "monthly": 5
+  },
+  {
+    "flag": "🇷🇺",
+    "name": "Russia",
+    "code": "RU",
+    "dialCode": "+7",
+    "callRate": 0.12,
+    "smsRate": 0.08,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇬🇪",
+    "name": "Georgia",
+    "code": "GE",
+    "dialCode": "+995",
+    "callRate": 0.16,
+    "smsRate": 0.075,
+    "monthly": 4
+  },
+  {
+    "flag": "🇦🇲",
+    "name": "Armenia",
+    "code": "AM",
+    "dialCode": "+374",
+    "callRate": 0.18,
+    "smsRate": 0.08,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇦🇿",
+    "name": "Azerbaijan",
+    "code": "AZ",
+    "dialCode": "+994",
+    "callRate": 0.2,
+    "smsRate": 0.085,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇲🇨",
+    "name": "Monaco",
+    "code": "MC",
+    "dialCode": "+377",
+    "callRate": 0.25,
+    "smsRate": 0.09,
+    "monthly": 6
+  },
+  {
+    "flag": "🇦🇩",
+    "name": "Andorra",
+    "code": "AD",
+    "dialCode": "+376",
+    "callRate": 0.15,
+    "smsRate": 0.07,
+    "monthly": 5
+  },
+  {
+    "flag": "🇱🇮",
+    "name": "Liechtenstein",
+    "code": "LI",
+    "dialCode": "+423",
+    "callRate": 0.25,
+    "smsRate": 0.09,
+    "monthly": 6
+  },
+  {
+    "flag": "🇸🇲",
+    "name": "San Marino",
+    "code": "SM",
+    "dialCode": "+378",
+    "callRate": 0.15,
+    "smsRate": 0.07,
+    "monthly": 5
+  },
+  {
+    "flag": "🇬🇮",
+    "name": "Gibraltar",
+    "code": "GI",
+    "dialCode": "+350",
+    "callRate": 0.18,
+    "smsRate": 0.075,
+    "monthly": 5
+  },
+  {
+    "flag": "🇦🇪",
+    "name": "UAE",
+    "code": "AE",
+    "dialCode": "+971",
+    "callRate": 0.12,
+    "smsRate": 0.07,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇸🇦",
+    "name": "Saudi Arabia",
+    "code": "SA",
+    "dialCode": "+966",
+    "callRate": 0.11,
+    "smsRate": 0.07,
+    "monthly": 4
+  },
+  {
+    "flag": "🇶🇦",
+    "name": "Qatar",
+    "code": "QA",
+    "dialCode": "+974",
+    "callRate": 0.275,
+    "smsRate": 0.1,
+    "monthly": 6
+  },
+  {
+    "flag": "🇰🇼",
+    "name": "Kuwait",
+    "code": "KW",
+    "dialCode": "+965",
+    "callRate": 0.25,
+    "smsRate": 0.1,
+    "monthly": 6
+  },
+  {
+    "flag": "🇴🇲",
+    "name": "Oman",
+    "code": "OM",
+    "dialCode": "+968",
+    "callRate": 0.3,
+    "smsRate": 0.1,
+    "monthly": 6
+  },
+  {
+    "flag": "🇧🇭",
+    "name": "Bahrain",
+    "code": "BH",
+    "dialCode": "+973",
+    "callRate": 0.225,
+    "smsRate": 0.088,
+    "monthly": 5.5
+  },
+  {
+    "flag": "🇹🇷",
+    "name": "Turkey",
+    "code": "TR",
+    "dialCode": "+90",
+    "callRate": 0.06,
+    "smsRate": 0.055,
+    "monthly": 3
+  },
+  {
+    "flag": "🇯🇴",
+    "name": "Jordan",
+    "code": "JO",
+    "dialCode": "+962",
+    "callRate": 0.2,
+    "smsRate": 0.088,
+    "monthly": 5
+  },
+  {
+    "flag": "🇱🇧",
+    "name": "Lebanon",
+    "code": "LB",
+    "dialCode": "+961",
+    "callRate": 0.25,
+    "smsRate": 0.1,
+    "monthly": 5.5
+  },
+  {
+    "flag": "🇮🇶",
+    "name": "Iraq",
+    "code": "IQ",
+    "dialCode": "+964",
+    "callRate": 0.3,
+    "smsRate": 0.1,
+    "monthly": 6
+  },
+  {
+    "flag": "🇮🇷",
+    "name": "Iran",
+    "code": "IR",
+    "dialCode": "+98",
+    "callRate": 0.225,
+    "smsRate": 0.088,
+    "monthly": 5
+  },
+  {
+    "flag": "🇵🇸",
+    "name": "Palestine",
+    "code": "PS",
+    "dialCode": "+970",
+    "callRate": 0.25,
+    "smsRate": 0.09,
+    "monthly": 5.5
+  },
+  {
+    "flag": "🇾🇪",
+    "name": "Yemen",
+    "code": "YE",
+    "dialCode": "+967",
+    "callRate": 0.28,
+    "smsRate": 0.095,
+    "monthly": 6
+  },
+  {
+    "flag": "🇸🇾",
+    "name": "Syria",
+    "code": "SY",
+    "dialCode": "+963",
+    "callRate": 0.35,
+    "smsRate": 0.11,
+    "monthly": 7
+  },
+  {
+    "flag": "🇮🇱",
+    "name": "Israel",
+    "code": "IL",
+    "dialCode": "+972",
+    "callRate": 0.05,
+    "smsRate": 0.05,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇪🇬",
+    "name": "Egypt",
+    "code": "EG",
+    "dialCode": "+20",
+    "callRate": 0.125,
+    "smsRate": 0.075,
+    "monthly": 4
+  },
+  {
+    "flag": "🇲🇦",
+    "name": "Morocco",
+    "code": "MA",
+    "dialCode": "+212",
+    "callRate": 0.225,
+    "smsRate": 0.088,
+    "monthly": 5
+  },
+  {
+    "flag": "🇩🇿",
+    "name": "Algeria",
+    "code": "DZ",
+    "dialCode": "+213",
+    "callRate": 0.25,
+    "smsRate": 0.09,
+    "monthly": 5.5
+  },
+  {
+    "flag": "🇹🇳",
+    "name": "Tunisia",
+    "code": "TN",
+    "dialCode": "+216",
+    "callRate": 0.35,
+    "smsRate": 0.1,
+    "monthly": 6.5
+  },
+  {
+    "flag": "🇱🇾",
+    "name": "Libya",
+    "code": "LY",
+    "dialCode": "+218",
+    "callRate": 0.28,
+    "smsRate": 0.095,
+    "monthly": 6
+  },
+  {
+    "flag": "🇸🇩",
+    "name": "Sudan",
+    "code": "SD",
+    "dialCode": "+249",
+    "callRate": 0.28,
+    "smsRate": 0.095,
+    "monthly": 6
+  },
+  {
+    "flag": "🇵🇰",
+    "name": "Pakistan",
+    "code": "PK",
+    "dialCode": "+92",
+    "callRate": 0.065,
+    "smsRate": 0.05,
+    "monthly": 3
+  },
+  {
+    "flag": "🇮🇳",
+    "name": "India",
+    "code": "IN",
+    "dialCode": "+91",
+    "callRate": 0.05,
+    "smsRate": 0.05,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇧🇩",
+    "name": "Bangladesh",
+    "code": "BD",
+    "dialCode": "+880",
+    "callRate": 0.075,
+    "smsRate": 0.063,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇱🇰",
+    "name": "Sri Lanka",
+    "code": "LK",
+    "dialCode": "+94",
+    "callRate": 0.163,
+    "smsRate": 0.075,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇳🇵",
+    "name": "Nepal",
+    "code": "NP",
+    "dialCode": "+977",
+    "callRate": 0.175,
+    "smsRate": 0.075,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇦🇫",
+    "name": "Afghanistan",
+    "code": "AF",
+    "dialCode": "+93",
+    "callRate": 0.3,
+    "smsRate": 0.1,
+    "monthly": 6
+  },
+  {
+    "flag": "🇲🇻",
+    "name": "Maldives",
+    "code": "MV",
+    "dialCode": "+960",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇧🇹",
+    "name": "Bhutan",
+    "code": "BT",
+    "dialCode": "+975",
+    "callRate": 0.22,
+    "smsRate": 0.08,
+    "monthly": 5.5
+  },
+  {
+    "flag": "🇰🇿",
+    "name": "Kazakhstan",
+    "code": "KZ",
+    "dialCode": "+7",
+    "callRate": 0.12,
+    "smsRate": 0.075,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇺🇿",
+    "name": "Uzbekistan",
+    "code": "UZ",
+    "dialCode": "+998",
+    "callRate": 0.15,
+    "smsRate": 0.08,
+    "monthly": 4
+  },
+  {
+    "flag": "🇰🇬",
+    "name": "Kyrgyzstan",
+    "code": "KG",
+    "dialCode": "+996",
+    "callRate": 0.18,
+    "smsRate": 0.085,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇹🇯",
+    "name": "Tajikistan",
+    "code": "TJ",
+    "dialCode": "+992",
+    "callRate": 0.22,
+    "smsRate": 0.09,
+    "monthly": 5
+  },
+  {
+    "flag": "🇹🇲",
+    "name": "Turkmenistan",
+    "code": "TM",
+    "dialCode": "+993",
+    "callRate": 0.25,
+    "smsRate": 0.09,
+    "monthly": 5.5
+  },
+  {
+    "flag": "🇨🇳",
+    "name": "China",
+    "code": "CN",
+    "dialCode": "+86",
+    "callRate": 0.05,
+    "smsRate": 0.063,
+    "monthly": 3
+  },
+  {
+    "flag": "🇭🇰",
+    "name": "Hong Kong",
+    "code": "HK",
+    "dialCode": "+852",
+    "callRate": 0.038,
+    "smsRate": 0.05,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇲🇴",
+    "name": "Macau",
+    "code": "MO",
+    "dialCode": "+853",
+    "callRate": 0.055,
+    "smsRate": 0.055,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇹🇼",
+    "name": "Taiwan",
+    "code": "TW",
+    "dialCode": "+886",
+    "callRate": 0.063,
+    "smsRate": 0.063,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇯🇵",
+    "name": "Japan",
+    "code": "JP",
+    "dialCode": "+81",
+    "callRate": 0.063,
+    "smsRate": 0.075,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇰🇷",
+    "name": "South Korea",
+    "code": "KR",
+    "dialCode": "+82",
+    "callRate": 0.055,
+    "smsRate": 0.063,
+    "monthly": 3
+  },
+  {
+    "flag": "🇸🇬",
+    "name": "Singapore",
+    "code": "SG",
+    "dialCode": "+65",
+    "callRate": 0.03,
+    "smsRate": 0.045,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇲🇾",
+    "name": "Malaysia",
+    "code": "MY",
+    "dialCode": "+60",
+    "callRate": 0.06,
+    "smsRate": 0.063,
+    "monthly": 3
+  },
+  {
+    "flag": "🇮🇩",
+    "name": "Indonesia",
+    "code": "ID",
+    "dialCode": "+62",
+    "callRate": 0.1,
+    "smsRate": 0.075,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇵🇭",
+    "name": "Philippines",
+    "code": "PH",
+    "dialCode": "+63",
+    "callRate": 0.15,
+    "smsRate": 0.088,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇹🇭",
+    "name": "Thailand",
+    "code": "TH",
+    "dialCode": "+66",
+    "callRate": 0.063,
+    "smsRate": 0.063,
+    "monthly": 3
+  },
+  {
+    "flag": "🇻🇳",
+    "name": "Vietnam",
+    "code": "VN",
+    "dialCode": "+84",
+    "callRate": 0.113,
+    "smsRate": 0.075,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇲🇲",
+    "name": "Myanmar",
+    "code": "MM",
+    "dialCode": "+95",
+    "callRate": 0.22,
+    "smsRate": 0.085,
+    "monthly": 5.5
+  },
+  {
+    "flag": "🇰🇭",
+    "name": "Cambodia",
+    "code": "KH",
+    "dialCode": "+855",
+    "callRate": 0.12,
+    "smsRate": 0.075,
+    "monthly": 4
+  },
+  {
+    "flag": "🇱🇦",
+    "name": "Laos",
+    "code": "LA",
+    "dialCode": "+856",
+    "callRate": 0.15,
+    "smsRate": 0.075,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇧🇳",
+    "name": "Brunei",
+    "code": "BN",
+    "dialCode": "+673",
+    "callRate": 0.08,
+    "smsRate": 0.06,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇲🇳",
+    "name": "Mongolia",
+    "code": "MN",
+    "dialCode": "+976",
+    "callRate": 0.12,
+    "smsRate": 0.07,
+    "monthly": 4
+  },
+  {
+    "flag": "🇹🇱",
+    "name": "Timor-Leste",
+    "code": "TL",
+    "dialCode": "+670",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇦🇺",
+    "name": "Australia",
+    "code": "AU",
+    "dialCode": "+61",
+    "callRate": 0.055,
+    "smsRate": 0.065,
+    "monthly": 2.5
+  },
+  {
+    "flag": "🇳🇿",
+    "name": "New Zealand",
+    "code": "NZ",
+    "dialCode": "+64",
+    "callRate": 0.063,
+    "smsRate": 0.075,
+    "monthly": 3
+  },
+  {
+    "flag": "🇫🇯",
+    "name": "Fiji",
+    "code": "FJ",
+    "dialCode": "+679",
+    "callRate": 0.35,
+    "smsRate": 0.1,
+    "monthly": 7
+  },
+  {
+    "flag": "🇵🇬",
+    "name": "Papua New Guinea",
+    "code": "PG",
+    "dialCode": "+675",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇼🇸",
+    "name": "Samoa",
+    "code": "WS",
+    "dialCode": "+685",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇹🇴",
+    "name": "Tonga",
+    "code": "TO",
+    "dialCode": "+676",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇻🇺",
+    "name": "Vanuatu",
+    "code": "VU",
+    "dialCode": "+678",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇸🇧",
+    "name": "Solomon Islands",
+    "code": "SB",
+    "dialCode": "+677",
+    "callRate": 0.55,
+    "smsRate": 0.14,
+    "monthly": 9
+  },
+  {
+    "flag": "🇬🇺",
+    "name": "Guam",
+    "code": "GU",
+    "dialCode": "+1671",
+    "callRate": 0.05,
+    "smsRate": 0.04,
+    "monthly": 3
+  },
+  {
+    "flag": "🇳🇨",
+    "name": "New Caledonia",
+    "code": "NC",
+    "dialCode": "+687",
+    "callRate": 0.35,
+    "smsRate": 0.1,
+    "monthly": 7
+  },
+  {
+    "flag": "🇵🇫",
+    "name": "French Polynesia",
+    "code": "PF",
+    "dialCode": "+689",
+    "callRate": 0.35,
+    "smsRate": 0.1,
+    "monthly": 7
+  },
+  {
+    "flag": "🇳🇬",
+    "name": "Nigeria",
+    "code": "NG",
+    "dialCode": "+234",
+    "callRate": 0.2,
+    "smsRate": 0.1,
+    "monthly": 5
+  },
+  {
+    "flag": "🇿🇦",
+    "name": "South Africa",
+    "code": "ZA",
+    "dialCode": "+27",
+    "callRate": 0.113,
+    "smsRate": 0.075,
+    "monthly": 3.5
+  },
+  {
+    "flag": "🇰🇪",
+    "name": "Kenya",
+    "code": "KE",
+    "dialCode": "+254",
+    "callRate": 0.15,
+    "smsRate": 0.088,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇬🇭",
+    "name": "Ghana",
+    "code": "GH",
+    "dialCode": "+233",
+    "callRate": 0.188,
+    "smsRate": 0.088,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇪🇹",
+    "name": "Ethiopia",
+    "code": "ET",
+    "dialCode": "+251",
+    "callRate": 0.3,
+    "smsRate": 0.1,
+    "monthly": 6
+  },
+  {
+    "flag": "🇺🇬",
+    "name": "Uganda",
+    "code": "UG",
+    "dialCode": "+256",
+    "callRate": 0.25,
+    "smsRate": 0.09,
+    "monthly": 5.5
+  },
+  {
+    "flag": "🇹🇿",
+    "name": "Tanzania",
+    "code": "TZ",
+    "dialCode": "+255",
+    "callRate": 0.25,
+    "smsRate": 0.09,
+    "monthly": 5.5
+  },
+  {
+    "flag": "🇷🇼",
+    "name": "Rwanda",
+    "code": "RW",
+    "dialCode": "+250",
+    "callRate": 0.35,
+    "smsRate": 0.1,
+    "monthly": 6.5
+  },
+  {
+    "flag": "🇨🇲",
+    "name": "Cameroon",
+    "code": "CM",
+    "dialCode": "+237",
+    "callRate": 0.28,
+    "smsRate": 0.095,
+    "monthly": 6
+  },
+  {
+    "flag": "🇨🇮",
+    "name": "Ivory Coast",
+    "code": "CI",
+    "dialCode": "+225",
+    "callRate": 0.32,
+    "smsRate": 0.1,
+    "monthly": 6.5
+  },
+  {
+    "flag": "🇸🇳",
+    "name": "Senegal",
+    "code": "SN",
+    "dialCode": "+221",
+    "callRate": 0.35,
+    "smsRate": 0.1,
+    "monthly": 6.5
+  },
+  {
+    "flag": "🇿🇲",
+    "name": "Zambia",
+    "code": "ZM",
+    "dialCode": "+260",
+    "callRate": 0.28,
+    "smsRate": 0.095,
+    "monthly": 6
+  },
+  {
+    "flag": "🇿🇼",
+    "name": "Zimbabwe",
+    "code": "ZW",
+    "dialCode": "+263",
+    "callRate": 0.38,
+    "smsRate": 0.11,
+    "monthly": 7
+  },
+  {
+    "flag": "🇦🇴",
+    "name": "Angola",
+    "code": "AO",
+    "dialCode": "+244",
+    "callRate": 0.22,
+    "smsRate": 0.085,
+    "monthly": 5
+  },
+  {
+    "flag": "🇲🇿",
+    "name": "Mozambique",
+    "code": "MZ",
+    "dialCode": "+258",
+    "callRate": 0.25,
+    "smsRate": 0.09,
+    "monthly": 5.5
+  },
+  {
+    "flag": "🇳🇦",
+    "name": "Namibia",
+    "code": "NA",
+    "dialCode": "+264",
+    "callRate": 0.22,
+    "smsRate": 0.085,
+    "monthly": 5
+  },
+  {
+    "flag": "🇧🇼",
+    "name": "Botswana",
+    "code": "BW",
+    "dialCode": "+267",
+    "callRate": 0.28,
+    "smsRate": 0.095,
+    "monthly": 6
+  },
+  {
+    "flag": "🇲🇼",
+    "name": "Malawi",
+    "code": "MW",
+    "dialCode": "+265",
+    "callRate": 0.35,
+    "smsRate": 0.1,
+    "monthly": 6.5
+  },
+  {
+    "flag": "🇲🇬",
+    "name": "Madagascar",
+    "code": "MG",
+    "dialCode": "+261",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇲🇺",
+    "name": "Mauritius",
+    "code": "MU",
+    "dialCode": "+230",
+    "callRate": 0.18,
+    "smsRate": 0.075,
+    "monthly": 4.5
+  },
+  {
+    "flag": "🇸🇨",
+    "name": "Seychelles",
+    "code": "SC",
+    "dialCode": "+248",
+    "callRate": 0.55,
+    "smsRate": 0.14,
+    "monthly": 9
+  },
+  {
+    "flag": "🇸🇴",
+    "name": "Somalia",
+    "code": "SO",
+    "dialCode": "+252",
+    "callRate": 0.55,
+    "smsRate": 0.14,
+    "monthly": 9
+  },
+  {
+    "flag": "🇨🇩",
+    "name": "DR Congo",
+    "code": "CD",
+    "dialCode": "+243",
+    "callRate": 0.38,
+    "smsRate": 0.11,
+    "monthly": 7
+  },
+  {
+    "flag": "🇨🇬",
+    "name": "Congo",
+    "code": "CG",
+    "dialCode": "+242",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇬🇦",
+    "name": "Gabon",
+    "code": "GA",
+    "dialCode": "+241",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇲🇱",
+    "name": "Mali",
+    "code": "ML",
+    "dialCode": "+223",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇧🇫",
+    "name": "Burkina Faso",
+    "code": "BF",
+    "dialCode": "+226",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇳🇪",
+    "name": "Niger",
+    "code": "NE",
+    "dialCode": "+227",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇬🇳",
+    "name": "Guinea",
+    "code": "GN",
+    "dialCode": "+224",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇸🇱",
+    "name": "Sierra Leone",
+    "code": "SL",
+    "dialCode": "+232",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇱🇷",
+    "name": "Liberia",
+    "code": "LR",
+    "dialCode": "+231",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇹🇬",
+    "name": "Togo",
+    "code": "TG",
+    "dialCode": "+228",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇧🇯",
+    "name": "Benin",
+    "code": "BJ",
+    "dialCode": "+229",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇬🇲",
+    "name": "Gambia",
+    "code": "GM",
+    "dialCode": "+220",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇲🇷",
+    "name": "Mauritania",
+    "code": "MR",
+    "dialCode": "+222",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇨🇻",
+    "name": "Cape Verde",
+    "code": "CV",
+    "dialCode": "+238",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇬🇼",
+    "name": "Guinea-Bissau",
+    "code": "GW",
+    "dialCode": "+245",
+    "callRate": 0.55,
+    "smsRate": 0.14,
+    "monthly": 9
+  },
+  {
+    "flag": "🇬🇶",
+    "name": "Equatorial Guinea",
+    "code": "GQ",
+    "dialCode": "+240",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇸🇹",
+    "name": "Sao Tome and Principe",
+    "code": "ST",
+    "dialCode": "+239",
+    "callRate": 0.55,
+    "smsRate": 0.14,
+    "monthly": 9
+  },
+  {
+    "flag": "🇩🇯",
+    "name": "Djibouti",
+    "code": "DJ",
+    "dialCode": "+253",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇪🇷",
+    "name": "Eritrea",
+    "code": "ER",
+    "dialCode": "+291",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇸🇸",
+    "name": "South Sudan",
+    "code": "SS",
+    "dialCode": "+211",
+    "callRate": 0.45,
+    "smsRate": 0.12,
+    "monthly": 8
+  },
+  {
+    "flag": "🇨🇫",
+    "name": "Central African Republic",
+    "code": "CF",
+    "dialCode": "+236",
+    "callRate": 0.55,
+    "smsRate": 0.14,
+    "monthly": 9
+  },
+  {
+    "flag": "🇹🇩",
+    "name": "Chad",
+    "code": "TD",
+    "dialCode": "+235",
+    "callRate": 0.55,
+    "smsRate": 0.14,
+    "monthly": 9
+  },
+  {
+    "flag": "🇧🇮",
+    "name": "Burundi",
+    "code": "BI",
+    "dialCode": "+257",
+    "callRate": 0.55,
+    "smsRate": 0.14,
+    "monthly": 9
+  },
+  {
+    "flag": "🇰🇲",
+    "name": "Comoros",
+    "code": "KM",
+    "dialCode": "+269",
+    "callRate": 0.55,
+    "smsRate": 0.14,
+    "monthly": 9
+  },
+  {
+    "flag": "🇱🇸",
+    "name": "Lesotho",
+    "code": "LS",
+    "dialCode": "+266",
+    "callRate": 0.35,
+    "smsRate": 0.1,
+    "monthly": 6.5
+  },
+  {
+    "flag": "🇸🇿",
+    "name": "Eswatini",
+    "code": "SZ",
+    "dialCode": "+268",
+    "callRate": 0.35,
+    "smsRate": 0.1,
+    "monthly": 6.5
+  }
+]

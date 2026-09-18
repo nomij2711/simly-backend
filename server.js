@@ -5062,6 +5062,155 @@ app.post('/api/admin/numbers/:id/toggle-status', requireAdmin, async (req, res) 
   }
 });
 
+// 9.6 Deep Number Intelligence & Activity Endpoint (Bio-data, Calls CDR, and Grouped SMS Conversation Threads)
+app.get('/api/admin/numbers/:phoneNumber/activity', requireStaffPermission(['can_view_users', 'can_manage_users', 'can_handle_support', 'all']), async (req, res) => {
+  try {
+    const rawPhone = req.params.phoneNumber;
+    const cleanPhone = normalizePhone(rawPhone);
+
+    const line = await prisma.purchasedNumber.findFirst({
+      where: {
+        OR: [
+          { phoneNumber: cleanPhone },
+          { phoneNumber: rawPhone },
+          { id: rawPhone }
+        ]
+      }
+    });
+
+    let user = null;
+    if (line) {
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { id: line.userId },
+            { email: line.userId }
+          ]
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatarUrl: true,
+          walletBalance: true,
+          isBanned: true,
+          createdAt: true
+        }
+      });
+    }
+
+    const targetPhone = line ? line.phoneNumber : cleanPhone;
+
+    // Fetch Call Logs for this specific number
+    const calls = await prisma.callLog.findMany({
+      where: {
+        OR: [
+          { myNumber: targetPhone },
+          { contactNumber: targetPhone }
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Fetch SMS Messages for this specific number
+    const messages = await prisma.message.findMany({
+      where: {
+        OR: [
+          { fromNumber: targetPhone },
+          { toNumber: targetPhone }
+        ]
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    // Group Messages into Conversation Threads (Inbox Style)
+    const threadMap = {};
+    for (const msg of messages) {
+      const isOutbound = (msg.fromNumber === targetPhone) || (msg.direction === 'outbound');
+      const contactNum = isOutbound ? (msg.toNumber || 'Unknown') : (msg.fromNumber || 'Unknown');
+      
+      if (!threadMap[contactNum]) {
+        threadMap[contactNum] = {
+          contactNumber: contactNum,
+          messages: [],
+          messageCount: 0,
+          inboundCount: 0,
+          outboundCount: 0,
+          lastMessageText: '',
+          lastMessageDirection: '',
+          lastMessageAt: msg.createdAt,
+          createdAt: msg.createdAt
+        };
+      }
+
+      threadMap[contactNum].messages.push({
+        id: msg.id,
+        fromNumber: msg.fromNumber,
+        toNumber: msg.toNumber,
+        text: msg.text,
+        direction: isOutbound ? 'outbound' : 'inbound',
+        status: msg.status || 'delivered',
+        createdAt: msg.createdAt
+      });
+
+      threadMap[contactNum].messageCount++;
+      if (isOutbound) threadMap[contactNum].outboundCount++;
+      else threadMap[contactNum].inboundCount++;
+
+      threadMap[contactNum].lastMessageText = msg.text;
+      threadMap[contactNum].lastMessageDirection = isOutbound ? 'outbound' : 'inbound';
+      threadMap[contactNum].lastMessageAt = msg.createdAt;
+    }
+
+    const threads = Object.values(threadMap).sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
+
+    // Stats
+    const totalDurationSeconds = calls.reduce((acc, c) => acc + (c.durationSeconds || 0), 0);
+    const inboundCalls = calls.filter(c => c.direction === 'inbound').length;
+    const outboundCalls = calls.filter(c => c.direction === 'outbound').length;
+    const completedCalls = calls.filter(c => c.status === 'completed').length;
+    const missedCalls = calls.filter(c => c.status === 'missed').length;
+
+    const stats = {
+      totalCalls: calls.length,
+      inboundCalls,
+      outboundCalls,
+      completedCalls,
+      missedCalls,
+      totalDurationSeconds,
+      totalDurationMinutes: (totalDurationSeconds / 60).toFixed(1),
+      totalMessages: messages.length,
+      totalThreads: threads.length,
+      inboundMessages: messages.filter(m => m.direction === 'inbound' || m.toNumber === targetPhone).length,
+      outboundMessages: messages.filter(m => m.direction === 'outbound' || m.fromNumber === targetPhone).length
+    };
+
+    const now = new Date();
+    const planDays = line?.planType === '7_days' ? 7 : (line?.planType === '365_days' ? 365 : 30);
+    const computedExpiry = line?.expiresAt || (line ? new Date(new Date(line.createdAt).getTime() + planDays * 24 * 60 * 60 * 1000) : null);
+    const isExpired = line?.status === 'expired' || (computedExpiry && new Date(computedExpiry) < now);
+
+    res.json({
+      success: true,
+      phoneNumber: targetPhone,
+      number: line ? {
+        ...line,
+        expiresAt: computedExpiry,
+        isExpired,
+        displayStatus: isExpired ? 'expired' : (line.status || 'active')
+      } : null,
+      user,
+      stats,
+      calls,
+      threads,
+      messagesCount: messages.length
+    });
+  } catch (error) {
+    console.error('[ADMIN NUMBER ACTIVITY ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 10. Call Logs (CDR)
 app.get('/api/admin/calls', requireAdmin, async (req, res) => {
   try {

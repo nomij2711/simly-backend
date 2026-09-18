@@ -7995,7 +7995,10 @@
         });
 
         if (res.success) {
-          alert(`✅ Wallet adjusted successfully! New Balance: $${res.newBalance.toFixed(2)}`);
+          const newBal = (res.newBalance !== undefined && res.newBalance !== null)
+            ? Number(res.newBalance)
+            : (res.user?.walletBalance !== undefined ? Number(res.user.walletBalance) : null);
+          alert(newBal !== null ? `✅ Wallet adjusted successfully! New Balance: $${newBal.toFixed(2)}` : (res.message || '✅ Wallet adjusted successfully!'));
           await openInChatUserDossier(userId);
           await loadSupportQueue();
         }

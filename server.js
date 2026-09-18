@@ -4840,7 +4840,9 @@ app.post('/api/admin/users/:id/adjust-balance', requireAdmin, async (req, res) =
     res.json({
       success: true,
       message: `Balance updated for ${user.email}. New Balance: $${newBalance.toFixed(2)}`,
-      user: updated
+      user: updated,
+      newBalance: newBalance,
+      updatedBalance: newBalance
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

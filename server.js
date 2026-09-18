@@ -4503,6 +4503,63 @@ app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_u
       orderBy: { createdAt: 'asc' }
     });
 
+    // 6. Fetch User's Support Tickets
+    const supportTickets = await prisma.supportTicket.findMany({
+      where: {
+        OR: [
+          { userId: user.id },
+          { userId: user.email },
+          { userEmail: user.email }
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // 7. Fetch Support CSAT Ratings
+    const supportRatings = await prisma.supportRating.findMany({
+      where: {
+        OR: [
+          { userId: user.id },
+          { userEmail: user.email }
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // 8. Fetch Voicemails on user's lines
+    const voicemails = await prisma.voicemail.findMany({
+      where: {
+        OR: [
+          { myNumber: { in: userPhoneNumbers } },
+          { contactNumber: { in: userPhoneNumbers } }
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // 9. Fetch Audit Logs for this user
+    const auditLogs = await prisma.auditLog.findMany({
+      where: {
+        OR: [
+          { targetId: user.id },
+          { details: { contains: user.id } },
+          { details: { contains: user.email } }
+        ]
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    });
+
+    // 10. Fetch Device Push Tokens
+    const pushTokens = await prisma.devicePushToken.findMany({
+      where: {
+        OR: [
+          { userId: user.id },
+          { userId: user.email }
+        ]
+      }
+    });
+
     // Compute summary metrics
     const totalSpent = transactions
       .filter(t => t.amount < 0)
@@ -4533,13 +4590,21 @@ app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_u
         activeNumbersCount: numbers.filter(n => n.status === 'active').length,
         totalCallsCount: calls.length,
         totalMessagesCount: messages.length,
-        totalTransactionsCount: transactions.length
+        totalTransactionsCount: transactions.length,
+        totalTicketsCount: supportTickets.length,
+        totalVoicemailsCount: voicemails.length,
+        totalPushTokensCount: pushTokens.length
       },
       numbers,
       transactions,
       calls,
       messages,
-      supportMessages
+      supportMessages,
+      supportTickets,
+      supportRatings,
+      voicemails,
+      auditLogs,
+      pushTokens
     });
   } catch (error) {
     console.error('[ADMIN USER PROFILE ERROR]', error);

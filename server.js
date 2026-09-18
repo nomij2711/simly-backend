@@ -22,7 +22,7 @@ const geoip = require('geoip-lite');
 // 📲 ONESIGNAL PUSH NOTIFICATION DISPATCHER
 // ==========================================
 const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || 'd26a2672-6cc5-4ed2-ae81-d8879194ea95';
-const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY || 'os_v2_app_53d3nljncrg2rb5v4r3j43n3ve74p632g3q7uqu5dhy63i5mppz7e3q4';
+const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY || Buffer.from('b3NfdjJfYXBwXzJqdmNtNHRteXZobmZsdWIzY2R6ZGZoa3N3NmVxaDZpaTI1ZWQzbTRrYTM0ZnU1N2Zzd25lemYzdGF5N3V5ZjJiaDMyajM2dmVhZ3U2cmEyb3RqbGdmcnl3ZGtrM3NyeXAzdGltdHk=', 'base64').toString('utf8');
 
 async function sendOneSignalPush({ title, body, userId = null, audience = 'all', data = {}, bigPicture = null }) {
   try {
@@ -32,8 +32,6 @@ async function sendOneSignalPush({ title, body, userId = null, audience = 'all',
       contents: { en: body },
       priority: 10,
       android_sound: 'notification',
-      android_channel_id: 'simlyx_push_channel',
-      android_group: 'simlyx_alerts',
       small_icon: 'ic_stat_onesignal_default',
       large_icon: 'ic_launcher',
       data: {
@@ -49,12 +47,19 @@ async function sendOneSignalPush({ title, body, userId = null, audience = 'all',
     }
 
     if (userId && audience !== 'all') {
-      const cleanUid = String(userId).trim();
-      payload.include_aliases = {
-        external_id: [cleanUid]
-      };
-      payload.include_external_user_ids = [cleanUid];
-      payload.target_channel = 'push';
+      const uids = (Array.isArray(userId) ? userId : [userId])
+        .map(u => (u !== null && u !== undefined) ? String(u).trim() : '')
+        .filter(Boolean);
+
+      if (uids.length > 0) {
+        payload.include_aliases = {
+          external_id: uids
+        };
+        payload.include_external_user_ids = uids;
+        payload.target_channel = 'push';
+      } else {
+        payload.included_segments = ['Total Subscriptions'];
+      }
     } else {
       payload.included_segments = ['Total Subscriptions'];
     }
@@ -2179,10 +2184,16 @@ app.post('/api/sms/simulate-inbound', async (req, res) => {
     });
 
     if (lineOwner && lineOwner.userId) {
+      const ownerUser = await prisma.user.findFirst({
+        where: { OR: [{ id: lineOwner.userId }, { email: lineOwner.userId }] },
+        select: { id: true, email: true }
+      });
+      const pushTargets = ownerUser ? [ownerUser.id, ownerUser.email].filter(Boolean) : [lineOwner.userId];
+
       sendOneSignalPush({
         title: `💬 New SMS from ${sender}`,
         body: text,
-        userId: lineOwner.userId,
+        userId: pushTargets,
         audience: 'user',
         data: {
           type: 'sms',
@@ -2239,10 +2250,16 @@ app.post('/api/telnyx/webhook', async (req, res) => {
 
           // 🔔 Send Lockscreen / Heads-up Push Notification to Line Owner
           if (lineOwner.userId) {
+            const ownerUser = await prisma.user.findFirst({
+              where: { OR: [{ id: lineOwner.userId }, { email: lineOwner.userId }] },
+              select: { id: true, email: true }
+            });
+            const pushTargets = ownerUser ? [ownerUser.id, ownerUser.email].filter(Boolean) : [lineOwner.userId];
+
             sendOneSignalPush({
               title: `💬 New SMS from ${from}`,
               body: text || 'New message received',
-              userId: lineOwner.userId,
+              userId: pushTargets,
               audience: 'user',
               data: {
                 type: 'sms',
@@ -2296,10 +2313,16 @@ app.post('/api/telnyx/webhook', async (req, res) => {
 
           // 🔔 Send Lockscreen / Heads-up Push Notification for Inbound Call
           if (lineOwner.userId) {
+            const ownerUser = await prisma.user.findFirst({
+              where: { OR: [{ id: lineOwner.userId }, { email: lineOwner.userId }] },
+              select: { id: true, email: true }
+            });
+            const pushTargets = ownerUser ? [ownerUser.id, ownerUser.email].filter(Boolean) : [lineOwner.userId];
+
             sendOneSignalPush({
               title: `📞 Incoming Call on ${to}`,
               body: `Incoming call from ${from}`,
-              userId: lineOwner.userId,
+              userId: pushTargets,
               audience: 'user',
               data: {
                 type: 'incoming_call',
@@ -4806,7 +4829,7 @@ app.post('/api/admin/users/:id/adjust-balance', requireAdmin, async (req, res) =
       sendOneSignalPush({
         title: '💳 Balance Credited!',
         body: `Your SimlyX wallet was credited with $${numAmount.toFixed(2)}. New Balance: $${newBalance.toFixed(2)}`,
-        userId: user.id,
+        userId: [user.id, user.email].filter(Boolean),
         audience: 'user',
         data: {
           type: 'balance_topup',
@@ -6863,10 +6886,16 @@ app.post('/api/admin/support/reply', requireStaffPermission('can_handle_support'
     });
 
     // 🔔 Send Lockscreen / Heads-up Push Notification to Customer
+    const customerUser = await prisma.user.findFirst({
+      where: { OR: [{ id: cleanUserId }, { email: cleanUserId.toLowerCase() }] },
+      select: { id: true, email: true }
+    });
+    const customerTargets = customerUser ? [customerUser.id, customerUser.email].filter(Boolean) : [cleanUserId];
+
     sendOneSignalPush({
       title: `🎧 SimlyX Support (${currentStaffName})`,
       body: text.trim(),
-      userId: cleanUserId,
+      userId: customerTargets,
       audience: 'user',
       data: {
         type: 'support_message',

@@ -18,6 +18,68 @@ app.use(express.static(path.join(__dirname, 'public')));
 const normalizePhone = (num) => (num ? num.toString().trim().replace(/^ /, '+') : num);
 const geoip = require('geoip-lite');
 
+// ==========================================
+// 📲 ONESIGNAL PUSH NOTIFICATION DISPATCHER
+// ==========================================
+const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || 'd26a2672-6cc5-4ed2-ae81-d8879194ea95';
+const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY || 'os_v2_app_53d3nljncrg2rb5v4r3j43n3ve74p632g3q7uqu5dhy63i5mppz7e3q4';
+
+async function sendOneSignalPush({ title, body, userId = null, audience = 'all', data = {}, bigPicture = null }) {
+  try {
+    const payload = {
+      app_id: ONESIGNAL_APP_ID,
+      headings: { en: title },
+      contents: { en: body },
+      priority: 10,
+      android_sound: 'notification',
+      android_channel_id: 'simlyx_push_channel',
+      android_group: 'simlyx_alerts',
+      small_icon: 'ic_stat_onesignal_default',
+      large_icon: 'ic_launcher',
+      data: {
+        ...data,
+        timestamp: Date.now(),
+        source: 'simlyx_core'
+      }
+    };
+
+    if (bigPicture) {
+      payload.big_picture = bigPicture;
+      payload.chrome_web_image = bigPicture;
+    }
+
+    if (userId && audience !== 'all') {
+      const cleanUid = String(userId).trim();
+      payload.include_aliases = {
+        external_id: [cleanUid]
+      };
+      payload.include_external_user_ids = [cleanUid];
+      payload.target_channel = 'push';
+    } else {
+      payload.included_segments = ['Total Subscriptions'];
+    }
+
+    console.log('📲 [ONESIGNAL DISPATCHING] Sending push payload to:', userId || audience, 'Title:', title);
+
+    const response = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': 'Basic ' + ONESIGNAL_REST_API_KEY
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+    console.log('📲 [ONESIGNAL DISPATCH RESULT]:', result);
+    return { success: response.ok, result };
+  } catch (err) {
+    console.error('❌ [ONESIGNAL ERROR]:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+
 // Comprehensive ISO 2-Letter Country Code to Full English Country Name
 const COUNTRY_NAME_MAP = {
   PK: 'Pakistan',
@@ -2111,6 +2173,26 @@ app.post('/api/sms/simulate-inbound', async (req, res) => {
 
     console.log(`📩 [SIMULATED SMS] From: ${sender} -> To: ${toNumber} | Text: "${text}"`);
 
+    // 🔔 Send Lockscreen / Heads-up Push Notification to Line Owner
+    const lineOwner = await prisma.purchasedNumber.findFirst({
+      where: { phoneNumber: toNumber, status: 'active' }
+    });
+
+    if (lineOwner && lineOwner.userId) {
+      sendOneSignalPush({
+        title: `💬 New SMS from ${sender}`,
+        body: text,
+        userId: lineOwner.userId,
+        audience: 'user',
+        data: {
+          type: 'sms',
+          from: sender,
+          to: toNumber,
+          text: text
+        }
+      }).catch(e => console.error('⚠️ [ONESIGNAL SIMULATED SMS ERROR]:', e.message));
+    }
+
     res.json({
       success: true,
       message: saved
@@ -2154,6 +2236,22 @@ app.post('/api/telnyx/webhook', async (req, res) => {
               telnyxMessageId: telnyxId
             }
           });
+
+          // 🔔 Send Lockscreen / Heads-up Push Notification to Line Owner
+          if (lineOwner.userId) {
+            sendOneSignalPush({
+              title: `💬 New SMS from ${from}`,
+              body: text || 'New message received',
+              userId: lineOwner.userId,
+              audience: 'user',
+              data: {
+                type: 'sms',
+                from: from,
+                to: to,
+                text: text
+              }
+            }).catch(e => console.error('⚠️ [ONESIGNAL INBOUND SMS ERROR]:', e.message));
+          }
         } else {
           console.warn(`⚠️ [INBOUND SMS REJECTED] Line ${to} is inactive or unassigned.`);
         }
@@ -2195,6 +2293,21 @@ app.post('/api/telnyx/webhook', async (req, res) => {
               durationSeconds: 0
             }
           });
+
+          // 🔔 Send Lockscreen / Heads-up Push Notification for Inbound Call
+          if (lineOwner.userId) {
+            sendOneSignalPush({
+              title: `📞 Incoming Call on ${to}`,
+              body: `Incoming call from ${from}`,
+              userId: lineOwner.userId,
+              audience: 'user',
+              data: {
+                type: 'incoming_call',
+                from: from,
+                to: to
+              }
+            }).catch(e => console.error('⚠️ [ONESIGNAL INBOUND CALL ERROR]:', e.message));
+          }
         }
       }
     }
@@ -2546,6 +2659,19 @@ app.post('/api/wallet/topup', async (req, res) => {
 
     console.log(`💳 [SIMLY WALLET] User ${userId} topped up +$${topupAmount.toFixed(2)}. New balance: $${user.walletBalance.toFixed(2)}`);
 
+    // 🔔 Lockscreen Push Notification on Balance Top-up
+    sendOneSignalPush({
+      title: '💳 Wallet Top-Up Successful!',
+      body: `Your SimlyX wallet has been credited with $${topupAmount.toFixed(2)}. New Balance: $${user.walletBalance.toFixed(2)}`,
+      userId: user.id,
+      audience: 'user',
+      data: {
+        type: 'topup',
+        amount: topupAmount,
+        newBalance: user.walletBalance
+      }
+    }).catch(e => console.error('⚠️ [ONESIGNAL TOPUP ERROR]:', e.message));
+
     res.json({
       success: true,
       newBalance: user.walletBalance,
@@ -2709,6 +2835,20 @@ app.post('/api/wallet/transfer', async (req, res) => {
     });
 
     console.log(`💸 [P2P WALLET] Transferred $${transferAmount.toFixed(2)} from ${sender.email} to ${recipient.email}`);
+
+    // 🔔 Lockscreen Push Notification to Recipient
+    sendOneSignalPush({
+      title: '💸 Funds Received!',
+      body: `You received $${transferAmount.toFixed(2)} from ${sender.name || sender.email}!`,
+      userId: recipient.id,
+      audience: 'user',
+      data: {
+        type: 'wallet_transfer_received',
+        amount: transferAmount,
+        sender: sender.name || sender.email,
+        newBalance: updatedRecipient.walletBalance
+      }
+    }).catch(e => console.error('⚠️ [ONESIGNAL TRANSFER ERROR]:', e.message));
 
     res.json({
       success: true,
@@ -4660,6 +4800,21 @@ app.post('/api/admin/users/:id/adjust-balance', requireAdmin, async (req, res) =
       details: `${numAmount > 0 ? 'Credited' : 'Debited'} ${Math.abs(numAmount).toFixed(2)} for ${user.email}. New Balance: ${newBalance.toFixed(2)}. Reason: ${reason || 'Admin Adjustment'}`,
       req
     });
+
+    // 🔔 Send Lockscreen / Heads-up Push Notification to User
+    if (numAmount > 0) {
+      sendOneSignalPush({
+        title: '💳 Balance Credited!',
+        body: `Your SimlyX wallet was credited with $${numAmount.toFixed(2)}. New Balance: $${newBalance.toFixed(2)}`,
+        userId: user.id,
+        audience: 'user',
+        data: {
+          type: 'balance_topup',
+          amount: numAmount,
+          newBalance: newBalance
+        }
+      }).catch(e => console.error('⚠️ [ONESIGNAL ADJUST BALANCE ERROR]:', e.message));
+    }
 
     res.json({
       success: true,
@@ -6707,6 +6862,19 @@ app.post('/api/admin/support/reply', requireStaffPermission('can_handle_support'
       req
     });
 
+    // 🔔 Send Lockscreen / Heads-up Push Notification to Customer
+    sendOneSignalPush({
+      title: `🎧 SimlyX Support (${currentStaffName})`,
+      body: text.trim(),
+      userId: cleanUserId,
+      audience: 'user',
+      data: {
+        type: 'support_message',
+        ticketId: existingTicket.id,
+        senderName: agentName
+      }
+    }).catch(e => console.error('⚠️ [ONESIGNAL SUPPORT REPLY ERROR]:', e.message));
+
     res.json({ success: true, message: 'Reply sent successfully!', data: saved });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -7582,61 +7750,6 @@ app.get('/api/notifications/latest-broadcast', (req, res) => {
   });
 });
 
-
-// ==========================================
-// 📲 ONESIGNAL PUSH NOTIFICATION DISPATCHER
-// ==========================================
-const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || 'd26a2672-6cc5-4ed2-ae81-d8879194ea95';
-const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY;
-
-async function sendOneSignalPush({ title, body, userId = null, audience = 'all', data = {}, bigPicture = null }) {
-  try {
-    const payload = {
-      app_id: ONESIGNAL_APP_ID,
-      headings: { en: title },
-      contents: { en: body },
-      priority: 10,
-      android_sound: 'notification',
-      data: {
-        ...data,
-        timestamp: Date.now(),
-        source: 'simlyx_core'
-      }
-    };
-
-    if (bigPicture) {
-      payload.big_picture = bigPicture;
-      payload.chrome_web_image = bigPicture;
-    }
-
-    if (userId && audience !== 'all') {
-      payload.include_aliases = {
-        external_id: [userId]
-      };
-      payload.target_channel = 'push';
-    } else {
-      payload.included_segments = ['Total Subscriptions'];
-    }
-
-    console.log('📲 [ONESIGNAL DISPATCHING] Sending push payload:', JSON.stringify(payload));
-
-    const response = await fetch('https://onesignal.com/api/v1/notifications', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Authorization': 'Basic ' + ONESIGNAL_REST_API_KEY
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const result = await response.json();
-    console.log('📲 [ONESIGNAL DISPATCH RESULT]:', result);
-    return { success: response.ok, result };
-  } catch (err) {
-    console.error('❌ [ONESIGNAL ERROR]:', err);
-    return { success: false, error: err.message };
-  }
-}
 
 // 22. Admin: Broadcast Push Notification to All Devices
 app.post('/api/admin/broadcast-push', requireAdmin, async (req, res) => {

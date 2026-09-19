@@ -2807,14 +2807,27 @@ app.post('/api/wallet/topup', async (req, res) => {
 
     console.log(`💳 [SIMLY WALLET] User ${userId} topped up +$${topupAmount.toFixed(2)}. New balance: $${user.walletBalance.toFixed(2)}`);
 
-    // 🔔 Lockscreen Push Notification on Balance Top-up
+    // 🔔 Lockscreen Push Notification & In-App Notification on Balance Top-up
+    prisma.inAppNotification.create({
+      data: {
+        userId: user.id,
+        title: '💳 Wallet Top-Up Successful!',
+        message: `Your SimlyX wallet has been credited with $${topupAmount.toFixed(2)}. New Balance: $${user.walletBalance.toFixed(2)}`,
+        type: 'WALLET',
+        icon: 'wallet',
+        actionType: 'navigate_wallet',
+        isRead: false
+      }
+    }).catch(e => console.error('⚠️ [IN-APP NOTIF ERROR]:', e.message));
+
     sendOneSignalPush({
       title: '💳 Wallet Top-Up Successful!',
       body: `Your SimlyX wallet has been credited with $${topupAmount.toFixed(2)}. New Balance: $${user.walletBalance.toFixed(2)}`,
       userId: [user.id, user.email].filter(Boolean),
       audience: 'user',
       data: {
-        type: 'topup',
+        type: 'in_app_notification',
+        actionType: 'navigate_wallet',
         amount: topupAmount,
         newBalance: user.walletBalance
       }
@@ -5050,15 +5063,28 @@ app.post('/api/admin/users/:id/adjust-balance', requireAdmin, async (req, res) =
       req
     });
 
-    // 🔔 Send Lockscreen / Heads-up Push Notification to User
+    // 🔔 Send Lockscreen / Heads-up Push Notification & Save In-App Notification to User
     if (numAmount > 0) {
+      prisma.inAppNotification.create({
+        data: {
+          userId: user.id,
+          title: '💳 Balance Credited!',
+          message: `Your SimlyX wallet was credited with $${numAmount.toFixed(2)}. New Balance: $${newBalance.toFixed(2)} (${reason || 'Promo / Gift Credit'})`,
+          type: 'WALLET',
+          icon: 'wallet',
+          actionType: 'navigate_wallet',
+          isRead: false
+        }
+      }).catch(e => console.error('⚠️ [IN-APP NOTIF ERROR]:', e.message));
+
       sendOneSignalPush({
         title: '💳 Balance Credited!',
         body: `Your SimlyX wallet was credited with $${numAmount.toFixed(2)}. New Balance: $${newBalance.toFixed(2)}`,
         userId: [user.id, user.email].filter(Boolean),
         audience: 'user',
         data: {
-          type: 'balance_topup',
+          type: 'in_app_notification',
+          actionType: 'navigate_wallet',
           amount: numAmount,
           newBalance: newBalance
         }
@@ -8038,14 +8064,35 @@ app.post('/api/admin/announcements', requireAdmin, async (req, res) => {
       });
     }
 
-    // 🔔 Dispatch OneSignal push notification to all phones when a new announcement is published
+    // 🔔 Dispatch OneSignal push notification & save to InAppNotification table
     if (!id && (trimmedTitle || trimmedMsg)) {
-      sendOneSignalPush({
-        title: trimmedTitle || '📢 SimlyX Announcement',
-        body: trimmedMsg || 'Tap to view the new update in SimlyX.',
-        bigPicture: trimmedImg,
-        audience: 'all'
-      }).catch(e => console.error('⚠️ [ONESIGNAL ANNOUNCEMENT ERROR]:', e.message));
+      prisma.inAppNotification.create({
+        data: {
+          userId: 'ALL',
+          title: trimmedTitle || '📢 SimlyX Announcement',
+          message: trimmedMsg || 'Tap to view the new update in SimlyX.',
+          type: (actionType === 'navigate_numbers' || actionType === 'navigate_wallet') ? 'PROMO' : 'ANNOUNCEMENT',
+          icon: actionType === 'navigate_wallet' ? 'wallet' : (actionType === 'navigate_numbers' ? 'phone' : 'bell'),
+          imageUrl: trimmedImg,
+          buttonText: (buttonText || '').trim() || 'Claim Offer Now',
+          actionType: actionType || 'navigate_numbers',
+          actionData: actionUrl ? JSON.stringify({ url: actionUrl }) : '{}',
+          isRead: false
+        }
+      }).then(inAppNotif => {
+        sendOneSignalPush({
+          title: trimmedTitle || '📢 SimlyX Announcement',
+          body: trimmedMsg || 'Tap to view the new update in SimlyX.',
+          bigPicture: trimmedImg,
+          audience: 'all',
+          data: {
+            type: 'in_app_notification',
+            notificationId: inAppNotif.id,
+            actionType: inAppNotif.actionType,
+            actionData: inAppNotif.actionData
+          }
+        }).catch(e => console.error('⚠️ [ONESIGNAL ANNOUNCEMENT ERROR]:', e.message));
+      }).catch(e => console.error('⚠️ [IN-APP NOTIF DB ERROR]:', e.message));
     }
 
     res.json({
@@ -8095,7 +8142,152 @@ app.delete('/api/admin/announcements/:id', requireAdmin, async (req, res) => {
 
 let latestBroadcastNotification = null;
 
-// 22.1 Public Mobile App Endpoint: Get Latest Broadcast Notification
+// ============================================================================
+// 🔔 IN-APP NOTIFICATION CENTER APIS (PERSISTENT FEED & UNREAD BADGES)
+// ============================================================================
+
+// 22.1 Public Mobile App Endpoint: Get In-App Notifications Feed (with computed isRead & unreadCount)
+app.get('/api/notifications/inbox', async (req, res) => {
+  try {
+    const rawUserId = req.query.userId || req.headers['x-user-id'] || 'user_demo_1';
+    const cleanUserId = String(rawUserId).trim();
+
+    // Fetch notifications targeting this user directly OR broadcast to "ALL"
+    const notifications = await prisma.inAppNotification.findMany({
+      where: {
+        OR: [
+          { userId: cleanUserId },
+          { userId: 'ALL' }
+        ]
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    });
+
+    let unreadCount = 0;
+    const formatted = notifications.map(notif => {
+      let isRead = notif.isRead;
+      if (notif.userId === 'ALL') {
+        try {
+          const readList = JSON.parse(notif.readByUserIds || '[]');
+          isRead = Array.isArray(readList) && readList.includes(cleanUserId);
+        } catch (_) {
+          isRead = false;
+        }
+      }
+      if (!isRead) unreadCount++;
+
+      return {
+        id: notif.id,
+        title: notif.title,
+        message: notif.message,
+        type: notif.type,
+        icon: notif.icon || 'bell',
+        imageUrl: notif.imageUrl,
+        buttonText: notif.buttonText || 'View Details',
+        actionType: notif.actionType || 'none',
+        actionData: notif.actionData,
+        isRead,
+        createdAt: notif.createdAt
+      };
+    });
+
+    res.json({
+      success: true,
+      unreadCount,
+      notifications: formatted
+    });
+  } catch (error) {
+    console.error('❌ [NOTIFICATIONS INBOX ERROR]:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 22.2 Public Mobile App Endpoint: Mark Notifications as Read (Single or All)
+app.post('/api/notifications/mark-read', async (req, res) => {
+  try {
+    const { notificationId, all = false, userId } = req.body;
+    const rawUserId = userId || req.headers['x-user-id'] || 'user_demo_1';
+    const cleanUserId = String(rawUserId).trim();
+
+    if (all) {
+      // 1. Mark all direct user notifications as read
+      await prisma.inAppNotification.updateMany({
+        where: { userId: cleanUserId, isRead: false },
+        data: { isRead: true }
+      });
+
+      // 2. Add cleanUserId to readByUserIds for all broadcast notifications
+      const broadcasts = await prisma.inAppNotification.findMany({
+        where: { userId: 'ALL' }
+      });
+
+      for (const b of broadcasts) {
+        let readList = [];
+        try {
+          readList = JSON.parse(b.readByUserIds || '[]');
+          if (!Array.isArray(readList)) readList = [];
+        } catch (_) {
+          readList = [];
+        }
+        if (!readList.includes(cleanUserId)) {
+          readList.push(cleanUserId);
+          await prisma.inAppNotification.update({
+            where: { id: b.id },
+            data: { readByUserIds: JSON.stringify(readList) }
+          });
+        }
+      }
+    } else if (notificationId) {
+      const notif = await prisma.inAppNotification.findUnique({
+        where: { id: notificationId }
+      });
+
+      if (notif) {
+        if (notif.userId === 'ALL') {
+          let readList = [];
+          try {
+            readList = JSON.parse(notif.readByUserIds || '[]');
+            if (!Array.isArray(readList)) readList = [];
+          } catch (_) {
+            readList = [];
+          }
+          if (!readList.includes(cleanUserId)) {
+            readList.push(cleanUserId);
+            await prisma.inAppNotification.update({
+              where: { id: notif.id },
+              data: { readByUserIds: JSON.stringify(readList) }
+            });
+          }
+        } else {
+          await prisma.inAppNotification.update({
+            where: { id: notif.id },
+            data: { isRead: true }
+          });
+        }
+      }
+    }
+
+    res.json({ success: true, message: 'Notifications marked as read' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 22.3 Public Mobile App Endpoint: Delete / Dismiss Notification
+app.post('/api/notifications/delete', async (req, res) => {
+  try {
+    const { notificationId } = req.body;
+    if (notificationId) {
+      await prisma.inAppNotification.delete({ where: { id: notificationId } }).catch(() => {});
+    }
+    res.json({ success: true, message: 'Notification dismissed' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 22.4 Legacy broadcast endpoint
 app.get('/api/notifications/latest-broadcast', (req, res) => {
   res.json({
     success: true,
@@ -8104,44 +8296,69 @@ app.get('/api/notifications/latest-broadcast', (req, res) => {
   });
 });
 
-
-// 22. Admin: Broadcast Push Notification to All Devices
+// 22.5 Admin: Broadcast Push Notification to All Devices & Save to InAppNotification
 app.post('/api/admin/broadcast-push', requireAdmin, async (req, res) => {
   try {
-    const { title, body, audience = 'all' } = req.body;
+    const { title, body, audience = 'all', type = 'ANNOUNCEMENT', icon = 'bell', imageUrl, buttonText = 'View Details', actionType = 'none', actionData } = req.body;
     if (!title || !body) {
       return res.status(400).json({ success: false, error: 'Notification title and body are required.' });
     }
 
-    const tokens = await prisma.devicePushToken.findMany();
-    const totalDevices = tokens.length;
-    const totalUsers = await prisma.user.count({ where: { isDeleted: false } });
+    const trimmedTitle = title.trim();
+    const trimmedBody = body.trim();
+
+    // 1. Save in InAppNotification table in Database
+    const savedNotif = await prisma.inAppNotification.create({
+      data: {
+        userId: 'ALL',
+        title: trimmedTitle,
+        message: trimmedBody,
+        type: (type || 'ANNOUNCEMENT').toUpperCase(),
+        icon: icon || 'bell',
+        imageUrl: imageUrl && imageUrl.trim() ? imageUrl.trim() : null,
+        buttonText: buttonText || 'View Details',
+        actionType: actionType || 'none',
+        actionData: actionData ? (typeof actionData === 'object' ? JSON.stringify(actionData) : String(actionData)) : '{}',
+        isRead: false
+      }
+    });
 
     latestBroadcastNotification = {
-      id: `push_${Date.now()}`,
-      title: title.trim(),
-      body: body.trim(),
+      id: savedNotif.id,
+      title: trimmedTitle,
+      body: trimmedBody,
       audience,
       timestamp: new Date().toISOString()
     };
 
-    // Dispatch via OneSignal native push engine (rings phone in background)
+    // 2. Dispatch via OneSignal native push engine (rings phone in background)
     const pushResult = await sendOneSignalPush({
-      title: title.trim(),
-      body: body.trim(),
-      audience
+      title: trimmedTitle,
+      body: trimmedBody,
+      audience,
+      bigPicture: imageUrl && imageUrl.trim() ? imageUrl.trim() : null,
+      data: {
+        type: 'in_app_notification',
+        notificationId: savedNotif.id,
+        actionType: savedNotif.actionType,
+        actionData: savedNotif.actionData
+      }
     });
 
-    console.log(`📲 [BROADCAST PUSH] Dispatched: "${title}" to ${totalDevices} devices (${totalUsers} accounts). OneSignal:`, pushResult);
+    const totalDevices = await prisma.devicePushToken.count();
+    const totalUsers = await prisma.user.count({ where: { isDeleted: false } });
+
+    console.log(`📲 [BROADCAST PUSH] Saved In-App & Dispatched: "${trimmedTitle}" to ${totalDevices} devices (${totalUsers} accounts). OneSignal:`, pushResult);
 
     res.json({
       success: true,
-      message: `Broadcast push notification dispatched via OneSignal! (Total accounts: ${totalUsers}, Devices: ${totalDevices})`,
+      message: `Broadcast notification saved to In-App Notification Center & dispatched via OneSignal! (Total accounts: ${totalUsers})`,
+      notification: savedNotif,
       stats: {
         totalDispatched: totalDevices,
         totalUsers,
-        title,
-        body,
+        title: trimmedTitle,
+        body: trimmedBody,
         oneSignal: pushResult,
         timestamp: new Date().toISOString()
       }

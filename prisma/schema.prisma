@@ -287,4 +287,21 @@ model SupportRating {
   createdAt         DateTime  @default(now())
 }
 
+model InAppNotification {
+  id            String   @id @default(uuid())
+  userId        String   @default("ALL") // "ALL" or specific user UUID / email
+  title         String
+  message       String
+  type          String   @default("ANNOUNCEMENT") // "PROMO", "SYSTEM", "ACCOUNT", "ANNOUNCEMENT", "WALLET", "EXPIRY_ALERT", "RATES"
+  icon          String?  @default("bell")
+  imageUrl      String?
+  buttonText    String?  @default("View Details")
+  actionType    String?  @default("none") // "none", "open_url", "navigate_numbers", "navigate_wallet", "navigate_rates", "navigate_support", "navigate_promos"
+  actionData    String?  @default("{}") // JSON string payload
+  isRead        Boolean  @default(false)
+  readByUserIds String?  @default("[]") // JSON array string of userIds who marked this broadcast as read
+  createdAt     DateTime @default(now())
+}
+
+
 

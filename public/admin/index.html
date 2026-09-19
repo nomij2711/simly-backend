@@ -1376,23 +1376,66 @@
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label class="block text-[11px] font-semibold text-slate-400 mb-1">Notification Title *</label>
-                      <input type="text" id="pushTitle" placeholder="e.g. 📢 SimlyX System Update" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                      <input type="text" id="pushTitle" placeholder="e.g. 📢 Flash Weekend Sale!" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
                     </div>
                     <div>
-                      <label class="block text-[11px] font-semibold text-slate-400 mb-1">Target Audience</label>
-                      <select id="pushAudience" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-                        <option value="all">All Registered Physical App Devices (Broadcast to All)</option>
-                        <option value="active_numbers">Users with Active Virtual Lines</option>
+                      <label class="block text-[11px] font-semibold text-slate-400 mb-1">Category / Feed Tab</label>
+                      <select id="pushType" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                        <option value="ANNOUNCEMENT">📢 Updates & Announcements</option>
+                        <option value="PROMO">🎁 Special Offers & Promos</option>
+                        <option value="WALLET">💳 Wallet & Billing</option>
+                        <option value="SYSTEM">⚙️ System Notice</option>
                       </select>
                     </div>
                   </div>
                   <div>
                     <label class="block text-[11px] font-semibold text-slate-400 mb-1">Notification Message Body *</label>
-                    <input type="text" id="pushBody" placeholder="e.g. New US & UK area codes are now live in your catalog!" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    <textarea id="pushBody" rows="2" placeholder="e.g. Get 50% extra bonus balance on your next top-up this weekend!" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"></textarea>
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label class="block text-[11px] font-semibold text-slate-400 mb-1">Card Icon</label>
+                      <select id="pushIcon" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                        <option value="bell">🔔 Bell (General)</option>
+                        <option value="gift">🎁 Gift / Promo</option>
+                        <option value="tag">🏷️ Discount Tag</option>
+                        <option value="wallet">💳 Wallet / Money</option>
+                        <option value="phone">📱 Virtual Number</option>
+                        <option value="shield">🛡️ Security Alert</option>
+                        <option value="star">⭐ Star Announcement</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-[11px] font-semibold text-slate-400 mb-1">Action On Tap</label>
+                      <select id="pushActionType" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                        <option value="none">ℹ️ None (Show Details Dialog)</option>
+                        <option value="navigate_wallet">💳 Open Wallet Screen</option>
+                        <option value="navigate_numbers">🛒 Open Numbers Marketplace</option>
+                        <option value="navigate_support">🎧 Open Customer Support</option>
+                        <option value="open_url">🌐 Open External Website</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-[11px] font-semibold text-slate-400 mb-1">Action Button Text</label>
+                      <input type="text" id="pushButtonText" placeholder="e.g. Claim Offer / View" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-[11px] font-semibold text-slate-400 mb-1">Optional Banner Image URL</label>
+                      <input type="url" id="pushImageUrl" placeholder="https://.../banner.png" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                      <label class="block text-[11px] font-semibold text-slate-400 mb-1">Target Audience</label>
+                      <select id="pushAudience" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                        <option value="all">All Registered Mobile App Devices (Broadcast)</option>
+                        <option value="active_numbers">Users with Active Virtual Lines</option>
+                      </select>
+                    </div>
                   </div>
                   <button type="submit" id="sendPushBtn" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2">
                     <i class="fa-solid fa-paper-plane"></i>
-                    <span>Send Push Broadcast to All Devices</span>
+                    <span>Send Push Broadcast & Save to In-App Inbox</span>
                   </button>
                 </form>
               </div>
@@ -7541,6 +7584,11 @@
       const title = document.getElementById('pushTitle').value.trim();
       const body = document.getElementById('pushBody').value.trim();
       const audience = document.getElementById('pushAudience').value;
+      const type = document.getElementById('pushType') ? document.getElementById('pushType').value : 'ANNOUNCEMENT';
+      const icon = document.getElementById('pushIcon') ? document.getElementById('pushIcon').value : 'bell';
+      const actionType = document.getElementById('pushActionType') ? document.getElementById('pushActionType').value : 'none';
+      const buttonText = document.getElementById('pushButtonText') ? document.getElementById('pushButtonText').value.trim() : '';
+      const imageUrl = document.getElementById('pushImageUrl') ? document.getElementById('pushImageUrl').value.trim() : '';
 
       if (!confirm(`Broadcast push notification "${title}" to ${audience === 'all' ? 'All registered mobile devices' : 'active number users'}?`)) return;
 
@@ -7551,18 +7599,20 @@
       try {
         const res = await adminFetch('/api/admin/broadcast-push', {
           method: 'POST',
-          body: JSON.stringify({ title, body, audience })
+          body: JSON.stringify({ title, body, audience, type, icon, actionType, buttonText, imageUrl })
         });
         if (res.success) {
-          alert(res.message);
+          alert(res.message || 'Notification broadcasted and saved to In-App Inbox successfully!');
           document.getElementById('pushTitle').value = '';
           document.getElementById('pushBody').value = '';
+          if (document.getElementById('pushButtonText')) document.getElementById('pushButtonText').value = '';
+          if (document.getElementById('pushImageUrl')) document.getElementById('pushImageUrl').value = '';
         }
       } catch (err) {
         alert(err.message);
       } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span>Send Push Broadcast to All Devices</span>';
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span>Send Push Broadcast & Save to In-App Inbox</span>';
       }
     }
 

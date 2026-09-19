@@ -1352,7 +1352,13 @@ function getRateForDestinationNumber(phoneNumber) {
     return { callRatePerMin: 0.05, callRate: 0.05, callWholesaleCostPerMin: 0.02, smsRate: 0.05, smsWholesaleCost: 0.02, country: 'International', code: 'INTL', dialCode: '+', flag: '🌐' };
   }
   let cleanNum = phoneNumber.toString().trim().replace(/[^\d+]/g, '');
-  if (!cleanNum.startsWith('+')) cleanNum = '+' + cleanNum;
+  if (cleanNum.startsWith('00')) cleanNum = '+' + cleanNum.substring(2);
+  else if (cleanNum.startsWith('03') && cleanNum.length === 11) cleanNum = '+92' + cleanNum.substring(1);
+  else if (cleanNum.startsWith('07') && cleanNum.length === 11) cleanNum = '+44' + cleanNum.substring(1);
+  else if (!cleanNum.startsWith('+')) {
+    if (cleanNum.length === 10) cleanNum = '+1' + cleanNum;
+    else cleanNum = '+' + cleanNum;
+  }
 
   const allRates = getAllMergedRates();
   // Sort by longest dialCode first so +1787 matches before +1, +971 before +9, etc.

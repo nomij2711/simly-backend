@@ -1028,6 +1028,17 @@ const NUMBER_RETAIL_MULTIPLIER = 1.5;  // Numbers & SMS = 1.5x wholesale
 // ============================================================================
 // 🌐 DYNAMIC COUNTRY RATES, PLAN TIERS & CONFIG ENGINE (Zero Hardcoding - PostgreSQL)
 // ============================================================================
+let ALL_COUNTRIES_CATALOG = [];
+try {
+  const allCountriesPath = path.join(__dirname, 'all_countries.json');
+  if (fs.existsSync(allCountriesPath)) {
+    ALL_COUNTRIES_CATALOG = JSON.parse(fs.readFileSync(allCountriesPath, 'utf8'));
+    console.log(`🌍 [GLOBAL CATALOG] Loaded ${ALL_COUNTRIES_CATALOG.length} worldwide countries from all_countries.json`);
+  }
+} catch (err) {
+  console.error('[GLOBAL CATALOG ERROR] Failed to load all_countries.json:', err.message);
+}
+
 let dynamicRatesCache = [];
 let dynamicPlanTiersCache = [];
 let dynamicConfigCache = {};
@@ -1201,8 +1212,133 @@ const getCountryRate = (countryCode) => {
   const cc = countryCode.toString().toUpperCase().trim();
   const found = dynamicRatesCache.find(r => r.countryCode === cc);
   if (found) return found;
+  const catalogItem = ALL_COUNTRIES_CATALOG.find(c => c.code && c.code.toUpperCase() === cc);
+  if (catalogItem) {
+    return {
+      countryCode: catalogItem.code,
+      countryName: catalogItem.name,
+      dialCode: catalogItem.dialCode,
+      flagEmoji: catalogItem.flag,
+      numberMonthlySellPrice: catalogItem.monthly || 1.50,
+      numberYearlySellPrice: (catalogItem.monthly || 1.50) * 10,
+      number7DaySellPrice: Math.max(0.50, (catalogItem.monthly || 1.50) * 0.5),
+      numberWholesaleCost: (catalogItem.monthly || 1.50) * 0.6,
+      callSellPricePerMin: catalogItem.callRate,
+      callWholesaleCostPerMin: catalogItem.callRate * 0.4,
+      smsSellPrice: catalogItem.smsRate,
+      smsWholesaleCost: catalogItem.smsRate * 0.4,
+      isActive: true,
+      allowOutboundCalls: true,
+      allowOutboundSms: true
+    };
+  }
   return null;
 };
+
+// 🌐 Merges ALL 204 worldwide countries with any dynamic database overrides from PostgreSQL
+function getAllMergedRates() {
+  const dynamicMap = new Map();
+  if (Array.isArray(dynamicRatesCache)) {
+    for (const r of dynamicRatesCache) {
+      if (r && r.countryCode) {
+        dynamicMap.set(r.countryCode.toString().toUpperCase().trim(), r);
+      }
+    }
+  }
+
+  const result = [];
+  const processedCodes = new Set();
+
+  for (const c of ALL_COUNTRIES_CATALOG) {
+    const code = c.code ? c.code.toUpperCase().trim() : '';
+    if (!code) continue;
+    processedCodes.add(code);
+    const dbOverride = dynamicMap.get(code);
+
+    const callRate = (dbOverride && dbOverride.callSellPricePerMin != null) ? Number(dbOverride.callSellPricePerMin) : (c.callRate || 0.05);
+    const smsRate = (dbOverride && dbOverride.smsSellPrice != null) ? Number(dbOverride.smsSellPrice) : (c.smsRate || 0.05);
+    const monthlyPrice = (dbOverride && dbOverride.numberMonthlySellPrice != null) ? Number(dbOverride.numberMonthlySellPrice) : (c.monthly || 1.50);
+    const yearlyPrice = (dbOverride && dbOverride.numberYearlySellPrice != null) ? Number(dbOverride.numberYearlySellPrice) : parseFloat((monthlyPrice * 10).toFixed(2));
+    const sevenDayPrice = (dbOverride && dbOverride.number7DaySellPrice != null) ? Number(dbOverride.number7DaySellPrice) : parseFloat(Math.max(0.50, monthlyPrice * 0.5).toFixed(2));
+    const allowCalls = dbOverride ? (dbOverride.allowOutboundCalls !== false) : true;
+    const allowSms = dbOverride ? (dbOverride.allowOutboundSms !== false) : true;
+    const isActive = dbOverride ? (dbOverride.isActive !== false) : true;
+
+    result.push({
+      country: (dbOverride && dbOverride.countryName) || c.name,
+      countryName: (dbOverride && dbOverride.countryName) || c.name,
+      name: (dbOverride && dbOverride.countryName) || c.name,
+      code: c.code,
+      countryCode: c.code,
+      dialCode: (dbOverride && dbOverride.dialCode) || c.dialCode,
+      flag: (dbOverride && dbOverride.flagEmoji) || c.flag,
+      flagEmoji: (dbOverride && dbOverride.flagEmoji) || c.flag,
+      callRatePerMin: parseFloat(callRate.toFixed(3)),
+      callRate: parseFloat(callRate.toFixed(3)),
+      smsRate: parseFloat(smsRate.toFixed(3)),
+      monthlyPrice: parseFloat(monthlyPrice.toFixed(2)),
+      numberMonthlyPrice: parseFloat(monthlyPrice.toFixed(2)),
+      yearlyPrice: parseFloat(yearlyPrice.toFixed(2)),
+      numberYearlyPrice: parseFloat(yearlyPrice.toFixed(2)),
+      sevenDayPrice: parseFloat(sevenDayPrice.toFixed(2)),
+      number7DayPrice: parseFloat(sevenDayPrice.toFixed(2)),
+      allowCalls: allowCalls,
+      allowSms: allowSms,
+      isActive: isActive
+    });
+  }
+
+  // Include any extra countries in dynamicRatesCache that are not in all_countries.json
+  if (Array.isArray(dynamicRatesCache)) {
+    for (const r of dynamicRatesCache) {
+      if (r && r.countryCode && !processedCodes.has(r.countryCode.toString().toUpperCase().trim())) {
+        const monthlyPrice = Number(r.numberMonthlySellPrice || 1.50);
+        const yearlyPrice = Number(r.numberYearlySellPrice || monthlyPrice * 10);
+        const sevenDayPrice = Number(r.number7DaySellPrice || Math.max(0.50, monthlyPrice * 0.5));
+        result.push({
+          country: r.countryName,
+          countryName: r.countryName,
+          name: r.countryName,
+          code: r.countryCode,
+          countryCode: r.countryCode,
+          dialCode: r.dialCode,
+          flag: r.flagEmoji,
+          flagEmoji: r.flagEmoji,
+          callRatePerMin: parseFloat((r.callSellPricePerMin || 0.05).toFixed(3)),
+          callRate: parseFloat((r.callSellPricePerMin || 0.05).toFixed(3)),
+          smsRate: parseFloat((r.smsSellPrice || 0.05).toFixed(3)),
+          monthlyPrice: parseFloat(monthlyPrice.toFixed(2)),
+          numberMonthlyPrice: parseFloat(monthlyPrice.toFixed(2)),
+          yearlyPrice: parseFloat(yearlyPrice.toFixed(2)),
+          numberYearlyPrice: parseFloat(yearlyPrice.toFixed(2)),
+          sevenDayPrice: parseFloat(sevenDayPrice.toFixed(2)),
+          number7DayPrice: parseFloat(sevenDayPrice.toFixed(2)),
+          allowCalls: r.allowOutboundCalls !== false,
+          allowSms: r.allowOutboundSms !== false,
+          isActive: r.isActive !== false
+        });
+      }
+    }
+  }
+
+  return result;
+}
+
+// 📞 Resolves exact calling & SMS rate for any international destination phone number
+function getRateForDestinationNumber(phoneNumber) {
+  if (!phoneNumber) {
+    return { callRatePerMin: 0.04, callRate: 0.04, smsRate: 0.05, country: 'International', code: 'INTL', dialCode: '+', flag: '🌐' };
+  }
+  let cleanNum = phoneNumber.toString().trim().replace(/[^\d+]/g, '');
+  if (!cleanNum.startsWith('+')) cleanNum = '+' + cleanNum;
+
+  const allRates = getAllMergedRates();
+  // Sort by longest dialCode first so +1787 matches before +1, +971 before +9, etc.
+  const sortedRates = [...allRates].sort((a, b) => (b.dialCode || '').length - (a.dialCode || '').length);
+  const matched = sortedRates.find(r => cleanNum.startsWith(r.dialCode));
+  if (matched) return matched;
+  return { callRatePerMin: 0.05, callRate: 0.05, smsRate: 0.05, country: 'International Destination', code: 'INTL', dialCode: '+', flag: '🌐' };
+}
 
 // 💎 Constructs dynamic plan tiers for any country (Combining active tiers + base rates + custom overrides)
 const getCountryPlans = (countryCode, onlyActive = true) => {
@@ -1935,12 +2071,9 @@ app.post('/api/sms/send', async (req, res) => {
       });
     }
 
-    // Determine SMS cost (1.5x wholesale multiplier)
-    let wholesaleSms = 0.010;
-    if (cleanTo.startsWith('+1')) wholesaleSms = 0.008;
-    else if (cleanTo.startsWith('+44')) wholesaleSms = 0.012;
-    else if (cleanTo.startsWith('+92')) wholesaleSms = 0.025;
-    const smsPrice = parseFloat((wholesaleSms * NUMBER_RETAIL_MULTIPLIER).toFixed(3));
+    // Determine SMS cost (100% Dynamic Worldwide Rate Deck)
+    const destRate = getRateForDestinationNumber(cleanTo);
+    const smsPrice = parseFloat(Number(destRate.smsRate || 0.05).toFixed(3));
 
     // STRICT WALLET BALANCE CHECK
     if (user.walletBalance < smsPrice || user.walletBalance <= 0) {
@@ -2414,14 +2547,8 @@ app.post('/api/calls/log', async (req, res) => {
       }
 
       const minutes = durSec > 0 ? Math.ceil(durSec / 60) : 1;
-      let baseCallRate = 0.020;
-      for (const r of baseRates) {
-        if (cleanContact.startsWith(r.dialCode)) {
-          baseCallRate = r.baseCall;
-          break;
-        }
-      }
-      const ratePerMin = parseFloat((baseCallRate * CALLING_RETAIL_MULTIPLIER).toFixed(3));
+      const destRate = getRateForDestinationNumber(cleanContact);
+      const ratePerMin = parseFloat(Number(destRate.callRatePerMin || 0.05).toFixed(3));
       callCost = parseFloat((minutes * ratePerMin).toFixed(2));
 
       if (durSec > 0) {
@@ -2978,36 +3105,50 @@ const retailRates = baseRates.map(r => ({
   example: r.example,
 }));
 
-// 14. Endpoint: International Calling & SMS Rates Catalog (Dynamic PostgreSQL Sync)
+// 14. Endpoint: International Calling & SMS Rates Catalog (100% Worldwide All Countries Dynamic Sync)
 app.get('/api/rates', async (req, res) => {
   try {
     await refreshDynamicCaches();
-    const activeRates = dynamicRatesCache.filter(r => r.isActive).map(r => ({
-      country: r.countryName,
-      code: r.countryCode,
-      dialCode: r.dialCode,
-      flag: r.flagEmoji,
-      callRatePerMin: r.callSellPricePerMin,
-      smsRate: r.smsSellPrice,
-      numberMonthlyPrice: r.numberMonthlySellPrice,
-      numberYearlyPrice: r.numberYearlySellPrice,
-      number7DayPrice: r.number7DaySellPrice,
-      allowCalls: r.allowOutboundCalls,
-      allowSms: r.allowOutboundSms
-    }));
-
+    const allRates = getAllMergedRates();
     res.json({
       success: true,
-      count: activeRates.length,
-      rates: activeRates
+      count: allRates.length,
+      rates: allRates
     });
   } catch (error) {
     console.error('[SIMLY ERROR] Failed to fetch rates:', error);
-    res.status(500).json({ success: false, error: error.message });
+    // Robust fallback to ALL_COUNTRIES_CATALOG
+    const fallbackList = ALL_COUNTRIES_CATALOG.map(c => ({
+      country: c.name,
+      countryName: c.name,
+      name: c.name,
+      code: c.code,
+      countryCode: c.code,
+      dialCode: c.dialCode,
+      flag: c.flag,
+      flagEmoji: c.flag,
+      callRatePerMin: c.callRate,
+      callRate: c.callRate,
+      smsRate: c.smsRate,
+      numberMonthlyPrice: c.monthly || 1.50,
+      monthlyPrice: c.monthly || 1.50,
+      numberYearlyPrice: (c.monthly || 1.50) * 10,
+      yearlyPrice: (c.monthly || 1.50) * 10,
+      number7DayPrice: Math.max(0.50, (c.monthly || 1.50) * 0.5),
+      sevenDayPrice: Math.max(0.50, (c.monthly || 1.50) * 0.5),
+      allowCalls: true,
+      allowSms: true,
+      isActive: true
+    }));
+    res.json({
+      success: true,
+      count: fallbackList.length,
+      rates: fallbackList
+    });
   }
 });
 
-// 14a. Available Active Countries Catalog for Mobile App (100% Dynamic PostgreSQL)
+// 14a. Available Active Countries Catalog for Mobile App (100% Dynamic PostgreSQL & Worldwide Catalog)
 app.get([
   '/api/countries',
   '/api/app/countries',
@@ -3024,25 +3165,7 @@ app.get([
 ], async (req, res) => {
   try {
     await refreshDynamicCaches();
-    const activeList = dynamicRatesCache.filter(r => r.isActive).map(r => ({
-      country: r.countryName,
-      countryName: r.countryName,
-      name: r.countryName,
-      code: r.countryCode,
-      countryCode: r.countryCode,
-      dialCode: r.dialCode,
-      flag: r.flagEmoji,
-      flagEmoji: r.flagEmoji,
-      monthlyPrice: r.numberMonthlySellPrice,
-      yearlyPrice: r.numberYearlySellPrice,
-      sevenDayPrice: r.number7DaySellPrice,
-      callRate: r.callSellPricePerMin,
-      smsRate: r.smsSellPrice,
-      allowCalls: r.allowOutboundCalls,
-      allowSms: r.allowOutboundSms,
-      isActive: true
-    }));
-
+    const activeList = getAllMergedRates().filter(r => r.isActive !== false);
     res.json({
       success: true,
       count: activeList.length,
@@ -3062,36 +3185,12 @@ app.get('/api/rates/lookup', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Phone number is required' });
     }
 
-    let cleanNum = number.replace(/[^\d+]/g, '');
+    let cleanNum = number.toString().trim().replace(/[^\d+]/g, '');
     if (!cleanNum.startsWith('+')) {
       cleanNum = '+' + cleanNum;
     }
 
-    // Dynamic search against PostgreSQL dynamicRatesCache first
-    const dynamicList = dynamicRatesCache.map(r => ({
-      country: r.countryName,
-      code: r.countryCode,
-      dialCode: r.dialCode,
-      flag: r.flagEmoji,
-      callRatePerMin: r.callSellPricePerMin,
-      smsRate: r.smsSellPrice,
-      numberMonthlyPrice: r.numberMonthlySellPrice,
-      numberYearlyPrice: r.numberYearlySellPrice,
-      number7DayPrice: r.number7DaySellPrice,
-      isActive: r.isActive
-    }));
-
-    const sortedDynamic = [...dynamicList].sort((a, b) => b.dialCode.length - a.dialCode.length);
-    const sortedFallback = [...retailRates].sort((a, b) => b.dialCode.length - a.dialCode.length);
-    const matchedRate = sortedDynamic.find(r => cleanNum.startsWith(r.dialCode)) || sortedFallback.find(r => cleanNum.startsWith(r.dialCode)) || {
-      country: 'International Destination',
-      code: 'INTL',
-      dialCode: '+',
-      flag: '🌐',
-      callRatePerMin: 0.150,
-      smsRate: 0.050,
-      example: '+...'
-    };
+    const matchedRate = getRateForDestinationNumber(cleanNum);
 
     const email = `${userId}@simly.app`;
     let user = await prisma.user.findFirst({

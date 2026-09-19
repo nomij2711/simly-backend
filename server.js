@@ -8368,10 +8368,13 @@ app.post('/api/admin/broadcast-push', requireAdmin, async (req, res) => {
   }
 });
 
-// 22.6 Admin: List All In-App Notifications History
+// 22.6 Admin: List All In-App Notifications History (Only Official Admin Broadcasts)
 app.get('/api/admin/notifications', requireAdmin, async (req, res) => {
   try {
     const notifications = await prisma.inAppNotification.findMany({
+      where: {
+        userId: 'ALL'
+      },
       orderBy: { createdAt: 'desc' },
       take: 100
     });

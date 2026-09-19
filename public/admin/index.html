@@ -10260,51 +10260,131 @@ function exportData(type) {
           </div>
         `;
 
+        const totalWholesaleEventsCount = (data.numbers?.length || 0) + (data.calls?.length || 0) + (data.sms?.length || 0);
+
         tabsRow.innerHTML = `
-          <button onclick="setKpiFilter('all')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'all' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">All Leased Numbers (${data.numbers.length})</button>
+          <button onclick="setKpiFilter('all')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'all' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">⚡ All Carrier Expenses (${totalWholesaleEventsCount})</button>
+          <button onclick="setKpiFilter('numbers')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'numbers' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">📞 Number Leases (${data.numbers?.length || 0})</button>
+          <button onclick="setKpiFilter('calls')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'calls' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">🎧 Voice Termination (${data.calls?.length || 0})</button>
+          <button onclick="setKpiFilter('sms')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'sms' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">💬 SMS Routing (${data.sms?.length || 0})</button>
         `;
 
         thead.innerHTML = `
           <tr>
-            <th class="p-3">Carrier Leased DID</th>
-            <th class="p-3">Country Code</th>
-            <th class="p-3">Assigned User</th>
-            <th class="p-3">Subscription Duration</th>
-            <th class="p-3 text-right">Wholesale Base Cost</th>
-            <th class="p-3 text-right">Fleet Status</th>
-            <th class="p-3 text-right">Provisioned Date</th>
+            <th class="p-3">Carrier Expense Resource / Event</th>
+            <th class="p-3">Category</th>
+            <th class="p-3">Destination / Route</th>
+            <th class="p-3">Metric / Plan</th>
+            <th class="p-3 text-right">Wholesale Carrier Cost</th>
+            <th class="p-3 text-right">Route Status</th>
+            <th class="p-3 text-right">Timestamp</th>
+            <th class="p-3 text-right text-cyan-400 font-bold bg-cyan-500/5">Running Carrier Expense Paid 📉</th>
           </tr>
         `;
 
-        let rows = data.numbers.map(n => `
+        let allWholesaleEvents = [];
+
+        // 1. Gather Number Leases
+        (data.numbers || []).forEach(n => {
+          allWholesaleEvents.push({
+            id: n.id,
+            category: 'numbers',
+            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"><i class="fa-solid fa-server mr-1"></i>DID Line Lease</span>',
+            title: n.phoneNumber,
+            subtitle: `Telnyx Direct Leased Line • ${n.userName || 'Assigned User'}`,
+            destination: `${n.countryCode || 'US'} Route`,
+            metric: n.planDaysLabel || '30 Days Monthly',
+            cost: Number(n.wholesaleCost || 0),
+            status: n.status || 'ACTIVE',
+            iconBg: 'bg-cyan-500/10 text-cyan-400',
+            icon: 'fa-server',
+            date: new Date(n.createdAt || Date.now()),
+            dateFormatted: new Date(n.createdAt || Date.now()).toLocaleDateString()
+          });
+        });
+
+        // 2. Gather Voice Call Termination
+        (data.calls || []).forEach(c => {
+          allWholesaleEvents.push({
+            id: c.id,
+            category: 'calls',
+            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-phone-flip mr-1"></i>PSTN Termination</span>',
+            title: `${c.myNumber || 'Virtual Line'} → ${c.contactNumber}`,
+            subtitle: `Carrier Voice Termination • ${c.durationFormatted}`,
+            destination: `${c.flagEmoji || '🌐'} ${c.destinationCountry || 'International'}`,
+            metric: c.durationFormatted,
+            cost: Number(c.wholesaleCost || 0),
+            status: c.status === 'completed' ? 'COMPLETED' : 'MISSED',
+            iconBg: 'bg-amber-500/10 text-amber-400',
+            icon: 'fa-phone-flip',
+            date: new Date(c.createdAt || Date.now()),
+            dateFormatted: new Date(c.createdAt || Date.now()).toLocaleString()
+          });
+        });
+
+        // 3. Gather SMS Routing
+        (data.sms || []).forEach(m => {
+          allWholesaleEvents.push({
+            id: m.id,
+            category: 'sms',
+            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-comment-dots mr-1"></i>SMS Gateway</span>',
+            title: `${m.fromNumber || 'Line'} → ${m.toNumber}`,
+            subtitle: `Carrier SMS Routing • "${m.text ? (m.text.length > 20 ? m.text.substring(0, 20) + '...' : m.text) : 'SMS'}"`,
+            destination: `${m.flagEmoji || '🌐'} ${m.destinationCountry || 'Destination'}`,
+            metric: '1 Segment',
+            cost: Number(m.wholesaleCost || 0),
+            status: m.status === 'delivered' ? 'DELIVERED' : 'SENT',
+            iconBg: 'bg-rose-500/10 text-rose-400',
+            icon: 'fa-comment-dots',
+            date: new Date(m.createdAt || Date.now()),
+            dateFormatted: new Date(m.createdAt || Date.now()).toLocaleString()
+          });
+        });
+
+        // 4. Chronological sort (oldest first) to calculate cumulative running expense balance
+        allWholesaleEvents.sort((a, b) => a.date - b.date);
+
+        let runningWholesaleBalance = 0;
+        allWholesaleEvents.forEach(e => {
+          runningWholesaleBalance += e.cost;
+          e.runningExpensePaid = runningWholesaleBalance;
+        });
+
+        // 5. Reverse for display so the newest expenses appear at top
+        allWholesaleEvents.reverse();
+
+        // 6. Filter by tab
+        const filteredWholesaleEvents = kpiCurrentTableFilter === 'all'
+          ? allWholesaleEvents
+          : allWholesaleEvents.filter(e => e.category === kpiCurrentTableFilter);
+
+        let rows = filteredWholesaleEvents.map(e => `
           <tr class="hover:bg-slate-800/40 transition-colors">
-            <td class="p-3 flex items-center gap-2">
-              <span class="w-6 h-6 rounded bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-xs"><i class="fa-solid fa-server"></i></span>
+            <td class="p-3 flex items-center gap-2.5">
+              <span class="w-7 h-7 rounded-lg ${e.iconBg} flex items-center justify-center text-xs shadow"><i class="fa-solid ${e.icon}"></i></span>
               <div>
-                <div class="font-bold text-white font-mono">${n.phoneNumber}</div>
-                <div class="text-[10px] text-slate-500">Telnyx Direct Leased Line</div>
+                <div class="font-bold text-white font-mono text-xs">${e.title}</div>
+                <div class="text-[10px] text-slate-400">${e.subtitle}</div>
               </div>
             </td>
+            <td class="p-3">${e.badge}</td>
             <td class="p-3">
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">${n.countryCode}</span>
+              <div class="font-semibold text-slate-200 text-xs">${e.destination}</div>
             </td>
             <td class="p-3">
-              <div class="font-semibold text-slate-200">${n.userName}</div>
-              <div class="text-[10px] text-slate-500">${n.userEmail}</div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">${e.metric}</span>
             </td>
-            <td class="p-3">
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">${n.planDaysLabel}</span>
-            </td>
-            <td class="p-3 text-right font-mono font-bold text-cyan-400">${formatUSD8(n.wholesaleCost)}</td>
+            <td class="p-3 text-right font-mono font-bold text-cyan-400">${formatUSD8(e.cost)}</td>
             <td class="p-3 text-right">
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase">${n.status}</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${e.status === 'ACTIVE' || e.status === 'COMPLETED' || e.status === 'DELIVERED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'} uppercase">${e.status}</span>
             </td>
-            <td class="p-3 text-right text-slate-500 text-[10px]">${new Date(n.createdAt).toLocaleDateString()}</td>
+            <td class="p-3 text-right text-slate-500 text-[10px]">${e.dateFormatted}</td>
+            <td class="p-3 text-right font-mono font-black text-cyan-300 bg-cyan-500/5">${formatUSD8(e.runningExpensePaid)}</td>
           </tr>
         `);
 
-        tbody.innerHTML = rows.join('') || '<tr><td colspan="7" class="p-8 text-center text-slate-500">No wholesale carrier numbers yet.</td></tr>';
-        footerCount.innerText = `Showing ${rows.length} carrier leased lines`;
+        tbody.innerHTML = rows.join('') || '<tr><td colspan="8" class="p-8 text-center text-slate-500">No wholesale carrier expenses yet.</td></tr>';
+        footerCount.innerText = `Showing ${filteredWholesaleEvents.length} wholesale expense records (Total Carrier Payout: ${formatUSD8(runningWholesaleBalance)})`;
 
       } else if (type === 'retail_revenue') {
         summaryRow.innerHTML = `

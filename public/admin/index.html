@@ -1258,7 +1258,7 @@
               <button onclick="resetAnnouncementForm()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition-all">
                 <i class="fa-solid fa-plus mr-1"></i> New Pop-up
               </button>
-              <button onclick="loadAnnouncements()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition-all">
+              <button onclick="loadAnnouncements(); loadInAppNotifications();" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition-all">
                 <i class="fa-solid fa-rotate-right mr-1"></i> Refresh
               </button>
             </div>
@@ -1583,6 +1583,43 @@
                 </thead>
                 <tbody id="announcementsTableBody" class="divide-y divide-slate-800/60">
                   <tr><td colspan="7" class="py-8 text-center text-slate-500">Loading announcement campaigns...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 🔔 SAVED IN-APP NOTIFICATIONS FLEET & GLOBAL DELETE MANAGER -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-bell text-amber-400"></i>
+                  <span>Saved In-App Notifications Fleet & Live Inbox Manager</span>
+                </h3>
+                <p class="text-[11px] text-slate-400 mt-0.5">Manage notifications stored inside user mobile apps. Deleting a notification here instantly wipes it from all users' in-app notification centers globally.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="notifsCountBadge" class="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-semibold">0 Saved Notifications</span>
+                <button onclick="loadInAppNotifications()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition-all">
+                  <i class="fa-solid fa-rotate-right mr-1"></i> Refresh
+                </button>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-950/70 border-b border-slate-800 text-slate-400 uppercase font-semibold text-[10px] tracking-wider">
+                  <tr>
+                    <th class="py-3 px-4">Section / Category</th>
+                    <th class="py-3 px-4">Notification Content</th>
+                    <th class="py-3 px-4">Tap Action Destination</th>
+                    <th class="py-3 px-4">Target Audience</th>
+                    <th class="py-3 px-4">Dispatched At</th>
+                    <th class="py-3 px-4 text-right">Global Delete</th>
+                  </tr>
+                </thead>
+                <tbody id="notifsTableBody" class="divide-y divide-slate-800/60">
+                  <tr><td colspan="6" class="py-8 text-center text-slate-500">Loading saved notifications...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -3788,7 +3825,10 @@
       else if (currentActiveTab === 'cdr') loadCalls();
       else if (currentActiveTab === 'transactions') loadTransactions();
       else if (currentActiveTab === 'support') loadSupportQueue();
-      else if (currentActiveTab === 'announcements') loadAnnouncements();
+      else if (currentActiveTab === 'announcements') {
+        loadAnnouncements();
+        loadInAppNotifications();
+      }
       else if (currentActiveTab === 'team') loadTeam();
       else if (currentActiveTab === 'audit') loadAuditLogs();
       else if (currentActiveTab === 'pricing') loadPricing();
@@ -7607,12 +7647,117 @@
           document.getElementById('pushBody').value = '';
           if (document.getElementById('pushButtonText')) document.getElementById('pushButtonText').value = '';
           if (document.getElementById('pushImageUrl')) document.getElementById('pushImageUrl').value = '';
+          loadInAppNotifications();
         }
       } catch (err) {
         alert(err.message);
       } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span>Send Push Broadcast & Save to In-App Inbox</span>';
+      }
+    }
+
+    async function loadInAppNotifications() {
+      const tbody = document.getElementById('notifsTableBody');
+      const badge = document.getElementById('notifsCountBadge');
+      if (!tbody) return;
+
+      try {
+        const res = await adminFetch('/api/admin/notifications');
+        if (!res.success || !Array.isArray(res.notifications)) {
+          tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-slate-500">No in-app notifications found.</td></tr>';
+          if (badge) badge.innerText = '0 Saved Notifications';
+          return;
+        }
+
+        const notifs = res.notifications;
+        if (badge) badge.innerText = `${notifs.length} Saved Notifications`;
+
+        if (notifs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-slate-500">No saved in-app notifications yet.</td></tr>';
+          return;
+        }
+
+        const typeLabels = {
+          'ANNOUNCEMENT': { label: '📢 Updates', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
+          'PROMO': { label: '🎁 Offers', color: 'bg-pink-500/10 text-pink-400 border-pink-500/20' },
+          'WALLET': { label: '💳 Billing', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+          'SYSTEM': { label: '⚙️ System', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+          'EXPIRY_ALERT': { label: '⚠️ Line Expiry', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' }
+        };
+
+        const iconIcons = {
+          'bell': 'fa-bell text-amber-400',
+          'gift': 'fa-gift text-pink-400',
+          'tag': 'fa-tag text-purple-400',
+          'wallet': 'fa-wallet text-emerald-400',
+          'phone': 'fa-phone text-blue-400',
+          'shield': 'fa-shield text-cyan-400',
+          'star': 'fa-star text-yellow-400'
+        };
+
+        const actionLabels = {
+          'none': 'ℹ️ Info Dialog',
+          'navigate_wallet': '💳 Open Wallet Screen',
+          'navigate_numbers': '🛒 Marketplace',
+          'navigate_support': '🎧 Support Chat',
+          'open_url': '🌐 External URL'
+        };
+
+        tbody.innerHTML = notifs.map(n => {
+          const typeObj = typeLabels[n.type] || { label: `📢 ${n.type}`, color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' };
+          const iconClass = iconIcons[n.icon] || 'fa-bell text-indigo-400';
+          const actionText = actionLabels[n.actionType] || (n.actionType ? n.actionType : 'None');
+          const dateStr = n.createdAt ? new Date(n.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+          const audienceText = n.userId === 'ALL' ? '<span class="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 text-[10px] font-semibold">🌐 All Users</span>' : `<span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 text-[10px] font-mono">${escapeHtml(n.userId)}</span>`;
+
+          return `
+            <tr class="hover:bg-slate-850/50 transition-colors">
+              <td class="py-3 px-4">
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold border ${typeObj.color}">${typeObj.label}</span>
+              </td>
+              <td class="py-3 px-4 max-w-xs">
+                <div class="flex items-start gap-2">
+                  <div class="w-7 h-7 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 mt-0.5">
+                    <i class="fa-solid ${iconClass} text-xs"></i>
+                  </div>
+                  <div>
+                    <div class="font-bold text-white text-xs">${escapeHtml(n.title)}</div>
+                    <div class="text-slate-400 text-[11px] line-clamp-2 mt-0.5">${escapeHtml(n.message)}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3 px-4">
+                <span class="text-slate-300 text-xs">${actionText}</span>
+                ${n.buttonText ? `<div class="text-[10px] text-slate-500 mt-0.5">Btn: "${escapeHtml(n.buttonText)}"</div>` : ''}
+              </td>
+              <td class="py-3 px-4">${audienceText}</td>
+              <td class="py-3 px-4 text-slate-400 text-xs">${dateStr}</td>
+              <td class="py-3 px-4 text-right">
+                <button onclick="deleteInAppNotification('${n.id}', '${escapeHtml(n.title.replace(/'/g, "\\'"))}')" class="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ml-auto">
+                  <i class="fa-solid fa-trash-can"></i>
+                  <span>Delete Globally</span>
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-red-400">Failed to load saved notifications: ${escapeHtml(err.message)}</td></tr>`;
+      }
+    }
+
+    async function deleteInAppNotification(id, title) {
+      if (!confirm(`Are you sure you want to permanently DELETE the notification:\n\n"${title}"\n\nThis will remove it from ALL users' in-app notification centers globally.`)) return;
+
+      try {
+        const res = await adminFetch(`/api/admin/notifications/${id}`, { method: 'DELETE' });
+        if (res.success) {
+          alert(res.message || 'Notification deleted globally!');
+          loadInAppNotifications();
+        }
+      } catch (err) {
+        alert(err.message);
       }
     }
 

@@ -8368,6 +8368,49 @@ app.post('/api/admin/broadcast-push', requireAdmin, async (req, res) => {
   }
 });
 
+// 22.6 Admin: List All In-App Notifications History
+app.get('/api/admin/notifications', requireAdmin, async (req, res) => {
+  try {
+    const notifications = await prisma.inAppNotification.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100
+    });
+
+    res.json({
+      success: true,
+      notifications
+    });
+  } catch (error) {
+    console.error('❌ [ADMIN NOTIFICATIONS LIST ERROR]:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 22.7 Admin: Delete / Recall In-App Notification Globally
+app.delete('/api/admin/notifications/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, error: 'Notification ID is required' });
+    }
+
+    const deleted = await prisma.inAppNotification.delete({
+      where: { id }
+    });
+
+    console.log(`🗑️ [ADMIN NOTIF DELETED] Deleted notification "${deleted.title}" (${deleted.id})`);
+
+    res.json({
+      success: true,
+      message: `Notification "${deleted.title}" has been deleted globally. Removed from all users' in-app notification centers.`,
+      deleted
+    });
+  } catch (error) {
+    console.error('❌ [ADMIN NOTIF DELETE ERROR]:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 
 const PORT = process.env.PORT || 5000;
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {

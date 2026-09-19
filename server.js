@@ -4788,15 +4788,21 @@ app.post('/api/admin/users/bulk-full-profile', requireStaffPermission(['can_view
       const user = await prisma.user.findFirst({ where: { id: uid } });
       if (!user) continue;
 
+      const userFilters = [{ userId: user.id }];
+      if (user.email) {
+        userFilters.push({ userId: user.email });
+        userFilters.push({ userId: user.email.toLowerCase() });
+      }
+
       const transactions = await prisma.transaction.findMany({
-        where: { OR: [{ userId: user.id }, { userId: user.email }, { userId: user.email.toLowerCase() }] },
+        where: { OR: userFilters },
         orderBy: { createdAt: 'desc' }
-      });
+      }).catch(() => []);
 
       let numbers = await prisma.purchasedNumber.findMany({
-        where: { OR: [{ userId: user.id }, { userId: user.email }, { userId: user.email.toLowerCase() }] },
+        where: { OR: userFilters },
         orderBy: { createdAt: 'desc' }
-      });
+      }).catch(() => []);
 
       numbers = numbers.map(n => {
         const planDays = n.planType === '7_days' ? 7 : (n.planType === '365_days' ? 365 : 30);
@@ -4810,28 +4816,49 @@ app.post('/api/admin/users/bulk-full-profile', requireStaffPermission(['can_view
         };
       });
 
-      const userPhoneNumbers = numbers.map(n => n.phoneNumber);
+      const userPhoneNumbers = numbers.map(n => n.phoneNumber).filter(Boolean);
 
-      const calls = await prisma.callLog.findMany({
+      const calls = (userPhoneNumbers.length > 0) ? await prisma.callLog.findMany({
         where: { OR: [{ myNumber: { in: userPhoneNumbers } }, { contactNumber: { in: userPhoneNumbers } }] },
         orderBy: { createdAt: 'desc' }
-      });
+      }).catch(() => []) : [];
 
-      const messages = await prisma.message.findMany({
+      const messages = (userPhoneNumbers.length > 0) ? await prisma.message.findMany({
         where: { OR: [{ fromNumber: { in: userPhoneNumbers } }, { toNumber: { in: userPhoneNumbers } }] },
         orderBy: { createdAt: 'desc' }
-      });
+      }).catch(() => []) : [];
 
-      const supportTickets = await prisma.supportTicket.findMany({
-        where: { OR: [{ userId: user.id }, { customerEmail: user.email }] },
-        orderBy: { createdAt: 'desc' }
-      });
+      const supportFilters = [{ userId: user.id }];
+      if (user.email) {
+        supportFilters.push({ userId: user.email });
+        supportFilters.push({ userEmail: user.email });
+      }
 
-      const auditLogs = await prisma.systemAuditLog.findMany({
-        where: { targetId: user.id },
-        orderBy: { createdAt: 'desc' },
-        take: 50
-      });
+      let supportTickets = [];
+      try {
+        supportTickets = await prisma.supportTicket.findMany({
+          where: { OR: supportFilters },
+          orderBy: { createdAt: 'desc' }
+        });
+      } catch (e) {
+        console.warn('[BULK EXPORT] Support tickets query warning:', e.message);
+      }
+
+      const auditFilters = [{ targetId: user.id }, { details: { contains: user.id } }];
+      if (user.email) {
+        auditFilters.push({ details: { contains: user.email } });
+      }
+
+      let auditLogs = [];
+      try {
+        auditLogs = await prisma.auditLog.findMany({
+          where: { OR: auditFilters },
+          orderBy: { createdAt: 'desc' },
+          take: 50
+        });
+      } catch (e) {
+        console.warn('[BULK EXPORT] Audit logs query warning:', e.message);
+      }
 
       const totalDeposited = transactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
       const totalSpent = transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + Math.abs(t.amount), 0);

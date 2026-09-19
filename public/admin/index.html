@@ -11115,24 +11115,24 @@ setInterval(() => {
   <div id="liveToastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm pointer-events-none"></div>
 
   <!-- 📊 INTERACTIVE KPI DETAILED BREAKDOWN MODAL -->
-  <div id="kpiBreakdownModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-6 overflow-y-auto">
-    <div class="bg-slate-900 border border-slate-800 w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+  <div id="kpiBreakdownModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-2 sm:p-6 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
       
       <!-- Modal Header -->
-      <div class="p-5 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between flex-shrink-0">
+      <div class="p-4 sm:p-5 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between flex-shrink-0">
         <div class="flex items-center gap-3">
-          <div id="kpiModalIconBox" class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg shadow-md">
+          <div id="kpiModalIconBox" class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg shadow-md flex-shrink-0">
             <i id="kpiModalIcon" class="fa-solid fa-chart-line"></i>
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h3 id="kpiModalTitle" class="text-lg font-bold text-white">Financial & Traffic Breakdown</h3>
-              <span id="kpiModalBadge" class="text-xs px-2 py-0.5 rounded-full font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Live</span>
+              <h3 id="kpiModalTitle" class="text-base sm:text-lg font-bold text-white">Financial & Traffic Breakdown</h3>
+              <span id="kpiModalBadge" class="text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Live</span>
             </div>
-            <p id="kpiModalSubtitle" class="text-xs text-slate-400 mt-0.5">Itemized ledger of subscriptions, carrier costs, and profit margins.</p>
+            <p id="kpiModalSubtitle" class="text-[11px] sm:text-xs text-slate-400 mt-0.5">Itemized ledger of subscriptions, carrier costs, and profit margins.</p>
           </div>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-shrink-0">
           <button onclick="refreshKpiBreakdown()" title="Refresh records" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
             <i class="fa-solid fa-arrows-rotate text-sm"></i>
           </button>
@@ -11143,26 +11143,26 @@ setInterval(() => {
       </div>
 
       <!-- Modal Summary Stats Cards -->
-      <div id="kpiModalSummaryRow" class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-950/40 border-b border-slate-800 flex-shrink-0">
+      <div id="kpiModalSummaryRow" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 p-3 sm:p-4 bg-slate-950/40 border-b border-slate-800 flex-shrink-0">
         <!-- Dynamically injected stats -->
       </div>
 
       <!-- Search & Tab Filter Bar -->
-      <div class="p-3 border-b border-slate-800 bg-slate-900 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
-        <div class="flex items-center gap-1.5" id="kpiModalFilterTabs">
+      <div class="p-3 border-b border-slate-800 bg-slate-900 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 flex-shrink-0">
+        <div class="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 sm:pb-0 custom-scrollbar flex-nowrap" id="kpiModalFilterTabs">
           <!-- Dynamic filter buttons -->
         </div>
-        <div class="relative w-full sm:w-64">
+        <div class="relative w-full sm:w-64 flex-shrink-0">
           <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
           <input type="text" id="kpiModalSearchInput" oninput="filterKpiModalTable(this.value)" placeholder="Search table records..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
         </div>
       </div>
 
-      <!-- Scrollable Table Container -->
-      <div class="flex-1 overflow-y-auto custom-scrollbar p-4">
-        <div class="border border-slate-800 rounded-xl overflow-hidden bg-slate-950">
-          <table class="w-full text-left text-xs text-slate-300">
-            <thead id="kpiModalTableHead" class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800 sticky top-0">
+      <!-- Scrollable Table Container (Mobile Responsive with Horizontal Scroll) -->
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-4">
+        <div class="border border-slate-800 rounded-xl overflow-x-auto custom-scrollbar bg-slate-950 shadow-inner">
+          <table class="w-full min-w-[780px] text-left text-xs text-slate-300">
+            <thead id="kpiModalTableHead" class="bg-slate-900/95 text-slate-400 font-semibold border-b border-slate-800 sticky top-0 z-10 whitespace-nowrap">
               <!-- Dynamically injected table headers -->
             </thead>
             <tbody id="kpiModalTableBody" class="divide-y divide-slate-800/60 font-medium">

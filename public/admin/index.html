@@ -509,17 +509,27 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
+              <!-- Prominent Download User Data button -->
+              <button onclick="openCustomExportModal()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white border border-purple-400/40 text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg shadow-purple-600/30">
+                <i class="fa-solid fa-download text-amber-300"></i> <span>Download User Data</span>
+              </button>
+
+              <!-- Quick Copy Emails Button -->
+              <button onclick="copySelectedUsersEmails()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition-all flex items-center gap-1.5" title="Copy comma-separated list of selected emails">
+                <i class="fa-solid fa-clipboard text-indigo-400"></i> <span>Copy Emails</span>
+              </button>
+
               <button onclick="executeBulkAction('block')" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
-                <i class="fa-solid fa-user-slash"></i> <span>Block Selected</span>
+                <i class="fa-solid fa-user-slash"></i> <span>Block</span>
               </button>
               <button onclick="executeBulkAction('unblock')" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
-                <i class="fa-solid fa-user-check"></i> <span>Unblock Selected</span>
+                <i class="fa-solid fa-user-check"></i> <span>Unblock</span>
               </button>
               <button onclick="openBulkBalanceModal()" class="px-3 py-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
-                <i class="fa-solid fa-hand-holding-dollar"></i> <span>Add Bonus / Deduct</span>
+                <i class="fa-solid fa-hand-holding-dollar"></i> <span>Bonus/Deduct</span>
               </button>
               <button onclick="executeBulkAction('delete')" class="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
-                <i class="fa-solid fa-box-archive"></i> <span>Archive / Soft-Delete</span>
+                <i class="fa-solid fa-box-archive"></i> <span>Archive</span>
               </button>
               <button onclick="executeBulkAction('restore')" class="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
                 <i class="fa-solid fa-rotate-left"></i> <span>Restore</span>
@@ -558,18 +568,17 @@
         <!-- ============================================================ -->
         <!-- 🔍 TAB 2.5: USER 360-DEGREE DOSSIER & PROFILE INSPECTOR -->
         <!-- ============================================================ -->
-        <div id="tab-view-user-detail" class="tab-view hidden space-y-6">
-          
-          <!-- Navigation Back Bar & Action Controls -->
-          <div class="flex items-center justify-between">
+        <div id="tab-user-detail" class="tab-pane hidden space-y-6 animate-fade-in">
+          <!-- Top Back Bar & Action Buttons -->
+          <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/70 p-3 rounded-2xl border border-slate-800/80">
             <button onclick="switchTab('users')" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white transition-all">
               <i class="fa-solid fa-arrow-left"></i>
               <span>Back to All Users</span>
             </button>
             <div class="flex items-center gap-2 flex-wrap">
-              <button id="udBtnExportPdf" onclick="downloadUserAllDataPdf(currentInspectedUserId)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white border border-purple-400/30 text-xs font-bold transition-all shadow-lg shadow-purple-600/30 flex items-center gap-2">
+              <button id="udBtnExportPdf" onclick="openCustomExportModal(currentInspectedUserId)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white border border-purple-400/30 text-xs font-bold transition-all shadow-lg shadow-purple-600/30 flex items-center gap-2">
                 <i class="fa-solid fa-file-pdf text-amber-300"></i>
-                <span>Download User All Data (PDF)</span>
+                <span>Download User Data (PDF / Custom)</span>
               </button>
               <button id="udBtnRestore" onclick="handleRestoreUserFromDetail()" class="hidden px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-all shadow-md">
                 <i class="fa-solid fa-rotate-left mr-1"></i> <span>Restore Account</span>
@@ -2346,6 +2355,209 @@
     </div>
   </div>
 
+  <!-- 📦 CUSTOM USER DATA EXPORT MODAL -->
+  <div id="customUserDataExportModal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto" onclick="if(event.target === this) closeCustomExportModal()">
+    <div class="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-slate-700/80 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden relative flex flex-col my-auto animate-scale-up">
+      <!-- Modal Header -->
+      <div class="p-5 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/50">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 flex items-center justify-center text-white text-base shadow-lg shadow-indigo-600/30">
+            <i class="fa-solid fa-file-shield"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <span>Export Custom User Intelligence Data</span>
+              <span id="customExportCountBadge" class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">1 User</span>
+            </h3>
+            <p class="text-xs text-slate-400">Select which data modules to include in the exported report or dossier.</p>
+          </div>
+        </div>
+        <button onclick="closeCustomExportModal()" class="w-8 h-8 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-all">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 space-y-4 max-h-[72vh] overflow-y-auto custom-scrollbar">
+        <!-- Target Users Banner / Emails Preview with Copy Button -->
+        <div class="p-3.5 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-users text-indigo-400"></i>
+              <span>Target Account(s):</span>
+              <span id="customExportTargetSummary" class="text-indigo-400 font-mono text-[11px]"></span>
+            </span>
+            <button type="button" onclick="copySelectedUsersEmails()" class="px-2.5 py-1 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 shadow-xs" title="Copy emails to clipboard">
+              <i class="fa-solid fa-clipboard text-[10px]"></i>
+              <span>Copy All Emails</span>
+            </button>
+          </div>
+          <!-- User Chips list -->
+          <div id="customExportUserChips" class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto custom-scrollbar p-1">
+            <!-- Populated dynamically via openCustomExportModal() -->
+          </div>
+        </div>
+
+        <!-- Module Selection Header & Quick Select Controls -->
+        <div class="flex items-center justify-between pt-1">
+          <div class="text-xs font-bold text-slate-200 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <i class="fa-solid fa-list-check text-indigo-400"></i>
+            <span>Select Data Modules to Include</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="toggleAllExportModules(true)" class="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">
+              Select All
+            </button>
+            <span class="text-slate-600 text-xs">•</span>
+            <button type="button" onclick="toggleAllExportModules(false)" class="text-[11px] font-semibold text-slate-400 hover:text-slate-300 transition-colors">
+              Deselect All
+            </button>
+          </div>
+        </div>
+
+        <!-- Module Checkbox Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <!-- 1. Profile & Bio-Data -->
+          <label class="flex items-start gap-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer group">
+            <input type="checkbox" id="expModProfile" checked class="export-module-cb mt-1 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4">
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-bold text-white group-hover:text-indigo-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-id-card text-indigo-400"></i>
+                <span>Account & Profile Identity</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5 leading-tight">Name, Email, Phone, Customer ID, Auth Provider, Registration Date, Account Status</div>
+            </div>
+          </label>
+
+          <!-- 2. Security & IP Geolocation -->
+          <label class="flex items-start gap-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer group">
+            <input type="checkbox" id="expModSecurity" checked class="export-module-cb mt-1 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4">
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-bold text-white group-hover:text-indigo-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-shield-halved text-cyan-400"></i>
+                <span>IP Geolocation & Risk Score</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5 leading-tight">Client IP, Country, City, ISP, Device Fingerprint, Risk Level & Score</div>
+            </div>
+          </label>
+
+          <!-- 3. Wallet Balance & Financial Summary -->
+          <label class="flex items-start gap-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer group">
+            <input type="checkbox" id="expModWallet" checked class="export-module-cb mt-1 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4">
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-bold text-white group-hover:text-indigo-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-wallet text-emerald-400"></i>
+                <span>Wallet Balance Summary</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5 leading-tight">Current USD Balance, Total Lifetime Topups, Total Spent</div>
+            </div>
+          </label>
+
+          <!-- 4. Virtual Phone Numbers Fleet -->
+          <label class="flex items-start gap-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer group">
+            <input type="checkbox" id="expModNumbers" checked class="export-module-cb mt-1 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4">
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-bold text-white group-hover:text-indigo-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-sim-card text-purple-400"></i>
+                <span>Virtual Numbers Assigned</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5 leading-tight">Active & Expired Virtual Numbers, Country Codes, Plan Tiers, Purchase & Expiry Dates, DND & Voicemail</div>
+            </div>
+          </label>
+
+          <!-- 5. Transaction Ledger -->
+          <label class="flex items-start gap-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer group">
+            <input type="checkbox" id="expModTransactions" checked class="export-module-cb mt-1 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4">
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-bold text-white group-hover:text-indigo-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-receipt text-amber-400"></i>
+                <span>Transaction History & Ledger</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5 leading-tight">Itemized Ledger of Topups, Purchases, Renewals, Adjustments with IDs and Memos</div>
+            </div>
+          </label>
+
+          <!-- 6. Voice Call Detail Records (CDR) -->
+          <label class="flex items-start gap-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer group">
+            <input type="checkbox" id="expModCalls" checked class="export-module-cb mt-1 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4">
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-bold text-white group-hover:text-indigo-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-phone-volume text-blue-400"></i>
+                <span>Voice Call Detail Records (CDR)</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5 leading-tight">Inbound & Outbound Voice Calls, Durations in Minutes/Seconds, Destination Numbers, Recordings</div>
+            </div>
+          </label>
+
+          <!-- 7. SMS Messages Log -->
+          <label class="flex items-start gap-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer group">
+            <input type="checkbox" id="expModSms" checked class="export-module-cb mt-1 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4">
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-bold text-white group-hover:text-indigo-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-comments text-teal-400"></i>
+                <span>SMS Messages History</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5 leading-tight">Inbound & Outbound SMS Logs, Sender/Receiver Numbers, Delivery Status, Message Text Content</div>
+            </div>
+          </label>
+
+          <!-- 8. Support Desk & Tickets -->
+          <label class="flex items-start gap-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer group">
+            <input type="checkbox" id="expModSupport" checked class="export-module-cb mt-1 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4">
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-bold text-white group-hover:text-indigo-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-headset text-pink-400"></i>
+                <span>Support Tickets & CSAT</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5 leading-tight">Support Conversations, Assigned Staff Agents, Ticket Status, Resolution History</div>
+            </div>
+          </label>
+
+          <!-- 9. Audit Logs -->
+          <label class="flex items-start gap-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer group sm:col-span-2">
+            <input type="checkbox" id="expModAudit" checked class="export-module-cb mt-1 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4">
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-bold text-white group-hover:text-indigo-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
+                <span>System Audit Logs & Security History</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5 leading-tight">Administrative Actions, Balance Modifications, Block/Unblock Timestamps, System Notes</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Modal Footer with Format Options & Download Trigger -->
+      <div class="p-5 border-t border-slate-800/80 bg-slate-950/70 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="closeCustomExportModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-all">
+            Cancel
+          </button>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- CSV Export Button -->
+          <button type="button" id="btnExportCsv" onclick="executeCustomExport('csv')" class="px-3.5 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs">
+            <i class="fa-solid fa-file-csv text-emerald-400"></i>
+            <span id="btnExportCsvText">Export CSV</span>
+          </button>
+
+          <!-- JSON Export Button -->
+          <button type="button" id="btnExportJson" onclick="executeCustomExport('json')" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
+            <i class="fa-solid fa-code text-cyan-400"></i>
+            <span id="btnExportJsonText">Export JSON</span>
+          </button>
+
+          <!-- Primary PDF Export Button -->
+          <button type="button" id="btnExportPdf" onclick="executeCustomExport('pdf')" class="px-4 py-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-purple-600/30 flex items-center gap-2">
+            <i class="fa-solid fa-file-pdf text-amber-300"></i>
+            <span id="btnExportPdfText">Generate & Download PDF</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 💬 FULL CHAT TRANSCRIPT MODAL -->
   <div id="chatTranscriptModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
     <div class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
@@ -3807,6 +4019,8 @@
 
     let currentUserFilter = 'all';
     let selectedUserIds = new Set();
+    let currentLoadedUsers = [];
+    let customExportTargetUserIds = [];
     let userSearchDebounceTimer = null;
 
     function debounceLoadUsers() {
@@ -3964,6 +4178,8 @@
         const data = await adminFetch(`/api/admin/users?search=${encodeURIComponent(search)}&filter=${currentUserFilter}`);
         if (!data.success) return;
 
+        currentLoadedUsers = data.users || [];
+
         // Update counts
         const c = data.counts || {};
         if (document.getElementById('crmTotalUsersBadge')) document.getElementById('crmTotalUsersBadge').innerText = c.total || data.total || 0;
@@ -4072,7 +4288,7 @@
             </td>
             <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4 text-slate-400 text-[11px]">${new Date(u.createdAt).toLocaleDateString()}</td>
             <td class="py-3 px-4 text-right space-x-1" onclick="event.stopPropagation()">
-              <button onclick="downloadUserAllDataPdf('${u.id}')" title="Download User All Data (PDF)" class="px-2 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-purple-600/30">
+              <button onclick="openCustomExportModal('${u.id}')" title="Export Custom User Data (PDF/CSV/JSON)" class="px-2 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-purple-600/30">
                 <i class="fa-solid fa-file-pdf text-amber-300"></i>
               </button>
               <button onclick="inspectUserDossier('${u.id}')" title="View 360 Dossier" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30">
@@ -4388,361 +4604,757 @@
       }
     }
 
-    // 📄 COMPREHENSIVE USER DATA PDF EXPORTER (Bio-Data, IP, Numbers, Financials, Calls, SMS, Tickets, Audit)
-    async function downloadUserAllDataPdf(userId) {
-      if (!userId) userId = currentInspectedUserId;
-      if (!userId) return alert('No user selected for PDF export.');
+    // ============================================================
+    // 📦 CUSTOM USER DATA EXPORT CONTROLLER (PDF / CSV / JSON / CLIPBOARD)
+    // ============================================================
 
-      const exportBtn = document.getElementById('udBtnExportPdf');
-      let origBtnHtml = '';
-      if (exportBtn) {
-        origBtnHtml = exportBtn.innerHTML;
-        exportBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-300"></i> Generating PDF...';
-        exportBtn.disabled = true;
+    function openCustomExportModal(singleUserId = null) {
+      if (singleUserId) {
+        customExportTargetUserIds = [singleUserId];
+      } else {
+        customExportTargetUserIds = Array.from(selectedUserIds);
       }
 
+      if (customExportTargetUserIds.length === 0) {
+        showToast('Please select at least one user from the list first.', 'warning');
+        return;
+      }
+
+      const count = customExportTargetUserIds.length;
+      const countBadge = document.getElementById('customExportCountBadge');
+      if (countBadge) countBadge.innerText = `${count} User${count > 1 ? 's' : ''}`;
+
+      const targetSummary = document.getElementById('customExportTargetSummary');
+      if (targetSummary) {
+        targetSummary.innerText = `${count} user account(s) targeted for export`;
+      }
+
+      // Populate Chips list
+      const chipsContainer = document.getElementById('customExportUserChips');
+      if (chipsContainer) {
+        chipsContainer.innerHTML = customExportTargetUserIds.map(uid => {
+          const u = currentLoadedUsers.find(x => x.id === uid) || { id: uid, name: 'SimlyX User', email: uid, accountId: 'SIM-' + uid.slice(0, 6) };
+          return `
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-700 text-[11px] text-slate-200 shadow-2xs">
+              <span class="w-4 h-4 rounded-full bg-indigo-600/30 text-indigo-400 flex items-center justify-center font-bold text-[9px]">
+                ${(u.name || 'U')[0]}
+              </span>
+              <span class="font-bold text-white">${escapeHtml(u.name || 'User')}</span>
+              <span class="text-slate-400 font-mono text-[10px]">(${escapeHtml(u.email || u.id)})</span>
+            </div>
+          `;
+        }).join('');
+      }
+
+      document.getElementById('customUserDataExportModal')?.classList.remove('hidden');
+    }
+
+    function closeCustomExportModal() {
+      document.getElementById('customUserDataExportModal')?.classList.add('hidden');
+    }
+
+    function toggleAllExportModules(checked) {
+      document.querySelectorAll('.export-module-cb').forEach(cb => {
+        cb.checked = checked;
+      });
+    }
+
+    async function copySelectedUsersEmails() {
+      const targetIds = (customExportTargetUserIds && customExportTargetUserIds.length > 0)
+        ? customExportTargetUserIds
+        : Array.from(selectedUserIds);
+
+      if (targetIds.length === 0) {
+        showToast('Please select at least one user first.', 'warning');
+        return;
+      }
+
+      let emails = [];
+      // Try from currently loaded users
+      currentLoadedUsers.forEach(u => {
+        if (targetIds.includes(u.id) && u.email) {
+          emails.push(u.email.trim());
+        }
+      });
+
+      // If missing, fetch from backend
+      if (emails.length === 0 || emails.length < targetIds.length) {
+        try {
+          const res = await adminFetch('/api/admin/users/bulk-full-profile', {
+            method: 'POST',
+            body: JSON.stringify({ userIds: targetIds })
+          });
+          if (res.success && Array.isArray(res.profiles)) {
+            emails = res.profiles.map(p => p.user?.email).filter(Boolean);
+          }
+        } catch (e) {
+          console.warn('Fallback email fetch failed:', e);
+        }
+      }
+
+      emails = Array.from(new Set(emails));
+
+      if (emails.length === 0) {
+        showToast('No email addresses found for the selected user(s).', 'warning');
+        return;
+      }
+
+      const text = emails.join(', ');
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(`📋 ${emails.length} customer email(s) copied to clipboard!`, 'success');
+      }).catch(err => {
+        prompt('Copy selected emails:', text);
+      });
+    }
+
+    async function executeCustomExport(format = 'pdf') {
+      const includeProfile = !!document.getElementById('expModProfile')?.checked;
+      const includeSecurity = !!document.getElementById('expModSecurity')?.checked;
+      const includeWallet = !!document.getElementById('expModWallet')?.checked;
+      const includeNumbers = !!document.getElementById('expModNumbers')?.checked;
+      const includeTransactions = !!document.getElementById('expModTransactions')?.checked;
+      const includeCalls = !!document.getElementById('expModCalls')?.checked;
+      const includeSms = !!document.getElementById('expModSms')?.checked;
+      const includeSupport = !!document.getElementById('expModSupport')?.checked;
+      const includeAudit = !!document.getElementById('expModAudit')?.checked;
+
+      if (!includeProfile && !includeSecurity && !includeWallet && !includeNumbers && !includeTransactions && !includeCalls && !includeSms && !includeSupport && !includeAudit) {
+        showToast('Please select at least one data module to include in export.', 'warning');
+        return;
+      }
+
+      const targetIds = (customExportTargetUserIds && customExportTargetUserIds.length > 0)
+        ? customExportTargetUserIds
+        : Array.from(selectedUserIds);
+
+      if (targetIds.length === 0) {
+        showToast('No user selected for export.', 'warning');
+        return;
+      }
+
+      const btnPdf = document.getElementById('btnExportPdf');
+      const btnCsv = document.getElementById('btnExportCsv');
+      const btnJson = document.getElementById('btnExportJson');
+      const origPdfHtml = btnPdf ? btnPdf.innerHTML : '';
+      const origCsvHtml = btnCsv ? btnCsv.innerHTML : '';
+      const origJsonHtml = btnJson ? btnJson.innerHTML : '';
+
       try {
-        const res = await adminFetch(`/api/admin/users/${userId}/full-profile`);
-        if (!res.success) throw new Error(res.error || 'Failed to fetch user dossier data.');
-
-        const { user, metrics, numbers, transactions, calls, messages, supportMessages, supportTickets, supportRatings, voicemails, auditLogs } = res;
-
-        if (!window.jspdf || !window.jspdf.jsPDF) {
-          throw new Error('PDF generation engine is initializing. Please try again in a few seconds.');
+        if (format === 'pdf' && btnPdf) {
+          btnPdf.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-300"></i> Generating PDF...';
+          btnPdf.disabled = true;
+        } else if (format === 'csv' && btnCsv) {
+          btnCsv.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-emerald-300"></i> Building CSV...';
+          btnCsv.disabled = true;
+        } else if (format === 'json' && btnJson) {
+          btnJson.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-cyan-300"></i> Compiling JSON...';
+          btnJson.disabled = true;
         }
 
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({
-          orientation: 'portrait',
-          unit: 'pt',
-          format: 'a4'
+        const res = await adminFetch('/api/admin/users/bulk-full-profile', {
+          method: 'POST',
+          body: JSON.stringify({ userIds: targetIds })
         });
 
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
-        const margin = 36;
-        const contentWidth = pageWidth - (margin * 2);
-
-        // Helper to check page break
-        function checkAddPage(requiredHeight = 60) {
-          if (doc.lastAutoTable && (doc.lastAutoTable.finalY + requiredHeight > pageHeight - 50)) {
-            doc.addPage();
-            return 45;
-          }
-          return doc.lastAutoTable ? doc.lastAutoTable.finalY + 16 : 45;
+        if (!res.success || !Array.isArray(res.profiles) || res.profiles.length === 0) {
+          throw new Error(res.error || 'Failed to retrieve bulk user data from database.');
         }
 
-        // Helper for Section Banner
-        function drawSectionHeader(title, y) {
-          doc.setFillColor(30, 41, 59); // slate-800
-          doc.roundedRect(margin, y, contentWidth, 20, 3, 3, 'F');
-          doc.setTextColor(255, 255, 255);
-          doc.setFontSize(9);
-          doc.setFont('helvetica', 'bold');
-          doc.text(title, margin + 8, y + 13.5);
-          return y + 25;
+        const profiles = res.profiles;
+
+        // -------------------------------------------------------------
+        // 1. PDF GENERATION ROUTINE
+        // -------------------------------------------------------------
+        if (format === 'pdf') {
+          if (!window.jspdf || !window.jspdf.jsPDF) {
+            throw new Error('PDF generation engine is still loading. Please try again.');
+          }
+
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'pt',
+            format: 'a4'
+          });
+
+          const pageWidth = doc.internal.pageSize.getWidth();
+          const pageHeight = doc.internal.pageSize.getHeight();
+          const margin = 36;
+          const contentWidth = pageWidth - (margin * 2);
+
+          function checkAddPage(requiredHeight = 60) {
+            if (doc.lastAutoTable && (doc.lastAutoTable.finalY + requiredHeight > pageHeight - 50)) {
+              doc.addPage();
+              return 45;
+            }
+            return doc.lastAutoTable ? doc.lastAutoTable.finalY + 16 : 45;
+          }
+
+          function drawSectionHeader(title, y) {
+            doc.setFillColor(30, 41, 59); // slate-800
+            doc.roundedRect(margin, y, contentWidth, 20, 3, 3, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.text(title, margin + 8, y + 13.5);
+            return y + 25;
+          }
+
+          profiles.forEach((profileItem, pIndex) => {
+            if (pIndex > 0) {
+              doc.addPage();
+            }
+
+            const { user, metrics = {}, numbers = [], transactions = [], calls = [], messages = [], supportTickets = [], auditLogs = [] } = profileItem;
+
+            // Header Banner
+            doc.setFillColor(15, 23, 42); // dark navy
+            doc.rect(0, 0, pageWidth, 72, 'F');
+
+            doc.setFillColor(34, 211, 238); // cyan-400 line
+            doc.rect(0, 70, pageWidth, 2.5, 'F');
+
+            doc.setTextColor(34, 211, 238);
+            doc.setFontSize(13);
+            doc.setFont('helvetica', 'bold');
+            doc.text('SIMLYX TELECOM GLOBAL NETWORK', margin, 24);
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text('CUSTOM USER INTELLIGENCE & AUDIT DOSSIER', margin, 38);
+
+            doc.setTextColor(148, 163, 184);
+            doc.setFontSize(7.5);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Target User: ${user.name || 'SimlyX User'} • Email: ${user.email || 'N/A'} • Account ID: ${user.accountId || 'SIM-100000'}`, margin, 50);
+            doc.text(`Generated: ${new Date().toUTCString()} • Classification: STRICTLY CONFIDENTIAL // INTERNAL AUDIT`, margin, 60);
+
+            // Watermark Badge
+            doc.setFillColor(251, 191, 36); // amber-400
+            doc.roundedRect(pageWidth - margin - 120, 18, 120, 32, 4, 4, 'F');
+            doc.setTextColor(15, 23, 42);
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            doc.text('AUDIT CERTIFIED', pageWidth - margin - 108, 30);
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`SimlyX Master DB • (${pIndex + 1}/${profiles.length})`, pageWidth - margin - 108, 42);
+
+            let currentY = 86;
+
+            // SECTION 1: IDENTITY PROFILE & SECURITY
+            if (includeProfile || includeSecurity) {
+              const secTitle = (includeProfile && includeSecurity)
+                ? '1. USER BIO-DATA, IDENTITY & SECURITY PROFILE'
+                : includeProfile
+                  ? '1. USER BIO-DATA & ACCOUNT IDENTITY'
+                  : '1. USER SECURITY & IP GEOLOCATION AUDIT';
+
+              currentY = drawSectionHeader(secTitle, currentY);
+
+              const geoStr = user.geo ? `${user.geo.countryName || user.geo.countryCode || ''} ${user.geo.city ? `(${user.geo.city})` : ''} - ${user.geo.timezone || ''}`.trim() : 'Global / Not Geo-mapped';
+              const clientIp = user.ip || user.lastLoginIp || user.registrationIp || 'No IP Logged';
+              const userStatusStr = user.isDeleted ? `SELF-ERASED (${user.deletedReason || 'user_self_erase'})` : (user.isBanned ? `BLOCKED / BANNED (${user.banReason || 'Administrative Ban'})` : (user.isVerified ? 'ACTIVE (Verified Good Standing)' : 'PENDING VERIFICATION'));
+
+              let tableHead = [];
+              let tableBody = [];
+              let colStyles = {};
+
+              if (includeProfile && includeSecurity) {
+                tableHead = [['Profile Attribute', 'Detailed Value', 'Security Attribute', 'Detailed Value']];
+                tableBody = [
+                  ['Customer Account ID', user.accountId || 'SIM-100000', 'Account Status', userStatusStr],
+                  ['Full Legal / Display Name', user.name || 'SimlyX User', 'Risk Level & Score', `${user.riskLevel || 'LOW'} (${user.riskScore || 0}/100 Risk)`],
+                  ['Primary Account Email', user.email || 'N/A', 'Client IP Address', clientIp],
+                  ['Registered Phone Number', user.phone || 'None (Email Registered)', 'IP Geolocation & ISP', geoStr],
+                  ['Signup / Auth Method', (user.authProvider || 'email').toUpperCase(), 'Device Fingerprint / ID', user.deviceId || 'Generic Mobile/Web Client'],
+                  ['Registration Timestamp', new Date(user.createdAt).toLocaleString(), 'Database UUID', user.id || 'N/A'],
+                  ['Total Lifetime Balance', `$${(user.walletBalance || 0).toFixed(2)} USD`, 'Email Verified', user.isVerified ? 'YES (Verified)' : 'NO (Unverified)']
+                ];
+                colStyles = {
+                  0: { fontStyle: 'bold', fillColor: [248, 250, 252], cellWidth: 105 },
+                  1: { cellWidth: 155 },
+                  2: { fontStyle: 'bold', fillColor: [248, 250, 252], cellWidth: 105 },
+                  3: { cellWidth: 158 }
+                };
+              } else if (includeProfile) {
+                tableHead = [['Profile Attribute', 'Detailed Value']];
+                tableBody = [
+                  ['Customer Account ID', user.accountId || 'SIM-100000'],
+                  ['Full Legal / Display Name', user.name || 'SimlyX User'],
+                  ['Primary Account Email', user.email || 'N/A'],
+                  ['Registered Phone Number', user.phone || 'None (Email Registered)'],
+                  ['Signup / Auth Method', (user.authProvider || 'email').toUpperCase()],
+                  ['Registration Timestamp', new Date(user.createdAt).toLocaleString()],
+                  ['Account Status', userStatusStr],
+                  ['Current Wallet Balance', `$${(user.walletBalance || 0).toFixed(2)} USD`]
+                ];
+                colStyles = {
+                  0: { fontStyle: 'bold', fillColor: [248, 250, 252], cellWidth: 150 },
+                  1: { cellWidth: 373 }
+                };
+              } else {
+                tableHead = [['Security / Network Attribute', 'Detailed Value']];
+                tableBody = [
+                  ['Account Reference ID', user.accountId || 'SIM-100000'],
+                  ['Primary Account Email', user.email || 'N/A'],
+                  ['Client IP Address', clientIp],
+                  ['IP Geolocation & ISP', geoStr],
+                  ['Risk Level & Score', `${user.riskLevel || 'LOW'} (${user.riskScore || 0}/100 Risk)`],
+                  ['Device Fingerprint / ID', user.deviceId || 'Generic Client'],
+                  ['Account Security Status', userStatusStr],
+                  ['Email Verification', user.isVerified ? 'YES (Verified)' : 'NO (Unverified)']
+                ];
+                colStyles = {
+                  0: { fontStyle: 'bold', fillColor: [248, 250, 252], cellWidth: 150 },
+                  1: { cellWidth: 373 }
+                };
+              }
+
+              doc.autoTable({
+                startY: currentY,
+                margin: { left: margin, right: margin },
+                theme: 'grid',
+                head: tableHead,
+                body: tableBody,
+                styles: { fontSize: 7.5, cellPadding: 3.5, textColor: [30, 41, 59] },
+                headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
+                columnStyles: colStyles
+              });
+            }
+
+            // SECTION 2: FINANCIAL AUDIT & TRANSACTIONS
+            if (includeWallet || includeTransactions) {
+              currentY = checkAddPage(80);
+              const walletTitle = `2. FINANCIAL AUDIT & TRANSACTIONS LEDGER (Balance: $${(user.walletBalance || 0).toFixed(2)} | Deposited: $${(metrics.totalDeposited || 0).toFixed(2)} | Spent: $${(metrics.totalSpent || 0).toFixed(2)})`;
+              currentY = drawSectionHeader(walletTitle, currentY);
+
+              if (includeTransactions) {
+                const txRows = (transactions && transactions.length > 0)
+                  ? transactions.map((t, idx) => [
+                      (idx + 1).toString(),
+                      new Date(t.createdAt).toLocaleString(),
+                      t.id ? t.id.slice(0, 18) + '...' : 'N/A',
+                      (t.type || 'transaction').toUpperCase(),
+                      (t.amount >= 0 ? `+$${t.amount.toFixed(2)}` : `-$${Math.abs(t.amount).toFixed(2)}`),
+                      t.description || 'System balance modification'
+                    ])
+                  : [['-', '-', '-', '-', '$0.00', 'No financial transactions recorded for this user.']];
+
+                doc.autoTable({
+                  startY: currentY,
+                  margin: { left: margin, right: margin },
+                  theme: 'striped',
+                  head: [['#', 'Date & Time', 'Transaction ID', 'Type', 'Amount (USD)', 'Description / Memo']],
+                  body: txRows,
+                  styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59] },
+                  headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
+                  alternateRowStyles: { fillColor: [248, 250, 252] },
+                  columnStyles: {
+                    0: { cellWidth: 20, halign: 'center' },
+                    1: { cellWidth: 95 },
+                    2: { cellWidth: 95, font: 'courier' },
+                    3: { cellWidth: 65, fontStyle: 'bold' },
+                    4: { cellWidth: 65, halign: 'right', fontStyle: 'bold' },
+                    5: { cellWidth: 183 }
+                  }
+                });
+              }
+            }
+
+            // SECTION 3: VIRTUAL NUMBERS FLEET
+            if (includeNumbers) {
+              currentY = checkAddPage(80);
+              currentY = drawSectionHeader(`3. ASSIGNED VIRTUAL PHONE NUMBERS FLEET (${numbers.length} Total Lines | ${metrics.activeNumbersCount || 0} Active)`, currentY);
+
+              const numRows = (numbers && numbers.length > 0)
+                ? numbers.map((n, idx) => {
+                    const isExp = n.isExpired || n.status === 'expired';
+                    const plan = (n.planType || '30_days').replace('_', ' ').toUpperCase();
+                    const expDateStr = n.expiresAt ? new Date(n.expiresAt).toLocaleDateString() : 'Active';
+                    const buyDateStr = new Date(n.createdAt).toLocaleDateString();
+                    const features = `Voicemail: ${n.voicemailEnabled ? 'ON' : 'OFF'} | DND: ${n.dndEnabled ? 'ON' : 'OFF'}${n.callForwardingNumber ? ` | Fwd: ${n.callForwardingNumber}` : ''}`;
+                    return [
+                      (idx + 1).toString(),
+                      n.phoneNumber || 'N/A',
+                      n.countryCode || 'US',
+                      plan,
+                      buyDateStr,
+                      expDateStr,
+                      isExp ? 'EXPIRED' : 'ACTIVE',
+                      features
+                    ];
+                  })
+                : [['-', '-', '-', '-', '-', '-', 'NONE', 'No virtual numbers assigned to this user.']];
+
+              doc.autoTable({
+                startY: currentY,
+                margin: { left: margin, right: margin },
+                theme: 'striped',
+                head: [['#', 'Phone Number', 'Country', 'Plan Tier', 'Purchased', 'Expires', 'Status', 'Telecom Configuration']],
+                body: numRows,
+                styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59] },
+                headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                columnStyles: {
+                  0: { cellWidth: 20, halign: 'center' },
+                  1: { cellWidth: 80, fontStyle: 'bold' },
+                  2: { cellWidth: 40, halign: 'center' },
+                  3: { cellWidth: 50 },
+                  4: { cellWidth: 55 },
+                  5: { cellWidth: 55 },
+                  6: { cellWidth: 48, fontStyle: 'bold' },
+                  7: { cellWidth: 175 }
+                }
+              });
+            }
+
+            // SECTION 4: CALL DETAIL RECORDS (VOICE CDR)
+            if (includeCalls) {
+              currentY = checkAddPage(80);
+              const inboundCallsCount = calls.filter(c => c.direction === 'inbound').length;
+              const outboundCallsCount = calls.filter(c => c.direction === 'outbound').length;
+              currentY = drawSectionHeader(`4. CALL DETAIL RECORDS (VOICE CDR) • Total: ${calls.length} (Inbound: ${inboundCallsCount} | Outbound: ${outboundCallsCount} | Talk Time: ${metrics.totalCallMinutes || 0} mins)`, currentY);
+
+              const callRows = (calls && calls.length > 0)
+                ? calls.map((c, idx) => {
+                    const durMins = Math.floor((c.durationSeconds || 0) / 60);
+                    const durSecs = (c.durationSeconds || 0) % 60;
+                    const durStr = `${durMins}m ${durSecs}s (${c.durationSeconds || 0}s)`;
+                    return [
+                      (idx + 1).toString(),
+                      new Date(c.createdAt).toLocaleString(),
+                      c.myNumber || 'User Line',
+                      c.contactNumber || 'Unknown',
+                      (c.direction || 'outbound').toUpperCase(),
+                      (c.status || 'completed').toUpperCase(),
+                      durStr,
+                      c.hasRecording ? 'YES (Audio)' : 'NO'
+                    ];
+                  })
+                : [['-', '-', '-', '-', '-', '-', '-', 'No voice call records found for this user.']];
+
+              doc.autoTable({
+                startY: currentY,
+                margin: { left: margin, right: margin },
+                theme: 'striped',
+                head: [['#', 'Date & Time', 'User Line', 'Contact / Destination', 'Direction', 'Call Status', 'Duration', 'Recording']],
+                body: callRows,
+                styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59] },
+                headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                columnStyles: {
+                  0: { cellWidth: 20, halign: 'center' },
+                  1: { cellWidth: 90 },
+                  2: { cellWidth: 75, font: 'courier' },
+                  3: { cellWidth: 75, font: 'courier' },
+                  4: { cellWidth: 50, fontStyle: 'bold' },
+                  5: { cellWidth: 60 },
+                  6: { cellWidth: 85 },
+                  7: { cellWidth: 68 }
+                }
+              });
+            }
+
+            // SECTION 5: SMS MESSAGES LOG
+            if (includeSms) {
+              currentY = checkAddPage(80);
+              const inboundSmsCount = messages.filter(m => m.direction === 'inbound').length;
+              const outboundSmsCount = messages.filter(m => m.direction === 'outbound').length;
+              currentY = drawSectionHeader(`5. SMS MESSAGES LOG (ALL CONVERSATIONS) • Total: ${messages.length} (Inbound: ${inboundSmsCount} | Outbound: ${outboundSmsCount})`, currentY);
+
+              const smsRows = (messages && messages.length > 0)
+                ? messages.map((m, idx) => [
+                    (idx + 1).toString(),
+                    new Date(m.createdAt).toLocaleString(),
+                    m.fromNumber || 'N/A',
+                    m.toNumber || 'N/A',
+                    (m.direction || 'outbound').toUpperCase(),
+                    (m.status || 'delivered').toUpperCase(),
+                    (m.text || '').replace(/\r?\n|\r/g, ' ')
+                  ])
+                : [['-', '-', '-', '-', '-', '-', 'No SMS messages recorded for this user.']];
+
+              doc.autoTable({
+                startY: currentY,
+                margin: { left: margin, right: margin },
+                theme: 'striped',
+                head: [['#', 'Date & Time', 'From Number', 'To Number', 'Direction', 'Status', 'Message Content Text']],
+                body: smsRows,
+                styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59] },
+                headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                columnStyles: {
+                  0: { cellWidth: 20, halign: 'center' },
+                  1: { cellWidth: 90 },
+                  2: { cellWidth: 70, font: 'courier' },
+                  3: { cellWidth: 70, font: 'courier' },
+                  4: { cellWidth: 48, fontStyle: 'bold' },
+                  5: { cellWidth: 45 },
+                  6: { cellWidth: 180 }
+                }
+              });
+            }
+
+            // SECTION 6: SUPPORT TICKETS
+            if (includeSupport) {
+              currentY = checkAddPage(80);
+              currentY = drawSectionHeader(`6. SUPPORT TICKETS, CSAT REVIEWS & HELP DESK`, currentY);
+
+              const supportRows = (supportTickets && supportTickets.length > 0)
+                ? supportTickets.map((t, idx) => [
+                    (idx + 1).toString(),
+                    new Date(t.createdAt).toLocaleDateString(),
+                    t.id.slice(0, 16) + '...',
+                    (t.status || 'unassigned').toUpperCase(),
+                    (t.priority || 'normal').toUpperCase(),
+                    t.assignedStaffName || 'Unassigned',
+                    t.lastMessageText || 'No message recorded'
+                  ])
+                : [['-', '-', 'No open tickets', 'NONE', 'NORMAL', 'N/A', 'User has not created any support tickets.']];
+
+              doc.autoTable({
+                startY: currentY,
+                margin: { left: margin, right: margin },
+                theme: 'striped',
+                head: [['#', 'Created Date', 'Ticket ID', 'Status', 'Priority', 'Staff Agent', 'Latest Message Preview']],
+                body: supportRows,
+                styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59] },
+                headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                columnStyles: {
+                  0: { cellWidth: 20, halign: 'center' },
+                  1: { cellWidth: 70 },
+                  2: { cellWidth: 80, font: 'courier' },
+                  3: { cellWidth: 55, fontStyle: 'bold' },
+                  4: { cellWidth: 45 },
+                  5: { cellWidth: 75 },
+                  6: { cellWidth: 178 }
+                }
+              });
+            }
+
+            // SECTION 7: AUDIT LOGS
+            if (includeAudit) {
+              currentY = checkAddPage(80);
+              currentY = drawSectionHeader(`7. SYSTEM AUDIT LOGS & ADMINISTRATIVE ACTIVITY`, currentY);
+
+              const auditRows = (auditLogs && auditLogs.length > 0)
+                ? auditLogs.map((a, idx) => [
+                    (idx + 1).toString(),
+                    new Date(a.createdAt).toLocaleString(),
+                    (a.action || 'system').toUpperCase(),
+                    a.actorName || a.actorEmail || 'System Agent',
+                    a.ipAddress || 'Internal',
+                    a.details || a.reason || 'Standard operation'
+                  ])
+                : [['-', '-', 'No audit records', 'SYSTEM', '-', 'No security audit logs found for this user.']];
+
+              doc.autoTable({
+                startY: currentY,
+                margin: { left: margin, right: margin },
+                theme: 'striped',
+                head: [['#', 'Timestamp', 'Action Type', 'Staff / Actor', 'IP Address', 'Details & Notes']],
+                body: auditRows,
+                styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59] },
+                headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                columnStyles: {
+                  0: { cellWidth: 20, halign: 'center' },
+                  1: { cellWidth: 90 },
+                  2: { cellWidth: 70, fontStyle: 'bold' },
+                  3: { cellWidth: 75 },
+                  4: { cellWidth: 65, font: 'courier' },
+                  5: { cellWidth: 203 }
+                }
+              });
+            }
+          });
+
+          // Footers & Running Page Numbers
+          const totalPages = doc.internal.getNumberOfPages();
+          for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            doc.setFillColor(241, 245, 249);
+            doc.rect(0, pageHeight - 24, pageWidth, 24, 'F');
+
+            doc.setFillColor(203, 213, 225);
+            doc.rect(0, pageHeight - 24, pageWidth, 0.5, 'F');
+
+            doc.setTextColor(100, 116, 139);
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`SimlyX Global Telecommunications Ltd. • Regulatory & Audit Compliance Record`, margin, pageHeight - 9);
+            doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin - 45, pageHeight - 9);
+          }
+
+          let fileName = `SimlyX-User-Data-${profiles[0]?.user?.accountId || 'USER'}.pdf`;
+          if (profiles.length > 1) {
+            fileName = `SimlyX-Bulk-User-Dossiers-${profiles.length}-Accounts-${new Date().toISOString().slice(0, 10)}.pdf`;
+          }
+          doc.save(fileName);
+          showToast(`📄 PDF Dossier generated and downloaded successfully!`, 'success');
         }
 
-        // === 1. TOP DOCUMENT BANNER ===
-        doc.setFillColor(15, 23, 42); // slate-950 / dark navy
-        doc.rect(0, 0, pageWidth, 72, 'F');
+        // -------------------------------------------------------------
+        // 2. CSV EXPORT ROUTINE
+        // -------------------------------------------------------------
+        else if (format === 'csv') {
+          const csvHeaders = ['User ID', 'Customer Account ID', 'Full Name', 'Email', 'Phone', 'Auth Provider', 'Account Status', 'Created At'];
+          if (includeSecurity) csvHeaders.push('Client IP', 'Country', 'City', 'Risk Level', 'Risk Score');
+          if (includeWallet) csvHeaders.push('Wallet Balance USD', 'Total Deposited USD', 'Total Spent USD');
+          if (includeNumbers) csvHeaders.push('Active Numbers Count', 'Assigned Numbers List');
+          if (includeCalls) csvHeaders.push('Total Calls Count', 'Total Call Minutes');
+          if (includeSms) csvHeaders.push('Total SMS Count');
+          if (includeSupport) csvHeaders.push('Support Tickets Count');
 
-        // Cyan Accent Line
-        doc.setFillColor(34, 211, 238); // cyan-400
-        doc.rect(0, 70, pageWidth, 2.5, 'F');
+          const csvRows = [csvHeaders.map(h => `"${h.replace(/"/g, '""')}"`).join(',')];
 
-        // Brand Title
-        doc.setTextColor(34, 211, 238);
-        doc.setFontSize(13);
-        doc.setFont('helvetica', 'bold');
-        doc.text('SIMLYX TELECOM GLOBAL NETWORK', margin, 24);
+          profiles.forEach(p => {
+            const u = p.user || {};
+            const m = p.metrics || {};
+            const nums = (p.numbers || []).map(n => n.phoneNumber).join('; ');
 
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text('COMPLETE USER AUDIT & INTELLIGENCE DOSSIER', margin, 38);
+            const row = [
+              u.id || '',
+              u.accountId || '',
+              u.name || '',
+              u.email || '',
+              u.phone || '',
+              u.authProvider || 'email',
+              u.isDeleted ? 'SELF-ERASED' : (u.isBanned ? 'BLOCKED' : 'ACTIVE'),
+              u.createdAt ? new Date(u.createdAt).toISOString() : ''
+            ];
 
-        doc.setTextColor(148, 163, 184); // slate-400
-        doc.setFontSize(7.5);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Official Intelligence Report • Account ID: ${user.accountId || 'SIM-100000'} • User: ${user.email}`, margin, 50);
-        doc.text(`Generated: ${new Date().toUTCString()} • Classification: STRICTLY CONFIDENTIAL // INTERNAL AUDIT`, margin, 60);
+            if (includeSecurity) {
+              row.push(
+                u.ip || u.lastLoginIp || '',
+                u.geo?.countryName || u.geo?.countryCode || '',
+                u.geo?.city || '',
+                u.riskLevel || 'LOW',
+                u.riskScore || 0
+              );
+            }
 
-        // Watermark Badge Top Right
-        doc.setFillColor(251, 191, 36); // amber-400
-        doc.roundedRect(pageWidth - margin - 120, 18, 120, 32, 4, 4, 'F');
-        doc.setTextColor(15, 23, 42);
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'bold');
-        doc.text('AUDIT CERTIFIED', pageWidth - margin - 108, 30);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
-        doc.text('SimlyX Master DB', pageWidth - margin - 108, 42);
+            if (includeWallet) {
+              row.push(
+                (u.walletBalance || 0).toFixed(2),
+                (m.totalDeposited || 0).toFixed(2),
+                (m.totalSpent || 0).toFixed(2)
+              );
+            }
 
-        let currentY = 86;
+            if (includeNumbers) {
+              row.push(m.activeNumbersCount || 0, nums);
+            }
 
-        // === SECTION 1: USER BIO-DATA & SECURITY PROFILE ===
-        currentY = drawSectionHeader('1. USER BIO-DATA, CREDENTIALS & SECURITY PROFILE', currentY);
+            if (includeCalls) {
+              row.push(m.totalCallsCount || 0, m.totalCallMinutes || 0);
+            }
 
-        const geoStr = user.geo ? `${user.geo.countryName || user.geo.countryCode || ''} ${user.geo.city ? `(${user.geo.city})` : ''} - ${user.geo.timezone || ''}`.trim() : 'Global / Not Geo-mapped';
-        const clientIp = user.ip || user.lastLoginIp || user.registrationIp || 'No IP Logged';
-        const userStatusStr = user.isDeleted ? `SELF-ERASED (${user.deletedReason || 'user_self_erase'})` : (user.isBanned ? `BLOCKED / BANNED (${user.banReason || 'Administrative Ban'})` : (user.isVerified ? 'ACTIVE (Verified Good Standing)' : 'PENDING VERIFICATION'));
+            if (includeSms) {
+              row.push(m.totalMessagesCount || 0);
+            }
 
-        doc.autoTable({
-          startY: currentY,
-          margin: { left: margin, right: margin },
-          theme: 'grid',
-          head: [['Profile Attribute', 'Detailed Value', 'Security Attribute', 'Detailed Value']],
-          body: [
-            ['Customer Account ID', user.accountId || 'SIM-100000', 'Account Status', userStatusStr],
-            ['Full Legal / Display Name', user.name || 'SimlyX User', 'Risk Level & Score', `${user.riskLevel || 'LOW'} (${user.riskScore || 0}/100 Risk)`],
-            ['Primary Account Email', user.email || 'N/A', 'Client IP Address', clientIp],
-            ['Registered Phone Number', user.phone || 'None (Email Registered)', 'IP Geolocation & ISP', geoStr],
-            ['Signup / Auth Method', (user.authProvider || 'email').toUpperCase(), 'Device Fingerprint / ID', user.deviceId || 'Generic Mobile/Web Client'],
-            ['Registration Timestamp', new Date(user.createdAt).toLocaleString(), 'Database UUID', user.id || 'N/A'],
-            ['Total Lifetime Balance', `$${(user.walletBalance || 0).toFixed(2)} USD`, 'Email Verified', user.isVerified ? 'YES (Verified)' : 'NO (Unverified)']
-          ],
-          styles: { fontSize: 7.5, cellPadding: 3.5, textColor: [30, 41, 59] },
-          headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
-          columnStyles: {
-            0: { fontStyle: 'bold', fillColor: [248, 250, 252], cellWidth: 105 },
-            1: { cellWidth: 155 },
-            2: { fontStyle: 'bold', fillColor: [248, 250, 252], cellWidth: 105 },
-            3: { cellWidth: 158 }
-          }
-        });
+            if (includeSupport) {
+              row.push(m.totalTicketsCount || 0);
+            }
 
-        // === SECTION 2: FINANCIAL AUDIT & WALLET LEDGER ===
-        currentY = checkAddPage(80);
-        currentY = drawSectionHeader(`2. FINANCIAL AUDIT & TRANSACTIONS LEDGER (Balance: $${(user.walletBalance || 0).toFixed(2)} | Deposited: $${(metrics.totalDeposited || 0).toFixed(2)} | Spent: $${(metrics.totalSpent || 0).toFixed(2)})`, currentY);
+            csvRows.push(row.map(val => `"${String(val !== null && val !== undefined ? val : '').replace(/"/g, '""')}"`).join(','));
+          });
 
-        const txRows = (transactions && transactions.length > 0)
-          ? transactions.map((t, idx) => [
-              (idx + 1).toString(),
-              new Date(t.createdAt).toLocaleString(),
-              t.id ? t.id.slice(0, 18) + '...' : 'N/A',
-              (t.type || 'transaction').toUpperCase(),
-              (t.amount >= 0 ? `+$${t.amount.toFixed(2)}` : `-$${Math.abs(t.amount).toFixed(2)}`),
-              t.description || 'System balance modification'
-            ])
-          : [['-', '-', '-', '-', '$0.00', 'No financial transactions recorded for this user.']];
-
-        doc.autoTable({
-          startY: currentY,
-          margin: { left: margin, right: margin },
-          theme: 'striped',
-          head: [['#', 'Date & Time', 'Transaction ID', 'Type', 'Amount (USD)', 'Description / Memo']],
-          body: txRows,
-          styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59] },
-          headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
-          alternateRowStyles: { fillColor: [248, 250, 252] },
-          columnStyles: {
-            0: { cellWidth: 20, halign: 'center' },
-            1: { cellWidth: 95 },
-            2: { cellWidth: 95, font: 'courier' },
-            3: { cellWidth: 65, fontStyle: 'bold' },
-            4: { cellWidth: 65, halign: 'right', fontStyle: 'bold' },
-            5: { cellWidth: 183 }
-          }
-        });
-
-        // === SECTION 3: ASSIGNED & HISTORICAL VIRTUAL NUMBERS FLEET ===
-        currentY = checkAddPage(80);
-        currentY = drawSectionHeader(`3. ASSIGNED VIRTUAL PHONE NUMBERS FLEET (${numbers.length} Total Lines | ${metrics.activeNumbersCount || 0} Active)`, currentY);
-
-        const numRows = (numbers && numbers.length > 0)
-          ? numbers.map((n, idx) => {
-              const isExp = n.isExpired || n.status === 'expired';
-              const plan = (n.planType || '30_days').replace('_', ' ').toUpperCase();
-              const expDateStr = n.expiresAt ? new Date(n.expiresAt).toLocaleDateString() : 'Active';
-              const buyDateStr = new Date(n.createdAt).toLocaleDateString();
-              const features = `Voicemail: ${n.voicemailEnabled ? 'ON' : 'OFF'} | DND: ${n.dndEnabled ? 'ON' : 'OFF'}${n.callForwardingNumber ? ` | Fwd: ${n.callForwardingNumber}` : ''}`;
-              return [
-                (idx + 1).toString(),
-                n.phoneNumber || 'N/A',
-                n.countryCode || 'US',
-                plan,
-                buyDateStr,
-                expDateStr,
-                isExp ? 'EXPIRED' : 'ACTIVE',
-                features
-              ];
-            })
-          : [['-', '-', '-', '-', '-', '-', 'NONE', 'No virtual numbers assigned to this user.']];
-
-        doc.autoTable({
-          startY: currentY,
-          margin: { left: margin, right: margin },
-          theme: 'striped',
-          head: [['#', 'Phone Number', 'Country', 'Plan Tier', 'Purchased', 'Expires', 'Status', 'Telecom Configuration']],
-          body: numRows,
-          styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59] },
-          headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
-          alternateRowStyles: { fillColor: [248, 250, 252] },
-          columnStyles: {
-            0: { cellWidth: 20, halign: 'center' },
-            1: { cellWidth: 80, fontStyle: 'bold' },
-            2: { cellWidth: 40, halign: 'center' },
-            3: { cellWidth: 50 },
-            4: { cellWidth: 55 },
-            5: { cellWidth: 55 },
-            6: { cellWidth: 48, fontStyle: 'bold' },
-            7: { cellWidth: 175 }
-          }
-        });
-
-        // === SECTION 4: CALL DETAIL RECORDS (VOICE CDR - ALL LINES) ===
-        currentY = checkAddPage(80);
-        const inboundCallsCount = calls.filter(c => c.direction === 'inbound').length;
-        const outboundCallsCount = calls.filter(c => c.direction === 'outbound').length;
-        currentY = drawSectionHeader(`4. CALL DETAIL RECORDS (VOICE CDR) • Total: ${calls.length} (Inbound: ${inboundCallsCount} | Outbound: ${outboundCallsCount} | Talk Time: ${metrics.totalCallMinutes || 0} mins)`, currentY);
-
-        const callRows = (calls && calls.length > 0)
-          ? calls.map((c, idx) => {
-              const durMins = Math.floor((c.durationSeconds || 0) / 60);
-              const durSecs = (c.durationSeconds || 0) % 60;
-              const durStr = `${durMins}m ${durSecs}s (${c.durationSeconds || 0}s)`;
-              return [
-                (idx + 1).toString(),
-                new Date(c.createdAt).toLocaleString(),
-                c.myNumber || 'User Line',
-                c.contactNumber || 'Unknown',
-                (c.direction || 'outbound').toUpperCase(),
-                (c.status || 'completed').toUpperCase(),
-                durStr,
-                c.hasRecording ? 'YES (Audio)' : 'NO'
-              ];
-            })
-          : [['-', '-', '-', '-', '-', '-', '-', 'No voice call records found for this user.']];
-
-        doc.autoTable({
-          startY: currentY,
-          margin: { left: margin, right: margin },
-          theme: 'striped',
-          head: [['#', 'Date & Time', 'User Line', 'Contact / Destination', 'Direction', 'Call Status', 'Duration', 'Recording']],
-          body: callRows,
-          styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59] },
-          headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
-          alternateRowStyles: { fillColor: [248, 250, 252] },
-          columnStyles: {
-            0: { cellWidth: 20, halign: 'center' },
-            1: { cellWidth: 90 },
-            2: { cellWidth: 75, font: 'courier' },
-            3: { cellWidth: 75, font: 'courier' },
-            4: { cellWidth: 50, fontStyle: 'bold' },
-            5: { cellWidth: 60 },
-            6: { cellWidth: 85 },
-            7: { cellWidth: 68 }
-          }
-        });
-
-        // === SECTION 5: SMS MESSAGES DETAIL LOG (INBOUND & OUTBOUND) ===
-        currentY = checkAddPage(80);
-        const inboundSmsCount = messages.filter(m => m.direction === 'inbound').length;
-        const outboundSmsCount = messages.filter(m => m.direction === 'outbound').length;
-        currentY = drawSectionHeader(`5. SMS MESSAGES LOG (ALL CONVERSATIONS) • Total: ${messages.length} (Inbound: ${inboundSmsCount} | Outbound: ${outboundSmsCount})`, currentY);
-
-        const smsRows = (messages && messages.length > 0)
-          ? messages.map((m, idx) => [
-              (idx + 1).toString(),
-              new Date(m.createdAt).toLocaleString(),
-              m.fromNumber || 'N/A',
-              m.toNumber || 'N/A',
-              (m.direction || 'outbound').toUpperCase(),
-              (m.status || 'delivered').toUpperCase(),
-              (m.text || '').replace(/\r?\n|\r/g, ' ')
-            ])
-          : [['-', '-', '-', '-', '-', '-', 'No SMS messages recorded for this user.']];
-
-        doc.autoTable({
-          startY: currentY,
-          margin: { left: margin, right: margin },
-          theme: 'striped',
-          head: [['#', 'Date & Time', 'From Number', 'To Number', 'Direction', 'Status', 'Message Content Text']],
-          body: smsRows,
-          styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59] },
-          headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
-          alternateRowStyles: { fillColor: [248, 250, 252] },
-          columnStyles: {
-            0: { cellWidth: 20, halign: 'center' },
-            1: { cellWidth: 90 },
-            2: { cellWidth: 70, font: 'courier' },
-            3: { cellWidth: 70, font: 'courier' },
-            4: { cellWidth: 48, fontStyle: 'bold' },
-            5: { cellWidth: 45 },
-            6: { cellWidth: 180 }
-          }
-        });
-
-        // === SECTION 6: SUPPORT TICKETS, RATINGS & AUDIT TRAIL ===
-        currentY = checkAddPage(80);
-        currentY = drawSectionHeader(`6. SUPPORT TICKETS, CSAT REVIEWS & AUDIT ACTIVITY`, currentY);
-
-        const supportRows = (supportTickets && supportTickets.length > 0)
-          ? supportTickets.map((t, idx) => [
-              (idx + 1).toString(),
-              new Date(t.createdAt).toLocaleDateString(),
-              t.id.slice(0, 16) + '...',
-              (t.status || 'unassigned').toUpperCase(),
-              (t.priority || 'normal').toUpperCase(),
-              t.assignedStaffName || 'Unassigned',
-              t.lastMessageText || 'No message recorded'
-            ])
-          : [['-', '-', 'No open tickets', 'NONE', 'NORMAL', 'N/A', 'User has not created any support tickets.']];
-
-        doc.autoTable({
-          startY: currentY,
-          margin: { left: margin, right: margin },
-          theme: 'striped',
-          head: [['#', 'Created Date', 'Ticket ID', 'Status', 'Priority', 'Staff Agent', 'Latest Message Preview']],
-          body: supportRows,
-          styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59] },
-          headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
-          alternateRowStyles: { fillColor: [248, 250, 252] },
-          columnStyles: {
-            0: { cellWidth: 20, halign: 'center' },
-            1: { cellWidth: 70 },
-            2: { cellWidth: 80, font: 'courier' },
-            3: { cellWidth: 55, fontStyle: 'bold' },
-            4: { cellWidth: 45 },
-            5: { cellWidth: 75 },
-            6: { cellWidth: 178 }
-          }
-        });
-
-        // === RUNNING PAGE NUMBERING & FOOTERS ===
-        const totalPages = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= totalPages; i++) {
-          doc.setPage(i);
-          doc.setFillColor(241, 245, 249); // slate-100
-          doc.rect(0, pageHeight - 24, pageWidth, 24, 'F');
-
-          doc.setFillColor(203, 213, 225); // slate-300
-          doc.rect(0, pageHeight - 24, pageWidth, 0.5, 'F');
-
-          doc.setTextColor(100, 116, 139); // slate-500
-          doc.setFontSize(7);
-          doc.setFont('helvetica', 'normal');
-          doc.text(`SimlyX Global Telecommunications Ltd. • Regulatory & Audit Compliance Record • Account ID: ${user.accountId || 'SIM-100000'}`, margin, pageHeight - 9);
-          doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin - 40, pageHeight - 9);
+          const csvContent = '\uFEFF' + csvRows.join('\r\n');
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `SimlyX-User-Data-Export-${profiles.length}-Users-${Date.now()}.csv`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          showToast(`📊 CSV Spreadsheet exported with ${profiles.length} user record(s)!`, 'success');
         }
 
-        // Save and trigger browser download
-        const cleanName = (user.name || 'Account').replace(/[^a-zA-Z0-9]/g, '_');
-        const fileName = `SimlyX-User-Data-${user.accountId || 'USER'}-${cleanName}.pdf`;
-        doc.save(fileName);
+        // -------------------------------------------------------------
+        // 3. JSON EXPORT ROUTINE
+        // -------------------------------------------------------------
+        else if (format === 'json') {
+          const exportData = profiles.map(p => {
+            const out = {};
+            if (includeProfile) {
+              out.profile = {
+                id: p.user?.id,
+                accountId: p.user?.accountId,
+                name: p.user?.name,
+                email: p.user?.email,
+                phone: p.user?.phone,
+                authProvider: p.user?.authProvider,
+                isVerified: p.user?.isVerified,
+                createdAt: p.user?.createdAt,
+                status: p.user?.isDeleted ? 'SELF-ERASED' : (p.user?.isBanned ? 'BLOCKED' : 'ACTIVE')
+              };
+            }
+            if (includeSecurity) {
+              out.security = {
+                ip: p.user?.ip || p.user?.lastLoginIp,
+                geo: p.user?.geo,
+                deviceId: p.user?.deviceId,
+                riskLevel: p.user?.riskLevel,
+                riskScore: p.user?.riskScore
+              };
+            }
+            if (includeWallet) {
+              out.wallet = {
+                balance: p.user?.walletBalance,
+                totalDeposited: p.metrics?.totalDeposited,
+                totalSpent: p.metrics?.totalSpent
+              };
+            }
+            if (includeTransactions) out.transactions = p.transactions;
+            if (includeNumbers) out.virtualNumbers = p.numbers;
+            if (includeCalls) out.callLogs = p.calls;
+            if (includeSms) out.messages = p.messages;
+            if (includeSupport) out.supportTickets = p.supportTickets;
+            if (includeAudit) out.auditLogs = p.auditLogs;
+            return out;
+          });
 
-      } catch (error) {
-        console.error('[PDF EXPORT ERROR]', error);
-        alert('Failed to generate User PDF: ' + error.message);
+          const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `SimlyX-User-Data-Export-${profiles.length}-Users-${Date.now()}.json`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          showToast(`💾 JSON Archive exported for ${profiles.length} user(s)!`, 'success');
+        }
+
+        closeCustomExportModal();
+      } catch (err) {
+        console.error('[CUSTOM EXPORT ERROR]', err);
+        showToast('Export failed: ' + err.message, 'error');
       } finally {
-        if (exportBtn && origBtnHtml) {
-          exportBtn.innerHTML = origBtnHtml;
-          exportBtn.disabled = false;
+        if (btnPdf && origPdfHtml) {
+          btnPdf.innerHTML = origPdfHtml;
+          btnPdf.disabled = false;
+        }
+        if (btnCsv && origCsvHtml) {
+          btnCsv.innerHTML = origCsvHtml;
+          btnCsv.disabled = false;
+        }
+        if (btnJson && origJsonHtml) {
+          btnJson.innerHTML = origJsonHtml;
+          btnJson.disabled = false;
         }
       }
     }
-    window.downloadUserAllDataPdf = downloadUserAllDataPdf;
+
+    window.openCustomExportModal = openCustomExportModal;
+    window.closeCustomExportModal = closeCustomExportModal;
+    window.toggleAllExportModules = toggleAllExportModules;
+    window.copySelectedUsersEmails = copySelectedUsersEmails;
+    window.executeCustomExport = executeCustomExport;
+    window.downloadUserAllDataPdf = openCustomExportModal;
 
     // Quick Balance Adjustment in Dossier
     async function quickAdjustBalance(amount) {

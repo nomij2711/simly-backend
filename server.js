@@ -4773,6 +4773,108 @@ app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_u
   }
 });
 
+// 3.6 Bulk Customer Dossiers Export API
+app.post('/api/admin/users/bulk-full-profile', requireStaffPermission(['can_view_users', 'can_manage_users', 'can_handle_support', 'all']), async (req, res) => {
+  try {
+    const { userIds } = req.body;
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'User IDs array is required.' });
+    }
+
+    const profiles = [];
+    const now = new Date();
+
+    for (const uid of userIds.slice(0, 100)) {
+      const user = await prisma.user.findFirst({ where: { id: uid } });
+      if (!user) continue;
+
+      const transactions = await prisma.transaction.findMany({
+        where: { OR: [{ userId: user.id }, { userId: user.email }, { userId: user.email.toLowerCase() }] },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      let numbers = await prisma.purchasedNumber.findMany({
+        where: { OR: [{ userId: user.id }, { userId: user.email }, { userId: user.email.toLowerCase() }] },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      numbers = numbers.map(n => {
+        const planDays = n.planType === '7_days' ? 7 : (n.planType === '365_days' ? 365 : 30);
+        const computedExpiry = n.expiresAt || new Date(new Date(n.createdAt).getTime() + planDays * 24 * 60 * 60 * 1000);
+        const isExpired = n.status === 'expired' || (computedExpiry && new Date(computedExpiry) < now);
+        return {
+          ...n,
+          expiresAt: computedExpiry,
+          isExpired,
+          displayStatus: isExpired ? 'expired' : (n.status || 'active')
+        };
+      });
+
+      const userPhoneNumbers = numbers.map(n => n.phoneNumber);
+
+      const calls = await prisma.callLog.findMany({
+        where: { OR: [{ myNumber: { in: userPhoneNumbers } }, { contactNumber: { in: userPhoneNumbers } }] },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      const messages = await prisma.message.findMany({
+        where: { OR: [{ fromNumber: { in: userPhoneNumbers } }, { toNumber: { in: userPhoneNumbers } }] },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      const supportTickets = await prisma.supportTicket.findMany({
+        where: { OR: [{ userId: user.id }, { customerEmail: user.email }] },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      const auditLogs = await prisma.systemAuditLog.findMany({
+        where: { targetId: user.id },
+        orderBy: { createdAt: 'desc' },
+        take: 50
+      });
+
+      const totalDeposited = transactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
+      const totalSpent = transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      const totalCallDurationSeconds = calls.reduce((sum, c) => sum + (c.durationSeconds || 0), 0);
+
+      const clientIp = user.lastLoginIp || user.ip || null;
+      const geo = clientIp ? getGeoFromIp(clientIp) : null;
+
+      profiles.push({
+        user: {
+          ...user,
+          accountId: getCustomerAccountId(user),
+          ip: clientIp,
+          geo,
+          lastLoginIp: clientIp,
+          avatarUrl: user.avatarUrl || null
+        },
+        metrics: {
+          totalSpent: parseFloat(totalSpent.toFixed(2)),
+          totalDeposited: parseFloat(totalDeposited.toFixed(2)),
+          totalCallMinutes: (totalCallDurationSeconds / 60).toFixed(1),
+          activeNumbersCount: numbers.filter(n => !n.isExpired && n.status === 'active').length,
+          totalCallsCount: calls.length,
+          totalMessagesCount: messages.length,
+          totalTransactionsCount: transactions.length,
+          totalTicketsCount: supportTickets.length
+        },
+        numbers,
+        transactions,
+        calls,
+        messages,
+        supportTickets,
+        auditLogs
+      });
+    }
+
+    res.json({ success: true, count: profiles.length, profiles });
+  } catch (error) {
+    console.error('[BULK USER PROFILES ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 4. User Balance Modifier (Gift / Topup / Deduction)
 app.post('/api/admin/users/:id/adjust-balance', requireAdmin, async (req, res) => {
   try {

@@ -10113,16 +10113,16 @@ function exportData(type) {
         `;
 
         thead.innerHTML = `
-          <tr>
-            <th class="p-3">Resource / Activity</th>
-            <th class="p-3">Type</th>
-            <th class="p-3">Customer Profile</th>
-            <th class="p-3">Plan / Destination</th>
-            <th class="p-3 text-right">Retail Billed</th>
-            <th class="p-3 text-right">Wholesale Cost</th>
-            <th class="p-3 text-right">Net Profit</th>
-            <th class="p-3 text-right">Margin %</th>
-            <th class="p-3 text-right text-emerald-400 font-bold bg-emerald-500/5">Running Profit Balance 📈</th>
+          <tr class="whitespace-nowrap">
+            <th class="p-3 min-w-[280px]">Resource / Activity</th>
+            <th class="p-3 min-w-[130px]">Type</th>
+            <th class="p-3 min-w-[180px]">Customer Profile</th>
+            <th class="p-3 min-w-[160px]">Plan / Destination</th>
+            <th class="p-3 text-right min-w-[120px]">Retail Billed</th>
+            <th class="p-3 text-right min-w-[120px]">Wholesale Cost</th>
+            <th class="p-3 text-right min-w-[120px]">Net Profit</th>
+            <th class="p-3 text-right min-w-[100px]">Margin %</th>
+            <th class="p-3 text-right text-emerald-400 font-bold bg-emerald-500/10 min-w-[200px] pr-4">Running Profit Balance 📈</th>
           </tr>
         `;
 
@@ -10212,9 +10212,9 @@ function exportData(type) {
           : allEvents.filter(e => e.category === kpiCurrentTableFilter);
 
         let rows = filteredEvents.map(e => `
-          <tr class="hover:bg-slate-800/40 transition-colors">
+          <tr class="hover:bg-slate-800/40 transition-colors whitespace-nowrap">
             <td class="p-3 flex items-center gap-2.5">
-              <span class="w-7 h-7 rounded-lg ${e.iconBg} flex items-center justify-center text-xs shadow"><i class="fa-solid ${e.icon}"></i></span>
+              <span class="w-7 h-7 rounded-lg ${e.iconBg} flex items-center justify-center text-xs shadow flex-shrink-0"><i class="fa-solid ${e.icon}"></i></span>
               <div>
                 <div class="font-bold text-white font-mono text-xs">${e.title}</div>
                 <div class="text-[10px] text-slate-400">${e.subtitle}</div>
@@ -10233,7 +10233,7 @@ function exportData(type) {
             <td class="p-3 text-right font-mono font-bold text-cyan-400">${formatUSD8(e.wholesale)}</td>
             <td class="p-3 text-right font-mono font-bold text-emerald-400">+${formatUSD8(e.profit)}</td>
             <td class="p-3 text-right font-mono font-bold text-emerald-400">${e.margin}%</td>
-            <td class="p-3 text-right font-mono font-black text-emerald-300 bg-emerald-500/5">${formatUSD8(e.runningProfitBalance)}</td>
+            <td class="p-3 text-right font-mono font-black text-emerald-300 bg-emerald-500/10 pr-4">${formatUSD8(e.runningProfitBalance)}</td>
           </tr>
         `);
 
@@ -10270,15 +10270,15 @@ function exportData(type) {
         `;
 
         thead.innerHTML = `
-          <tr>
-            <th class="p-3">Carrier Expense Resource / Event</th>
-            <th class="p-3">Category</th>
-            <th class="p-3">Destination / Route</th>
-            <th class="p-3">Metric / Plan</th>
-            <th class="p-3 text-right">Wholesale Carrier Cost</th>
-            <th class="p-3 text-right">Route Status</th>
-            <th class="p-3 text-right">Timestamp</th>
-            <th class="p-3 text-right text-cyan-400 font-bold bg-cyan-500/5">Running Carrier Expense Paid 📉</th>
+          <tr class="whitespace-nowrap">
+            <th class="p-3 min-w-[280px]">Carrier Expense Resource / Event</th>
+            <th class="p-3 min-w-[140px]">Category</th>
+            <th class="p-3 min-w-[180px]">Destination / Route</th>
+            <th class="p-3 min-w-[140px]">Metric / Plan</th>
+            <th class="p-3 text-right min-w-[130px]">Wholesale Carrier Cost</th>
+            <th class="p-3 text-right min-w-[110px]">Route Status</th>
+            <th class="p-3 text-right min-w-[130px]">Timestamp</th>
+            <th class="p-3 text-right text-cyan-400 font-bold bg-cyan-500/10 min-w-[210px] pr-4">Running Carrier Expense Paid 📉</th>
           </tr>
         `;
 
@@ -10359,9 +10359,9 @@ function exportData(type) {
           : allWholesaleEvents.filter(e => e.category === kpiCurrentTableFilter);
 
         let rows = filteredWholesaleEvents.map(e => `
-          <tr class="hover:bg-slate-800/40 transition-colors">
+          <tr class="hover:bg-slate-800/40 transition-colors whitespace-nowrap">
             <td class="p-3 flex items-center gap-2.5">
-              <span class="w-7 h-7 rounded-lg ${e.iconBg} flex items-center justify-center text-xs shadow"><i class="fa-solid ${e.icon}"></i></span>
+              <span class="w-7 h-7 rounded-lg ${e.iconBg} flex items-center justify-center text-xs shadow flex-shrink-0"><i class="fa-solid ${e.icon}"></i></span>
               <div>
                 <div class="font-bold text-white font-mono text-xs">${e.title}</div>
                 <div class="text-[10px] text-slate-400">${e.subtitle}</div>
@@ -10378,8 +10378,8 @@ function exportData(type) {
             <td class="p-3 text-right">
               <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${e.status === 'ACTIVE' || e.status === 'COMPLETED' || e.status === 'DELIVERED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'} uppercase">${e.status}</span>
             </td>
-            <td class="p-3 text-right text-slate-500 text-[10px]">${e.dateFormatted}</td>
-            <td class="p-3 text-right font-mono font-black text-cyan-300 bg-cyan-500/5">${formatUSD8(e.runningExpensePaid)}</td>
+            <td class="p-3 text-right text-slate-400 text-xs">${e.dateFormatted}</td>
+            <td class="p-3 text-right font-mono font-black text-cyan-300 bg-cyan-500/10 pr-4">${formatUSD8(e.runningExpensePaid)}</td>
           </tr>
         `);
 
@@ -10477,13 +10477,13 @@ function exportData(type) {
         `;
 
         thead.innerHTML = `
-          <tr>
-            <th class="p-3">Customer Profile</th>
-            <th class="p-3">Service Description</th>
-            <th class="p-3">Billing Category</th>
-            <th class="p-3 text-right">Amount Billed</th>
-            <th class="p-3 text-right">Timestamp</th>
-            <th class="p-3 text-right text-indigo-400 font-bold bg-indigo-500/5">Running Revenue Collected 📈</th>
+          <tr class="whitespace-nowrap">
+            <th class="p-3 min-w-[240px]">Customer Profile</th>
+            <th class="p-3 min-w-[260px]">Service Description</th>
+            <th class="p-3 min-w-[140px]">Billing Category</th>
+            <th class="p-3 text-right min-w-[130px]">Amount Billed</th>
+            <th class="p-3 text-right min-w-[140px]">Timestamp</th>
+            <th class="p-3 text-right text-indigo-400 font-bold bg-indigo-500/10 min-w-[210px] pr-4">Running Revenue Collected 📈</th>
           </tr>
         `;
 
@@ -10492,9 +10492,9 @@ function exportData(type) {
           : allRetailEvents.filter(e => e.category === kpiCurrentTableFilter);
 
         let rows = filteredRetailEvents.map(e => `
-          <tr class="hover:bg-slate-800/40 transition-colors">
+          <tr class="hover:bg-slate-800/40 transition-colors whitespace-nowrap">
             <td class="p-3 flex items-center gap-2.5">
-              <span class="w-7 h-7 rounded-lg ${e.iconBg} flex items-center justify-center text-xs shadow"><i class="fa-solid ${e.icon}"></i></span>
+              <span class="w-7 h-7 rounded-lg ${e.iconBg} flex items-center justify-center text-xs shadow flex-shrink-0"><i class="fa-solid ${e.icon}"></i></span>
               <div>
                 <div class="font-bold text-white text-xs">${e.userName}</div>
                 <div class="text-[10px] text-slate-400">${e.userEmail}</div>
@@ -10503,8 +10503,8 @@ function exportData(type) {
             <td class="p-3 font-medium text-slate-300 text-xs">${e.description}</td>
             <td class="p-3">${e.badge}</td>
             <td class="p-3 text-right font-mono font-bold text-indigo-400">${formatUSD8(e.amount)}</td>
-            <td class="p-3 text-right text-slate-500 text-[10px]">${e.dateFormatted}</td>
-            <td class="p-3 text-right font-mono font-black text-indigo-300 bg-indigo-500/5">${formatUSD8(e.runningRetailRevenue)}</td>
+            <td class="p-3 text-right text-slate-400 text-xs">${e.dateFormatted}</td>
+            <td class="p-3 text-right font-mono font-black text-indigo-300 bg-indigo-500/10 pr-4">${formatUSD8(e.runningRetailRevenue)}</td>
           </tr>
         `);
 
@@ -10547,20 +10547,20 @@ function exportData(type) {
         `;
 
         thead.innerHTML = `
-          <tr>
-            <th class="p-3">Customer Profile</th>
-            <th class="p-3">Deposit Method / Description</th>
-            <th class="p-3 text-right">Deposit Amount</th>
-            <th class="p-3 text-right">Current Balance</th>
-            <th class="p-3 text-right">Timestamp</th>
-            <th class="p-3 text-right text-amber-400 font-bold bg-amber-500/5">Running Inflow Loaded 📈</th>
+          <tr class="whitespace-nowrap">
+            <th class="p-3 min-w-[240px]">Customer Profile</th>
+            <th class="p-3 min-w-[260px]">Deposit Method / Description</th>
+            <th class="p-3 text-right min-w-[130px]">Deposit Amount</th>
+            <th class="p-3 text-right min-w-[130px]">Current Balance</th>
+            <th class="p-3 text-right min-w-[140px]">Timestamp</th>
+            <th class="p-3 text-right text-amber-400 font-bold bg-amber-500/10 min-w-[200px] pr-4">Running Inflow Loaded 📈</th>
           </tr>
         `;
 
         let rows = allDeposits.map(d => `
-          <tr class="hover:bg-slate-800/40 transition-colors">
+          <tr class="hover:bg-slate-800/40 transition-colors whitespace-nowrap">
             <td class="p-3 flex items-center gap-2.5">
-              <span class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs shadow"><i class="fa-solid fa-wallet"></i></span>
+              <span class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs shadow flex-shrink-0"><i class="fa-solid fa-wallet"></i></span>
               <div>
                 <div class="font-bold text-white text-xs">${d.userName}</div>
                 <div class="text-[10px] text-slate-400">${d.userEmail}</div>
@@ -10572,8 +10572,8 @@ function exportData(type) {
             </td>
             <td class="p-3 text-right font-mono font-bold text-emerald-400">+${formatUSD8(d.amount)}</td>
             <td class="p-3 text-right font-mono font-bold text-slate-200">${formatUSD8(d.userCurrentBalance || 0)}</td>
-            <td class="p-3 text-right text-slate-500 text-[10px]">${new Date(d.createdAt).toLocaleString()}</td>
-            <td class="p-3 text-right font-mono font-black text-amber-300 bg-amber-500/5">${formatUSD8(d.runningDepositsInflow)}</td>
+            <td class="p-3 text-right text-slate-400 text-xs">${new Date(d.createdAt).toLocaleString()}</td>
+            <td class="p-3 text-right font-mono font-black text-amber-300 bg-amber-500/10 pr-4">${formatUSD8(d.runningDepositsInflow)}</td>
           </tr>
         `);
 
@@ -10601,32 +10601,32 @@ function exportData(type) {
         `;
 
         tabsRow.innerHTML = `
-          <button class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-600 text-white">Outbound SMS Logs (${data.sms.length})</button>
+          <button class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-600 text-white shadow-md shadow-rose-600/30">Outbound SMS Logs (${data.sms.length})</button>
         `;
 
         thead.innerHTML = `
-          <tr>
-            <th class="p-3">Sender Line</th>
-            <th class="p-3">Recipient</th>
-            <th class="p-3">Message Snippet</th>
-            <th class="p-3 text-right">Carrier Cost</th>
-            <th class="p-3 text-right">Retail Billed</th>
-            <th class="p-3 text-right">Status</th>
-            <th class="p-3 text-right">Timestamp</th>
+          <tr class="whitespace-nowrap">
+            <th class="p-3 min-w-[160px]">Sender Line</th>
+            <th class="p-3 min-w-[160px]">Recipient</th>
+            <th class="p-3 min-w-[260px]">Message Snippet</th>
+            <th class="p-3 text-right min-w-[120px]">Carrier Cost</th>
+            <th class="p-3 text-right min-w-[120px]">Retail Billed</th>
+            <th class="p-3 text-right min-w-[110px]">Status</th>
+            <th class="p-3 text-right min-w-[140px]">Timestamp</th>
           </tr>
         `;
 
         let rows = data.sms.map(m => `
-          <tr class="hover:bg-slate-800/40 transition-colors">
+          <tr class="hover:bg-slate-800/40 transition-colors whitespace-nowrap">
             <td class="p-3 font-mono font-bold text-white">${m.fromNumber}</td>
             <td class="p-3 font-mono font-semibold text-slate-300">${m.toNumber}</td>
-            <td class="p-3 text-slate-300 text-xs truncate max-w-[220px]">${m.text || 'SMS Message'}</td>
+            <td class="p-3 text-slate-300 text-xs truncate max-w-[280px]">${m.text || 'SMS Message'}</td>
             <td class="p-3 text-right font-mono font-bold text-cyan-400">${formatUSD8(m.wholesaleCost)}</td>
             <td class="p-3 text-right font-mono font-bold text-indigo-400">${formatUSD8(m.retailCharge)}</td>
             <td class="p-3 text-right">
               <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase">${m.status || 'Delivered'}</span>
             </td>
-            <td class="p-3 text-right text-slate-500 text-[10px]">${new Date(m.createdAt).toLocaleString()}</td>
+            <td class="p-3 text-right text-slate-400 text-xs">${new Date(m.createdAt).toLocaleString()}</td>
           </tr>
         `);
 
@@ -11115,8 +11115,8 @@ setInterval(() => {
   <div id="liveToastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm pointer-events-none"></div>
 
   <!-- 📊 INTERACTIVE KPI DETAILED BREAKDOWN MODAL -->
-  <div id="kpiBreakdownModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-2 sm:p-6 overflow-y-auto">
-    <div class="bg-slate-900 border border-slate-800 w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+  <div id="kpiBreakdownModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-2 sm:p-4 md:p-6 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-[96vw] xl:max-w-[1380px] 2xl:max-w-7xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
       
       <!-- Modal Header -->
       <div class="p-4 sm:p-5 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between flex-shrink-0">
@@ -11158,16 +11158,16 @@ setInterval(() => {
         </div>
       </div>
 
-      <!-- Scrollable Table Container (Mobile Responsive with Horizontal Scroll) -->
+      <!-- Scrollable Table Container (Wide & Horizontal Smooth Scroll) -->
       <div class="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-4">
         <div class="border border-slate-800 rounded-xl overflow-x-auto custom-scrollbar bg-slate-950 shadow-inner">
-          <table class="w-full min-w-[780px] text-left text-xs text-slate-300">
+          <table class="w-full min-w-[1300px] text-left text-xs text-slate-300">
             <thead id="kpiModalTableHead" class="bg-slate-900/95 text-slate-400 font-semibold border-b border-slate-800 sticky top-0 z-10 whitespace-nowrap">
               <!-- Dynamically injected table headers -->
             </thead>
             <tbody id="kpiModalTableBody" class="divide-y divide-slate-800/60 font-medium">
               <!-- Dynamically injected table rows -->
-              <tr><td colspan="7" class="p-8 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading breakdown data...</td></tr>
+              <tr><td colspan="9" class="p-8 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading breakdown data...</td></tr>
             </tbody>
           </table>
         </div>

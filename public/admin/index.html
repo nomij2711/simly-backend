@@ -2355,6 +2355,131 @@
     </div>
   </div>
 
+  <!-- 🔄 DYNAMIC VIRTUAL LINE RENEWAL & VALIDITY MODAL -->
+  <div id="numberRenewalModal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto" onclick="if(event.target === this) closeNumberRenewalModal()">
+    <div class="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-slate-700/80 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden relative flex flex-col my-auto animate-scale-up">
+      <!-- Header -->
+      <div class="p-5 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/50">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-600 via-teal-600 to-indigo-600 flex items-center justify-center text-white text-base shadow-lg shadow-emerald-600/30">
+            <i class="fa-solid fa-rotate"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <span>Renew & Extend Virtual Line</span>
+              <span id="renNumberFlag" class="text-lg"></span>
+            </h3>
+            <p class="text-xs text-slate-400">Select active package duration or apply admin validity extension.</p>
+          </div>
+        </div>
+        <button onclick="closeNumberRenewalModal()" class="w-8 h-8 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-all">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="p-5 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        <!-- Number & Customer Info Summary Card -->
+        <div class="p-4 bg-slate-950/70 border border-slate-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-inner">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span id="renPhoneNumber" class="font-mono font-black text-base text-cyan-300 tracking-wide">+1 000 000 0000</span>
+              <span id="renStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ACTIVE</span>
+            </div>
+            <div class="text-xs text-slate-400 flex items-center gap-2">
+              <span id="renCustomerName" class="text-slate-300 font-medium">Customer</span>
+              <span>•</span>
+              <span id="renCurrentExpiry" class="font-mono text-slate-400">Expires: --/--/----</span>
+            </div>
+          </div>
+          <div class="text-left sm:text-right bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+            <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">User Wallet Balance</div>
+            <div id="renWalletBalance" class="text-base font-mono font-black text-emerald-400">$0.00</div>
+          </div>
+        </div>
+
+        <!-- Mode Toggle Tabs (Deduct Balance vs Admin Free Comp) -->
+        <div class="flex items-center gap-1.5 p-1.5 bg-slate-950/80 rounded-2xl border border-slate-800/80">
+          <button type="button" id="renModeWalletBtn" onclick="setRenewalMode('wallet')" class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-600/30">
+            <i class="fa-solid fa-wallet"></i>
+            <span>Deduct from User Balance</span>
+          </button>
+          <button type="button" id="renModeFreeBtn" onclick="setRenewalMode('free')" class="flex-1 py-2 px-3 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-900 transition-all flex items-center justify-center gap-2">
+            <i class="fa-solid fa-gift text-pink-400"></i>
+            <span>Admin Free Extension</span>
+          </button>
+        </div>
+
+        <!-- Active Packages Header -->
+        <div class="flex items-center justify-between pt-1">
+          <label class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-layer-group text-indigo-400"></i>
+            <span>Select Active Renewal Package:</span>
+          </label>
+          <span class="text-[11px] text-slate-400">Configured in Rates & Promos</span>
+        </div>
+
+        <!-- Dynamic Plan Tiers Cards Container -->
+        <div id="renewalPlansList" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <!-- Populated dynamically via openNumberRenewalModal -->
+          <div class="col-span-2 py-6 text-center text-slate-500 text-xs">
+            <i class="fa-solid fa-circle-notch fa-spin mr-2 text-indigo-400"></i> Loading active plan packages...
+          </div>
+        </div>
+
+        <!-- Custom Days Input Option (Accordion / Collapsible) -->
+        <div class="p-3 bg-slate-950/50 border border-slate-800/80 rounded-2xl space-y-2">
+          <div class="flex items-center justify-between cursor-pointer" onclick="toggleCustomDaysSection()">
+            <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-calendar-plus text-cyan-400"></i>
+              <span>Or Specify Custom Days</span>
+            </span>
+            <i id="customDaysChevron" class="fa-solid fa-chevron-down text-slate-500 text-xs transition-transform"></i>
+          </div>
+          <div id="customDaysSection" class="hidden pt-2 border-t border-slate-800/60 flex items-center gap-2">
+            <input type="number" id="renCustomDaysInput" min="1" max="3650" placeholder="e.g. 14 or 60 or 90" oninput="handleCustomDaysChange()" class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono">
+            <span class="text-xs text-slate-400 font-semibold">Days</span>
+          </div>
+        </div>
+
+        <!-- Projected Expiry & Balance Validation Summary Banner -->
+        <div id="renewalSummaryBanner" class="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 flex items-center justify-between gap-3">
+          <div class="space-y-0.5">
+            <div class="text-[11px] text-slate-400">Projected Expiry Date:</div>
+            <div id="renProjectedExpiry" class="text-xs font-bold text-indigo-300 font-mono">--/--/----</div>
+          </div>
+          <div class="text-right space-y-0.5">
+            <div class="text-[11px] text-slate-400">Renewal Cost:</div>
+            <div id="renSelectedCost" class="text-base font-black font-mono text-white">$0.00</div>
+          </div>
+        </div>
+
+        <!-- Insufficient Balance Warning Banner -->
+        <div id="renLowBalanceWarning" class="hidden p-3 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2.5 shadow-lg">
+          <i class="fa-solid fa-circle-exclamation text-base text-rose-400 flex-shrink-0"></i>
+          <div class="flex-1">
+            <div class="font-bold">Insufficient Customer Balance</div>
+            <div id="renLowBalanceMsg" class="text-[11px] text-rose-300/80">User requires $0.00 more to renew this plan.</div>
+          </div>
+          <button type="button" onclick="setRenewalMode('free')" class="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 rounded-lg text-[10px] font-bold whitespace-nowrap">
+            Switch to Free Comp
+          </button>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="p-4 border-t border-slate-800/80 bg-slate-950/60 flex items-center justify-end gap-2">
+        <button type="button" onclick="closeNumberRenewalModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all">
+          Cancel
+        </button>
+        <button type="button" id="renSubmitBtn" onclick="submitNumberRenewal()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition-all flex items-center gap-2">
+          <i class="fa-solid fa-check"></i>
+          <span id="renSubmitLabel">Confirm Renewal ($1.50)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- 📦 CUSTOM USER DATA EXPORT MODAL -->
   <div id="customUserDataExportModal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto" onclick="if(event.target === this) closeCustomExportModal()">
     <div class="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-slate-700/80 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden relative flex flex-col my-auto animate-scale-up">
@@ -4470,12 +4595,9 @@
                   ${!isExp ? 'ACTIVE 🟢' : 'EXPIRED 🔴'}
                 </span>
               </td>
-              <td class="py-2.5 text-right space-x-1 whitespace-nowrap">
-                <button onclick="renewNumberWithWallet('${n.id}', '${n.phoneNumber}')" title="Renew & Deduct from User Balance" class="px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-bold transition-all">
-                  <i class="fa-solid fa-rotate mr-1"></i> Renew ($ Balance)
-                </button>
-                <button onclick="extendNumberExpiryFree('${n.id}')" title="Admin Free +30 Days" class="px-2 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-lg text-[10px] font-bold transition-all">
-                  +30d Free
+              <td class="py-2.5 text-right space-x-1.5 whitespace-nowrap">
+                <button onclick="openNumberRenewalModal('${n.id}', '${n.phoneNumber}', '${n.countryCode}')" title="Renew & Extend Line Package" class="px-2.5 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-[10px] font-bold transition-all shadow-md shadow-emerald-600/20">
+                  <i class="fa-solid fa-rotate mr-1"></i> Renew / Extend
                 </button>
                 <button onclick="toggleNumberStatus('${n.id}')" title="${!isExp ? 'Expire Line Immediately (0 Days)' : 'Reactivate Line (+30 Days)'}" class="px-2 py-1 ${!isExp ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'} rounded-lg text-[10px] font-bold transition-all">
                   ${!isExp ? '<i class="fa-solid fa-hourglass-end mr-1"></i> Expire' : '<i class="fa-solid fa-bolt mr-1"></i> Reactivate'}
@@ -4553,40 +4675,261 @@
       }
     }
 
-    // Number Renewal with User Balance
-    async function renewNumberWithWallet(numberId, phoneNumber) {
-      if (!confirm(`Renew line ${phoneNumber} for 30 days and deduct retail cost from user wallet?`)) return;
+    // ============================================================
+    // 🔄 DYNAMIC VIRTUAL LINE RENEWAL & DURATION EXTENSION CONTROLLER
+    // ============================================================
+    let currentRenewalData = null;
+    let currentRenewalMode = 'wallet'; // 'wallet' or 'free'
+    let currentSelectedPlanKey = '30_days';
+    let currentSelectedDays = 30;
+    let currentSelectedPrice = 1.50;
+
+    async function openNumberRenewalModal(numberId, phoneNumber, countryCode) {
+      const modal = document.getElementById('numberRenewalModal');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+
+      currentRenewalMode = 'wallet';
+      currentSelectedPlanKey = '30_days';
+      currentSelectedDays = 30;
+      currentSelectedPrice = 1.50;
+      updateRenewalModeUI();
+
+      const plansContainer = document.getElementById('renewalPlansList');
+      if (plansContainer) {
+        plansContainer.innerHTML = `
+          <div class="col-span-2 py-6 text-center text-slate-500 text-xs">
+            <i class="fa-solid fa-circle-notch fa-spin mr-2 text-indigo-400"></i> Loading active plan packages for ${countryCode || 'line'}...
+          </div>
+        `;
+      }
+
       try {
-        const res = await adminFetch(`/api/admin/numbers/${numberId}/extend`, {
-          method: 'POST',
-          body: JSON.stringify({ days: 30, useUserBalance: true })
-        });
-        if (res.success) {
-          alert(res.message);
-          if (currentActiveTab === 'user-detail') inspectUserDossier(currentInspectedUserId);
-          else loadNumbers();
-        } else {
-          alert('Renewal Failed: ' + res.error);
+        const res = await adminFetch(`/api/admin/numbers/${numberId}/renewal-options`);
+        if (!res.success) {
+          alert(res.error || 'Failed to fetch renewal options.');
+          closeNumberRenewalModal();
+          return;
         }
+
+        currentRenewalData = res;
+        renderRenewalModalData(res);
       } catch (err) {
-        alert(err.message);
+        alert('Error loading renewal packages: ' + err.message);
+        closeNumberRenewalModal();
       }
     }
 
-    // Admin Free Extension
-    async function extendNumberExpiryFree(numberId) {
-      try {
-        const res = await adminFetch(`/api/admin/numbers/${numberId}/extend`, {
-          method: 'POST',
-          body: JSON.stringify({ days: 30, useUserBalance: false })
+    function closeNumberRenewalModal() {
+      const modal = document.getElementById('numberRenewalModal');
+      if (modal) modal.classList.add('hidden');
+      currentRenewalData = null;
+    }
+
+    function renderRenewalModalData(data) {
+      const { line, user, plans } = data;
+      document.getElementById('renPhoneNumber').innerText = line.phoneNumber;
+      document.getElementById('renNumberFlag').innerText = line.flagEmoji || '🌐';
+      document.getElementById('renCustomerName').innerText = user.name ? `${user.name} (${user.email || ''})` : (user.email || 'Customer');
+      
+      const curExp = line.expiresAt ? new Date(line.expiresAt) : new Date();
+      document.getElementById('renCurrentExpiry').innerText = `Expires: ${curExp.toLocaleDateString()}`;
+      
+      const statusBadge = document.getElementById('renStatusBadge');
+      if (line.isExpired) {
+        statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20';
+        statusBadge.innerText = 'EXPIRED 🔴';
+      } else {
+        statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        statusBadge.innerText = 'ACTIVE 🟢';
+      }
+
+      document.getElementById('renWalletBalance').innerText = formatUSD8(user.walletBalance || 0);
+
+      // Render Plan Cards
+      const plansContainer = document.getElementById('renewalPlansList');
+      if (!plans || plans.length === 0) {
+        plansContainer.innerHTML = `<div class="col-span-2 text-center text-slate-500 text-xs py-4">No active plan tiers configured for ${line.countryName || line.countryCode}.</div>`;
+        return;
+      }
+
+      // Default select 30_days or first active plan
+      const defaultPlan = plans.find(p => p.key === '30_days') || plans[0];
+      if (defaultPlan) {
+        currentSelectedPlanKey = defaultPlan.key;
+        currentSelectedDays = defaultPlan.durationDays;
+        currentSelectedPrice = defaultPlan.price;
+      }
+
+      plansContainer.innerHTML = plans.map(p => {
+        const isSelected = p.key === currentSelectedPlanKey;
+        const canAfford = (user.walletBalance || 0) >= p.price;
+        return `
+          <div id="plan-card-${p.key}" onclick="selectRenewalPlan('${p.key}', ${p.durationDays}, ${p.price})" class="plan-renewal-card p-3 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between gap-2 ${isSelected ? 'bg-indigo-950/60 border-indigo-500 shadow-lg shadow-indigo-600/20 ring-1 ring-indigo-500' : 'bg-slate-950/70 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60'}">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-bold text-white">${escapeHtml(p.name)}</span>
+                <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/20 text-indigo-300">${escapeHtml(p.badge || '')}</span>
+              </div>
+              <span class="text-sm font-black font-mono text-emerald-400">$${p.price.toFixed(2)}</span>
+            </div>
+            <div class="text-[10px] text-slate-400 line-clamp-1">${escapeHtml(p.subtitle || `${p.durationDays} Days validity`)}</div>
+            <div class="flex items-center justify-between pt-1 border-t border-slate-800/60 text-[10px]">
+              <span class="text-slate-400 font-mono">+${p.durationDays} Days</span>
+              <span class="${canAfford ? 'text-emerald-400' : 'text-amber-400'} font-semibold">
+                ${canAfford ? '🟢 In Budget' : '🟡 Low Balance'}
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      recalculateRenewalSummary();
+    }
+
+    function selectRenewalPlan(key, days, price) {
+      currentSelectedPlanKey = key;
+      currentSelectedDays = days;
+      currentSelectedPrice = price;
+
+      document.querySelectorAll('.plan-renewal-card').forEach(el => {
+        el.classList.remove('bg-indigo-950/60', 'border-indigo-500', 'shadow-lg', 'shadow-indigo-600/20', 'ring-1', 'ring-indigo-500');
+        el.classList.add('bg-slate-950/70', 'border-slate-800/80');
+      });
+
+      const activeCard = document.getElementById(`plan-card-${key}`);
+      if (activeCard) {
+        activeCard.classList.remove('bg-slate-950/70', 'border-slate-800/80');
+        activeCard.classList.add('bg-indigo-950/60', 'border-indigo-500', 'shadow-lg', 'shadow-indigo-600/20', 'ring-1', 'ring-indigo-500');
+      }
+
+      const customInput = document.getElementById('renCustomDaysInput');
+      if (customInput) customInput.value = '';
+
+      recalculateRenewalSummary();
+    }
+
+    function setRenewalMode(mode) {
+      currentRenewalMode = mode;
+      updateRenewalModeUI();
+      recalculateRenewalSummary();
+    }
+
+    function updateRenewalModeUI() {
+      const walletBtn = document.getElementById('renModeWalletBtn');
+      const freeBtn = document.getElementById('renModeFreeBtn');
+      if (currentRenewalMode === 'wallet') {
+        walletBtn.className = 'flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-600/30';
+        freeBtn.className = 'flex-1 py-2 px-3 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-900 transition-all flex items-center justify-center gap-2';
+      } else {
+        freeBtn.className = 'flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md shadow-pink-600/30';
+        walletBtn.className = 'flex-1 py-2 px-3 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-900 transition-all flex items-center justify-center gap-2';
+      }
+    }
+
+    function toggleCustomDaysSection() {
+      const sec = document.getElementById('customDaysSection');
+      const chev = document.getElementById('customDaysChevron');
+      if (sec.classList.contains('hidden')) {
+        sec.classList.remove('hidden');
+        chev.style.transform = 'rotate(180deg)';
+      } else {
+        sec.classList.add('hidden');
+        chev.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    function handleCustomDaysChange() {
+      const val = parseInt(document.getElementById('renCustomDaysInput')?.value || '0', 10);
+      if (val > 0) {
+        currentSelectedPlanKey = 'custom';
+        currentSelectedDays = val;
+        // Calculate ratio price based on monthly rate
+        const monthlyRate = currentRenewalData?.plans?.find(p => p.key === '30_days')?.price || 1.50;
+        currentSelectedPrice = parseFloat(((monthlyRate / 30) * val).toFixed(2));
+
+        document.querySelectorAll('.plan-renewal-card').forEach(el => {
+          el.classList.remove('bg-indigo-950/60', 'border-indigo-500', 'shadow-lg', 'shadow-indigo-600/20', 'ring-1', 'ring-indigo-500');
+          el.classList.add('bg-slate-950/70', 'border-slate-800/80');
         });
+
+        recalculateRenewalSummary();
+      }
+    }
+
+    function recalculateRenewalSummary() {
+      if (!currentRenewalData) return;
+      const { line, user } = currentRenewalData;
+      const days = currentSelectedDays || 30;
+      const price = currentRenewalMode === 'wallet' ? currentSelectedPrice : 0;
+
+      const curExpiry = line.expiresAt ? new Date(line.expiresAt).getTime() : Date.now();
+      const baseTime = curExpiry > Date.now() ? curExpiry : Date.now();
+      const projectedExpiry = new Date(baseTime + days * 24 * 60 * 60 * 1000);
+
+      document.getElementById('renProjectedExpiry').innerText = `${projectedExpiry.toLocaleDateString()} (+${days} Days)`;
+      document.getElementById('renSelectedCost').innerText = currentRenewalMode === 'wallet' ? `$${price.toFixed(2)}` : '$0.00 (FREE)';
+
+      const lowBalWarning = document.getElementById('renLowBalanceWarning');
+      const submitBtn = document.getElementById('renSubmitBtn');
+      const submitLabel = document.getElementById('renSubmitLabel');
+
+      const userBalance = user.walletBalance || 0;
+      const hasInsufficientBalance = currentRenewalMode === 'wallet' && userBalance < price;
+
+      if (hasInsufficientBalance) {
+        lowBalWarning.classList.remove('hidden');
+        const diff = (price - userBalance).toFixed(2);
+        document.getElementById('renLowBalanceMsg').innerText = `User has $${userBalance.toFixed(2)}, but this ${days}-day plan requires $${price.toFixed(2)} (Need $${diff} more).`;
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        submitLabel.innerText = `Low Balance ($${price.toFixed(2)} Req)`;
+      } else {
+        lowBalWarning.classList.add('hidden');
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        if (currentRenewalMode === 'wallet') {
+          submitLabel.innerText = `Confirm Renewal ($${price.toFixed(2)})`;
+        } else {
+          submitLabel.innerText = `Apply Free Extension (+${days}d)`;
+        }
+      }
+    }
+
+    async function submitNumberRenewal() {
+      if (!currentRenewalData) return;
+      const { line } = currentRenewalData;
+      const btn = document.getElementById('renSubmitBtn');
+      btn.disabled = true;
+      const prevHtml = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span>Processing...</span>';
+
+      try {
+        const res = await adminFetch(`/api/admin/numbers/${line.id}/extend`, {
+          method: 'POST',
+          body: JSON.stringify({
+            planType: currentSelectedPlanKey !== 'custom' ? currentSelectedPlanKey : undefined,
+            days: currentSelectedDays,
+            useUserBalance: currentRenewalMode === 'wallet'
+          })
+        });
+
         if (res.success) {
           alert(res.message);
-          if (currentActiveTab === 'user-detail') inspectUserDossier(currentInspectedUserId);
-          else loadNumbers();
+          closeNumberRenewalModal();
+          if (currentActiveTab === 'user-detail') {
+            inspectUserDossier(currentInspectedUserId);
+          } else {
+            loadNumbers();
+          }
+        } else {
+          alert('Renewal Failed: ' + (res.error || 'Server error'));
         }
       } catch (err) {
-        alert(err.message);
+        alert('Error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = prevHtml;
       }
     }
 
@@ -5577,11 +5920,8 @@
               <button onclick="toggleNumberStatus('${n.id}')" title="${n.status === 'active' ? 'Expire Line Immediately (0 Days)' : 'Reactivate Line (+30 Days)'}" class="px-2 py-1 ${n.status === 'active' ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'} rounded-lg text-xs font-semibold transition-all">
                 ${n.status === 'active' ? '<i class="fa-solid fa-hourglass-end mr-1"></i> Expire' : '<i class="fa-solid fa-bolt mr-1"></i> Reactivate'}
               </button>
-              <button onclick="renewNumberWithWallet('${n.id}', '${n.phoneNumber}')" title="Renew via User Balance" class="px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-semibold">
-                Renew ($)
-              </button>
-              <button onclick="extendNumberExpiryFree('${n.id}')" title="Admin Free +30 Days" class="px-2 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-xs font-semibold">
-                +30d
+              <button onclick="openNumberRenewalModal('${n.id}', '${n.phoneNumber}', '${n.countryCode}')" title="Renew & Extend Package Duration" class="px-2.5 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-emerald-600/20">
+                <i class="fa-solid fa-rotate mr-1"></i> Renew
               </button>
               <button onclick="reclaimNumberLine('${n.id}', '${n.phoneNumber}')" title="Delete & Purge Line" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs">
                 <i class="fa-solid fa-trash"></i>

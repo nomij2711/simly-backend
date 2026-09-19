@@ -5446,21 +5446,90 @@ app.post('/api/admin/numbers/:id/reclaim', requireAdmin, async (req, res) => {
   }
 });
 
-// 9. Extend Number Expiry / Renew with User Balance Option
+// 9. Endpoint: Fetch Line Renewal Plan Options & User Balance
+app.get('/api/admin/numbers/:id/renewal-options', requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const line = await prisma.purchasedNumber.findUnique({ where: { id } });
+    if (!line) {
+      return res.status(404).json({ success: false, error: 'Virtual line not found.' });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { OR: [{ id: line.userId }, { email: line.userId }] }
+    });
+
+    const countryCode = (line.countryCode || 'US').toUpperCase();
+    const rateDeck = getCountryRate(countryCode);
+    const plans = getCountryPlans(countryCode, true);
+
+    const currentExpiry = line.expiresAt ? new Date(line.expiresAt) : new Date(new Date(line.createdAt).getTime() + 30 * 24 * 60 * 60 * 1000);
+    const isExpired = line.status === 'expired' || (currentExpiry.getTime() < Date.now());
+
+    res.json({
+      success: true,
+      line: {
+        id: line.id,
+        phoneNumber: line.phoneNumber,
+        countryCode: countryCode,
+        countryName: rateDeck?.countryName || countryCode,
+        flagEmoji: rateDeck?.flagEmoji || '🌐',
+        status: line.status,
+        isExpired,
+        expiresAt: currentExpiry,
+        planType: line.planType || '30_days'
+      },
+      user: user ? {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        walletBalance: parseFloat((user.walletBalance || 0).toFixed(2))
+      } : {
+        id: line.userId,
+        name: 'Customer Account',
+        email: line.userId,
+        walletBalance: 0
+      },
+      plans
+    });
+  } catch (error) {
+    console.error('[ADMIN RENEWAL OPTIONS ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 9.1 Extend Number Expiry / Dynamic Package Renewal
 app.post('/api/admin/numbers/:id/extend', requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
-    const days = parseInt(req.body.days || '30', 10);
-    const useUserBalance = req.body.useUserBalance === true;
+    const { planType, useUserBalance = true } = req.body;
+    let days = parseInt(req.body.days || '0', 10);
     const existing = await prisma.purchasedNumber.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ success: false, error: 'Virtual line not found.' });
     }
 
-    const price = calculateNumberPrice(existing.countryCode || 'US', days === 7 ? '7_days' : days === 365 ? '365_days' : '30_days', days, existing.phoneNumber);
+    const countryCode = (existing.countryCode || 'US').toUpperCase();
+    const plans = getCountryPlans(countryCode, false);
+    const matchedPlan = plans.find(p => p.key === planType);
 
+    if (matchedPlan) {
+      days = matchedPlan.durationDays;
+    } else if (days <= 0) {
+      days = 30;
+    }
+
+    let price = 0;
+    if (matchedPlan) {
+      price = matchedPlan.price;
+    } else {
+      price = calculateNumberPrice(countryCode, planType || (days === 7 ? '7_days' : days === 365 ? '365_days' : days === 90 ? '90_days' : days === 180 ? '180_days' : '30_days'), days, existing.phoneNumber);
+    }
+    price = parseFloat(Number(price).toFixed(2));
+
+    let user = null;
     if (useUserBalance) {
-      const user = await prisma.user.findFirst({
+      user = await prisma.user.findFirst({
         where: { OR: [{ id: existing.userId }, { email: existing.userId }] }
       });
 
@@ -5471,7 +5540,7 @@ app.post('/api/admin/numbers/:id/extend', requireAdmin, async (req, res) => {
       if (user.walletBalance < price) {
         return res.status(400).json({
           success: false,
-          error: `User has only $${user.walletBalance.toFixed(2)}, but renewal requires $${price.toFixed(2)}. Please add balance or use Free Extension.`
+          error: `User has only $${user.walletBalance.toFixed(2)}, but renewal for ${matchedPlan?.name || `${days} Days`} requires $${price.toFixed(2)}. Please add balance or use Admin Free Extension.`
         });
       }
 
@@ -5485,9 +5554,20 @@ app.post('/api/admin/numbers/:id/extend', requireAdmin, async (req, res) => {
           userId: user.id,
           type: 'number_renewal',
           amount: -price,
-          description: `Line Renewal (${days} Days): ${existing.phoneNumber}`
+          description: `Line Renewal (${matchedPlan?.name || `${days} Days`}): ${existing.phoneNumber}`
         }
       });
+
+      try {
+        await prisma.supportMessage.create({
+          data: {
+            userId: user.id,
+            sender: 'system',
+            senderName: 'SimlyX Support',
+            text: `✅ Your virtual line ${existing.phoneNumber} has been renewed for ${matchedPlan?.name || `${days} Days`}. ($${price.toFixed(2)} deducted from your wallet balance. Remaining: $${(user.walletBalance - price).toFixed(2)}).`
+          }
+        });
+      } catch (e) {}
     }
 
     const currentExpiry = existing.expiresAt ? new Date(existing.expiresAt) : new Date();
@@ -5496,13 +5576,20 @@ app.post('/api/admin/numbers/:id/extend', requireAdmin, async (req, res) => {
 
     const updated = await prisma.purchasedNumber.update({
       where: { id },
-      data: { expiresAt: newExpiry, status: 'active' }
+      data: {
+        expiresAt: newExpiry,
+        status: 'active',
+        planType: planType || (days === 7 ? '7_days' : days === 365 ? '365_days' : days === 90 ? '90_days' : days === 180 ? '180_days' : '30_days')
+      }
     });
 
     res.json({
       success: true,
-      message: `Extended line ${existing.phoneNumber} by ${days} days! ${useUserBalance ? `($${price.toFixed(2)} deducted from user balance)` : '(Admin Free Override)'}`,
-      number: updated
+      message: `Extended line ${existing.phoneNumber} by ${days} days (${matchedPlan?.name || `${days} Days`})! ${useUserBalance ? `($${price.toFixed(2)} deducted from user balance)` : '(Admin Free Override)'}`,
+      number: updated,
+      price,
+      newExpiry,
+      remainingBalance: user ? parseFloat((user.walletBalance - (useUserBalance ? price : 0)).toFixed(2)) : undefined
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

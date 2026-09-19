@@ -10406,37 +10406,110 @@ function exportData(type) {
           </div>
         `;
 
+        let allRetailEvents = [];
+
+        (data.retailCharges || []).forEach(r => {
+          let category = 'other';
+          let typeLower = (r.type || '').toLowerCase();
+          let descLower = (r.description || '').toLowerCase();
+          let badge = '';
+          let iconBg = 'bg-indigo-500/10 text-indigo-400';
+          let icon = 'fa-receipt';
+
+          if (typeLower.includes('number') || typeLower.includes('renewal') || descLower.includes('line purchase') || descLower.includes('line renewal') || descLower.includes('number')) {
+            category = 'numbers';
+            badge = (typeLower.includes('renewal') || descLower.includes('renewal'))
+              ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20"><i class="fa-solid fa-rotate mr-1"></i>Line Renewal</span>'
+              : '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"><i class="fa-solid fa-phone mr-1"></i>Line Purchase</span>';
+            iconBg = 'bg-indigo-500/10 text-indigo-400';
+            icon = 'fa-phone';
+          } else if (typeLower.includes('call') || descLower.includes('call') || descLower.includes('min') || descLower.includes('@ $')) {
+            category = 'calls';
+            badge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-phone-flip mr-1"></i>VoIP Call</span>';
+            iconBg = 'bg-amber-500/10 text-amber-400';
+            icon = 'fa-phone-flip';
+          } else if (typeLower.includes('sms') || descLower.includes('sms')) {
+            category = 'sms';
+            badge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-comment-dots mr-1"></i>SMS Message</span>';
+            iconBg = 'bg-rose-500/10 text-rose-400';
+            icon = 'fa-comment-dots';
+          } else {
+            badge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 uppercase">${r.type}</span>`;
+          }
+
+          allRetailEvents.push({
+            id: r.id,
+            category: category,
+            badge: badge,
+            userName: r.userName || 'Customer',
+            userEmail: r.userEmail || '',
+            description: r.description || 'Platform Service Usage',
+            amount: Number(r.amount || 0),
+            iconBg: iconBg,
+            icon: icon,
+            date: new Date(r.createdAt || Date.now()),
+            dateFormatted: new Date(r.createdAt || Date.now()).toLocaleString()
+          });
+        });
+
+        // Chronological sort (oldest to newest) to calculate cumulative running retail revenue
+        allRetailEvents.sort((a, b) => a.date - b.date);
+
+        let runningRetailBalance = 0;
+        allRetailEvents.forEach(e => {
+          runningRetailBalance += e.amount;
+          e.runningRetailRevenue = runningRetailBalance;
+        });
+
+        // Reverse for display so newest appears at top
+        allRetailEvents.reverse();
+
+        // Counts for tabs
+        const numbersCount = allRetailEvents.filter(e => e.category === 'numbers').length;
+        const callsCount = allRetailEvents.filter(e => e.category === 'calls').length;
+        const smsCount = allRetailEvents.filter(e => e.category === 'sms').length;
+
         tabsRow.innerHTML = `
-          <button class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white">All Retail Billed Transactions (${data.retailCharges.length})</button>
+          <button onclick="setKpiFilter('all')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'all' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-800 text-slate-400 hover:text-white'}">⚡ All Unified Retail (${allRetailEvents.length})</button>
+          <button onclick="setKpiFilter('numbers')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'numbers' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-800 text-slate-400 hover:text-white'}">📞 Virtual Lines & Renewals (${numbersCount})</button>
+          <button onclick="setKpiFilter('calls')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'calls' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-800 text-slate-400 hover:text-white'}">🎧 Voice Calls (${callsCount})</button>
+          <button onclick="setKpiFilter('sms')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'sms' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-800 text-slate-400 hover:text-white'}">💬 SMS Messages (${smsCount})</button>
         `;
 
         thead.innerHTML = `
           <tr>
-            <th class="p-3">Customer</th>
+            <th class="p-3">Customer Profile</th>
             <th class="p-3">Service Description</th>
             <th class="p-3">Billing Category</th>
             <th class="p-3 text-right">Amount Billed</th>
             <th class="p-3 text-right">Timestamp</th>
+            <th class="p-3 text-right text-indigo-400 font-bold bg-indigo-500/5">Running Revenue Collected 📈</th>
           </tr>
         `;
 
-        let rows = data.retailCharges.map(r => `
+        const filteredRetailEvents = kpiCurrentTableFilter === 'all'
+          ? allRetailEvents
+          : allRetailEvents.filter(e => e.category === kpiCurrentTableFilter);
+
+        let rows = filteredRetailEvents.map(e => `
           <tr class="hover:bg-slate-800/40 transition-colors">
-            <td class="p-3">
-              <div class="font-bold text-white">${r.userName}</div>
-              <div class="text-[10px] text-slate-500">${r.userEmail}</div>
+            <td class="p-3 flex items-center gap-2.5">
+              <span class="w-7 h-7 rounded-lg ${e.iconBg} flex items-center justify-center text-xs shadow"><i class="fa-solid ${e.icon}"></i></span>
+              <div>
+                <div class="font-bold text-white text-xs">${e.userName}</div>
+                <div class="text-[10px] text-slate-400">${e.userEmail}</div>
+              </div>
             </td>
-            <td class="p-3 font-medium text-slate-300">${r.description || 'Platform Service'}</td>
-            <td class="p-3">
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400 uppercase">${r.type}</span>
-            </td>
-            <td class="p-3 text-right font-mono font-bold text-indigo-400">${formatUSD8(r.amount)}</td>
-            <td class="p-3 text-right text-slate-500 text-[10px]">${new Date(r.createdAt).toLocaleString()}</td>
+            <td class="p-3 font-medium text-slate-300 text-xs">${e.description}</td>
+            <td class="p-3">${e.badge}</td>
+            <td class="p-3 text-right font-mono font-bold text-indigo-400">${formatUSD8(e.amount)}</td>
+            <td class="p-3 text-right text-slate-500 text-[10px]">${e.dateFormatted}</td>
+            <td class="p-3 text-right font-mono font-black text-indigo-300 bg-indigo-500/5">${formatUSD8(e.runningRetailRevenue)}</td>
           </tr>
         `);
 
-        tbody.innerHTML = rows.join('') || '<tr><td colspan="5" class="p-8 text-center text-slate-500">No retail billing transactions yet.</td></tr>';
-        footerCount.innerText = `Showing ${rows.length} retail billing transactions`;
+        tbody.innerHTML = rows.join('') || '<tr><td colspan="6" class="p-8 text-center text-slate-500">No retail billing transactions yet.</td></tr>';
+        footerCount.innerText = `Showing ${filteredRetailEvents.length} retail billing records (Total Retail Collected: ${formatUSD8(runningRetailBalance)})`;
 
       } else if (type === 'customer_deposits') {
         summaryRow.innerHTML = `
@@ -10458,38 +10531,54 @@ function exportData(type) {
           </div>
         `;
 
+        let allDeposits = [...(data.deposits || [])];
+        allDeposits.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+        let runningDepositsTotal = 0;
+        allDeposits.forEach(d => {
+          runningDepositsTotal += Number(d.amount || 0);
+          d.runningDepositsInflow = runningDepositsTotal;
+        });
+
+        allDeposits.reverse();
+
         tabsRow.innerHTML = `
-          <button class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-600 text-white">Customer Deposit Transactions (${data.deposits.length})</button>
+          <button class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-600 text-white shadow-md shadow-amber-600/30">Customer Deposit Transactions (${allDeposits.length})</button>
         `;
 
         thead.innerHTML = `
           <tr>
-            <th class="p-3">Customer</th>
+            <th class="p-3">Customer Profile</th>
             <th class="p-3">Deposit Method / Description</th>
             <th class="p-3 text-right">Deposit Amount</th>
-            <th class="p-3 text-right">Customer Balance</th>
+            <th class="p-3 text-right">Current Balance</th>
             <th class="p-3 text-right">Timestamp</th>
+            <th class="p-3 text-right text-amber-400 font-bold bg-amber-500/5">Running Inflow Loaded 📈</th>
           </tr>
         `;
 
-        let rows = data.deposits.map(d => `
+        let rows = allDeposits.map(d => `
           <tr class="hover:bg-slate-800/40 transition-colors">
-            <td class="p-3">
-              <div class="font-bold text-white">${d.userName}</div>
-              <div class="text-[10px] text-slate-500">${d.userEmail}</div>
+            <td class="p-3 flex items-center gap-2.5">
+              <span class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs shadow"><i class="fa-solid fa-wallet"></i></span>
+              <div>
+                <div class="font-bold text-white text-xs">${d.userName}</div>
+                <div class="text-[10px] text-slate-400">${d.userEmail}</div>
+              </div>
             </td>
             <td class="p-3">
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 uppercase">${d.type}</span>
-              <div class="text-[10px] text-slate-500 mt-0.5">${d.description || 'Prepaid Wallet Top-Up'}</div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase">${d.type}</span>
+              <div class="text-[10px] text-slate-400 mt-0.5">${d.description || 'Prepaid Wallet Top-Up'}</div>
             </td>
             <td class="p-3 text-right font-mono font-bold text-emerald-400">+${formatUSD8(d.amount)}</td>
             <td class="p-3 text-right font-mono font-bold text-slate-200">${formatUSD8(d.userCurrentBalance || 0)}</td>
             <td class="p-3 text-right text-slate-500 text-[10px]">${new Date(d.createdAt).toLocaleString()}</td>
+            <td class="p-3 text-right font-mono font-black text-amber-300 bg-amber-500/5">${formatUSD8(d.runningDepositsInflow)}</td>
           </tr>
         `);
 
-        tbody.innerHTML = rows.join('') || '<tr><td colspan="5" class="p-8 text-center text-slate-500">No deposit records found yet.</td></tr>';
-        footerCount.innerText = `Showing ${rows.length} deposit records`;
+        tbody.innerHTML = rows.join('') || '<tr><td colspan="6" class="p-8 text-center text-slate-500">No deposit records found yet.</td></tr>';
+        footerCount.innerText = `Showing ${rows.length} deposit records (Total Inflow: ${formatUSD8(runningDepositsTotal)})`;
 
       } else if (type === 'outbound_sms') {
         summaryRow.innerHTML = `

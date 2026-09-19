@@ -4437,11 +4437,38 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
     const fin = await calculateMasterFinancials();
 
     // 1. Numbers Fleet Breakdown with wholesale vs retail pricing & user details
+    // 1. Numbers Fleet Breakdown with wholesale vs retail pricing & user details
     const numbers = await prisma.purchasedNumber.findMany({
       orderBy: { createdAt: 'desc' }
     });
 
-    const userIds = [...new Set(numbers.map(n => n.userId).filter(Boolean))];
+    // Fetch all number purchase transactions to get exact historical billed price
+    const purchaseTransactions = await prisma.transaction.findMany({
+      where: { type: { in: ['number_purchase', 'renewal', 'number_renewal'] } },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // 4. Customer Deposit Transactions
+    const deposits = await prisma.transaction.findMany({
+      where: { type: { in: ['topup', 'deposit', 'crypto_deposit', 'stripe_deposit'] } },
+      take: 250,
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // 5. Retail Usage / Purchase Transactions
+    const retailCharges = await prisma.transaction.findMany({
+      where: { type: { in: ['number_purchase', 'renewal', 'number_renewal', 'call', 'call_charge', 'sms', 'sms_charge'] } },
+      take: 250,
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const userIds = [...new Set([
+      ...numbers.map(n => n.userId),
+      ...purchaseTransactions.map(t => t.userId),
+      ...deposits.map(d => d.userId),
+      ...retailCharges.map(r => r.userId)
+    ].filter(Boolean))];
+
     const users = await prisma.user.findMany({
       where: { id: { in: userIds } },
       select: { id: true, name: true, email: true, phone: true, walletBalance: true }
@@ -4450,12 +4477,6 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
     users.forEach(u => {
       userMap[u.id] = u;
       if (u.email) userMap[u.email.toLowerCase()] = u;
-    });
-
-    // Fetch all number purchase transactions to get exact historical billed price
-    const purchaseTransactions = await prisma.transaction.findMany({
-      where: { type: { in: ['number_purchase', 'renewal', 'number_renewal'] } },
-      orderBy: { createdAt: 'desc' }
     });
 
     const numbersDetailed = numbers.map(n => {
@@ -4558,12 +4579,6 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
       };
     });
 
-    // 4. Customer Deposit Transactions
-    const deposits = await prisma.transaction.findMany({
-      where: { type: { in: ['topup', 'deposit', 'crypto_deposit', 'stripe_deposit'] } },
-      take: 150,
-      orderBy: { createdAt: 'desc' }
-    });
     const depositsDetailed = deposits.map(d => {
       const u = userMap[d.userId] || { name: 'Customer', email: d.userId, walletBalance: 0 };
       return {
@@ -4579,12 +4594,7 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
       };
     });
 
-    // 5. Retail Usage / Purchase Transactions
-    const retailCharges = await prisma.transaction.findMany({
-      where: { type: { in: ['number_purchase', 'renewal', 'number_renewal', 'call', 'call_charge', 'sms', 'sms_charge'] } },
-      take: 150,
-      orderBy: { createdAt: 'desc' }
-    });
+    // 5. Retail Usage / Purchase Transactions Detailed
     const retailDetailed = retailCharges.map(r => {
       const u = userMap[r.userId] || { name: 'Customer', email: r.userId };
       return {

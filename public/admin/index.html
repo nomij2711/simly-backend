@@ -65,21 +65,30 @@
   </div>
 
   <!-- 🚀 MAIN ADMIN APPLICATION WRAPPER -->
-  <div id="adminApp" class="hidden h-full flex flex-col md:flex-row overflow-hidden">
+  <div id="adminApp" class="hidden h-full flex flex-col md:flex-row overflow-hidden relative">
     
-    <!-- 🧭 SIDEBAR -->
-    <aside class="w-full md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col flex-shrink-0">
-      <!-- Brand Logo -->
-      <div class="h-16 flex items-center px-6 border-b border-slate-800 gap-3">
-        <img src="/logo.png" class="w-9 h-9 rounded-xl shadow-md shadow-indigo-600/30 object-cover" alt="SimlyX">
-        <div>
-          <div class="font-bold text-white leading-none text-base">SimlyX</div>
-          <div class="text-[10px] text-indigo-400 font-semibold tracking-wider uppercase mt-0.5">Admin Center</div>
+    <!-- 📱 MOBILE SIDEBAR BACKDROP OVERLAY -->
+    <div id="mobileSidebarBackdrop" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 md:hidden transition-opacity" onclick="toggleMobileSidebar(false)"></div>
+
+    <!-- 🧭 SIDEBAR (Responsive Off-Canvas Drawer on Mobile, Fixed Sidebar on Desktop) -->
+    <aside id="adminSidebar" class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform -translate-x-full md:translate-x-0 md:static md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col flex-shrink-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none">
+      <!-- Brand Logo & Mobile Close Button -->
+      <div class="h-16 flex items-center justify-between px-5 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <img src="/logo.png" class="w-9 h-9 rounded-xl shadow-md shadow-indigo-600/30 object-cover" alt="SimlyX">
+          <div>
+            <div class="font-bold text-white leading-none text-base">SimlyX</div>
+            <div class="text-[10px] text-indigo-400 font-semibold tracking-wider uppercase mt-0.5">Admin Center</div>
+          </div>
         </div>
+        <!-- Mobile Drawer Close Button -->
+        <button type="button" onclick="toggleMobileSidebar(false)" class="md:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all text-sm" title="Close Menu">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
       </div>
 
       <!-- Navigation Tabs -->
-      <nav class="flex-1 p-4 space-y-1.5 overflow-y-auto custom-scrollbar text-sm font-medium">
+      <nav class="flex-1 p-3 space-y-1.5 overflow-y-auto custom-scrollbar text-sm font-medium">
         <button onclick="switchTab('overview')" id="tab-btn-overview" class="nav-tab-btn active w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition-all">
           <i class="fa-solid fa-chart-pie w-5 text-center text-indigo-400"></i>
           <span>Dashboard Overview</span>
@@ -154,19 +163,30 @@
     <!-- 🖥️ MAIN CONTENT AREA -->
     <main class="flex-1 flex flex-col min-w-0 bg-slate-950 overflow-hidden">
       
-      <!-- Top Bar -->
-      <header class="h-16 bg-slate-900/60 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 z-10">
-        <!-- Search bar with Quick Dropdown -->
-        <div class="relative w-full max-w-md hidden sm:block">
+      <!-- Top Bar (Mobile-Responsive Header) -->
+      <header class="h-16 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-3 sm:px-6 z-10">
+        <!-- Left: Hamburger Button + Mobile Brand Logo -->
+        <div class="flex items-center gap-2">
+          <button id="mobileMenuBtn" type="button" onclick="toggleMobileSidebar(true)" class="md:hidden p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all flex items-center justify-center" title="Open Navigation Menu">
+            <i class="fa-solid fa-bars text-lg"></i>
+          </button>
+          <div class="flex items-center gap-2 md:hidden">
+            <img src="/logo.png" class="w-7 h-7 rounded-lg shadow-sm" alt="Logo">
+            <span class="font-bold text-white text-sm">SimlyX</span>
+          </div>
+        </div>
+
+        <!-- Search bar with Quick Dropdown (Desktop & Tablets) -->
+        <div class="relative w-full max-w-md hidden sm:block mx-4">
           <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-500 text-xs"></i>
           <input type="text" id="universalSearch" oninput="handleUniversalSearch(this.value)" placeholder="Search any User (Name, Email, Number, ID)..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all">
           <div id="searchResultsDropdown" class="hidden absolute top-11 left-0 right-0 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-30 max-h-60 overflow-y-auto custom-scrollbar divide-y divide-slate-800"></div>
         </div>
 
         <!-- Right Header Items -->
-        <div class="flex items-center gap-3 ml-auto">
+        <div class="flex items-center gap-2 sm:gap-3 ml-auto">
           <!-- Carrier Health & Balance -->
-          <div id="carrierHealthPill" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+          <div id="carrierHealthPill" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
             <span id="carrierHealthDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span class="text-slate-400 font-medium">Telnyx:</span>
             <span id="carrierBalanceHeader" class="text-white font-bold">$0.00</span>
@@ -179,18 +199,18 @@
             <span id="alertBellDot" class="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full"></span>
           </button>
 
-          <div id="liveSyncBadge" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-semibold">
+          <div id="liveSyncBadge" class="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-semibold">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span class="hidden md:inline">Live Auto-Sync Active</span>
+            <span>Live Auto-Sync</span>
           </div>
           <button onclick="refreshActiveTab()" title="Manual Refresh Live Data" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
             <i class="fa-solid fa-arrows-rotate text-sm"></i>
           </button>
-          <div class="flex items-center gap-2.5 pl-3 border-l border-slate-800">
+          <div class="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-slate-800">
             <div id="headerStaffAvatar" class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-md">
               SA
             </div>
-            <div class="hidden md:block text-left leading-tight">
+            <div class="hidden lg:block text-left leading-tight">
               <div id="headerStaffName" class="text-xs font-bold text-white">Staff Member</div>
               <div id="headerStaffRoleBadge" class="text-[10px] text-indigo-400 font-semibold">Super Admin</div>
             </div>
@@ -199,7 +219,7 @@
       </header>
 
       <!-- Scrollable Tab Views Container -->
-      <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 space-y-4 sm:space-y-6 pb-24 md:pb-6">
 
         <!-- ============================================================ -->
         <!-- 📊 TAB 1: OVERVIEW DASHBOARD -->
@@ -984,9 +1004,9 @@
           </div>
 
           <!-- Helpdesk Workstation -->
-          <div id="helpdeskWorkstation" class="grid grid-cols-1 md:grid-cols-3 gap-6 h-[580px]">
+          <div id="helpdeskWorkstation" class="flex flex-col md:grid md:grid-cols-3 gap-4 sm:gap-6 h-auto md:h-[600px]">
             <!-- Left: Threads List -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col overflow-hidden shadow-xl">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col h-64 md:h-auto overflow-hidden shadow-xl">
               <div class="flex items-center justify-between mb-3 px-1">
                 <span id="queueListHeader" class="font-bold text-xs text-slate-400 uppercase tracking-wider">Incoming Queue</span>
                 <span id="queueItemCount" class="text-[11px] text-slate-500 font-medium">0 waiting</span>
@@ -997,7 +1017,7 @@
             </div>
 
             <!-- Right: Active Chat Workstation -->
-            <div class="md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col overflow-hidden shadow-xl relative">
+            <div class="md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col h-[520px] md:h-auto overflow-hidden shadow-xl relative">
               
               <!-- Workstation Header -->
               <div id="chatHeader" class="pb-3 border-b border-slate-800 flex items-center justify-between flex-wrap gap-2">
@@ -2107,12 +2127,39 @@
 
   
       </div> <!-- END OF SCROLLABLE TAB CONTAINER -->
+
+      <!-- 📱 NATIVE MOBILE BOTTOM NAVIGATION BAR -->
+      <div class="md:hidden bg-slate-900/95 backdrop-blur-xl border-t border-slate-800 flex items-center justify-around py-1.5 px-1 z-30 flex-shrink-0 shadow-2xl">
+        <button onclick="switchTab('overview')" id="mob-btn-overview" class="mob-nav-btn flex flex-col items-center justify-center p-1.5 rounded-xl text-indigo-400 font-bold transition-all flex-1">
+          <i class="fa-solid fa-chart-pie text-base"></i>
+          <span class="text-[9px] mt-0.5">Overview</span>
+        </button>
+        <button onclick="switchTab('users')" id="mob-btn-users" class="mob-nav-btn flex flex-col items-center justify-center p-1.5 rounded-xl text-slate-400 hover:text-white transition-all flex-1 relative">
+          <i class="fa-solid fa-users text-base"></i>
+          <span class="text-[9px] font-semibold mt-0.5">Users</span>
+          <span id="mobUsersBadge" class="hidden absolute top-1 right-3 w-2 h-2 bg-emerald-400 rounded-full"></span>
+        </button>
+        <button onclick="switchTab('numbers')" id="mob-btn-numbers" class="mob-nav-btn flex flex-col items-center justify-center p-1.5 rounded-xl text-slate-400 hover:text-white transition-all flex-1">
+          <i class="fa-solid fa-phone-volume text-base"></i>
+          <span class="text-[9px] font-semibold mt-0.5">Numbers</span>
+        </button>
+        <button onclick="switchTab('support')" id="mob-btn-support" class="mob-nav-btn flex flex-col items-center justify-center p-1.5 rounded-xl text-slate-400 hover:text-white transition-all flex-1 relative">
+          <i class="fa-solid fa-headset text-base"></i>
+          <span class="text-[9px] font-semibold mt-0.5">Support</span>
+          <span id="mobSupportBadge" class="hidden absolute top-1 right-3 w-2 h-2 bg-rose-500 rounded-full animate-ping"></span>
+        </button>
+        <button onclick="toggleMobileSidebar(true)" class="flex flex-col items-center justify-center p-1.5 rounded-xl text-slate-400 hover:text-indigo-400 transition-all flex-1">
+          <i class="fa-solid fa-bars text-base text-indigo-400"></i>
+          <span class="text-[9px] font-semibold mt-0.5 text-indigo-300">More</span>
+        </button>
+      </div>
+
     </main> <!-- END OF MAIN -->
   </div> <!-- END OF #adminApp -->
   
   <!-- 🛡️ ADD TO BLACKLIST MODAL -->
-  <div id="addBlacklistModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+  <div id="addBlacklistModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar my-auto">
       <div class="flex items-center justify-between">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <i class="fa-solid fa-shield-virus text-rose-400"></i>
@@ -2151,8 +2198,8 @@
   </div>
 
   <!-- 🛑 BAN USER MODAL -->
-  <div id="banUserModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+  <div id="banUserModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar my-auto">
       <div class="flex items-center justify-between">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <i class="fa-solid fa-ban text-rose-500"></i>
@@ -2196,8 +2243,8 @@
   </div>
 
   <!-- 🔔 MULTI-CHANNEL OWNER ALERTS MODAL -->
-  <div id="alertSettingsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-    <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-5">
+  <div id="alertSettingsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-4 sm:p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto custom-scrollbar my-auto">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2.5">
           <div class="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400">
@@ -2299,8 +2346,8 @@
 
 
   <!-- 💰 ADJUST BALANCE MODAL -->
-  <div id="balanceModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-    <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4">
+  <div id="balanceModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar my-auto">
       <div class="flex items-center justify-between">
         <h3 class="text-sm font-bold text-white">Modify User Balance</h3>
         <button onclick="closeBalanceModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
@@ -2327,8 +2374,8 @@
   </div>
 
   <!-- 💰 BULK BALANCE ADJUSTMENT MODAL -->
-  <div id="bulkBalanceModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+  <div id="bulkBalanceModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 max-w-sm w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar my-auto">
       <div class="flex items-center justify-between">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <i class="fa-solid fa-hand-holding-dollar text-indigo-400"></i>
@@ -3617,7 +3664,28 @@
       document.getElementById('loginModal').classList.remove('hidden');
     }
 
+    function toggleMobileSidebar(open) {
+      const sidebar = document.getElementById('adminSidebar');
+      const backdrop = document.getElementById('mobileSidebarBackdrop');
+      if (!sidebar) return;
+      if (open === undefined) {
+        open = sidebar.classList.contains('-translate-x-full');
+      }
+      if (open) {
+        sidebar.classList.remove('-translate-x-full');
+        if (backdrop) backdrop.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+      } else {
+        sidebar.classList.add('-translate-x-full');
+        if (backdrop) backdrop.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+      }
+    }
+
     function switchTab(tabName, skipHash = false) {
+      // Auto-close mobile sidebar drawer on navigation
+      toggleMobileSidebar(false);
+
       if (tabName === 'user-detail') {
         if (currentInspectedUserId) {
           inspectUserDossier(currentInspectedUserId, skipHash);
@@ -3642,6 +3710,17 @@
         el.classList.remove('active', 'bg-slate-800', 'text-white');
         el.classList.add('text-slate-400');
       });
+
+      // Update mobile bottom bar active states
+      document.querySelectorAll('.mob-nav-btn').forEach(btn => {
+        btn.classList.remove('text-indigo-400', 'font-bold');
+        btn.classList.add('text-slate-400');
+      });
+      const mobBtn = document.getElementById(`mob-btn-${tabName}`);
+      if (mobBtn) {
+        mobBtn.classList.add('text-indigo-400', 'font-bold');
+        mobBtn.classList.remove('text-slate-400');
+      }
 
       const activeView = document.getElementById(`tab-view-${tabName}`);
       const activeBtn = document.getElementById(`tab-btn-${tabName}`);
@@ -4465,6 +4544,7 @@
     }
   
     async function inspectUserDossier(userId, skipHash = false) {
+      toggleMobileSidebar(false);
       currentActiveTab = 'user-detail';
       currentInspectedUserId = userId;
       localStorage.setItem('simly_active_tab', 'user-detail');
@@ -4479,6 +4559,17 @@
         el.classList.remove('active', 'bg-slate-800', 'text-white');
         el.classList.add('text-slate-400');
       });
+
+      // Update mobile bottom bar
+      document.querySelectorAll('.mob-nav-btn').forEach(btn => {
+        btn.classList.remove('text-indigo-400', 'font-bold');
+        btn.classList.add('text-slate-400');
+      });
+      const mobUsersBtn = document.getElementById('mob-btn-users');
+      if (mobUsersBtn) {
+        mobUsersBtn.classList.add('text-indigo-400', 'font-bold');
+        mobUsersBtn.classList.remove('text-slate-400');
+      }
 
       const usersBtn = document.getElementById('tab-btn-users');
       if (usersBtn) {
@@ -10289,8 +10380,8 @@ setInterval(() => {
   </div>
 
   <!-- 🔄 TRANSFER TICKET MODAL -->
-  <div id="transferTicketModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up">
+  <div id="transferTicketModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden p-4 sm:p-6 space-y-4 animate-scale-up max-h-[90vh] overflow-y-auto custom-scrollbar my-auto">
       <div class="flex items-center justify-between pb-3 border-b border-slate-800">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <i class="fa-solid fa-shuffle text-indigo-400"></i>
@@ -10817,8 +10908,8 @@ setInterval(() => {
   </div>
 
   <!-- 💎 MODAL: QUICK EDIT DYNAMIC PLAN PRICE -->
-  <div id="quickEditPlanPriceModal" class="hidden fixed inset-0 z-50 items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4">
+  <div id="quickEditPlanPriceModal" class="hidden fixed inset-0 z-50 items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar my-auto">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-2.5">
           <div class="w-9 h-9 rounded-xl bg-pink-500/10 text-pink-400 flex items-center justify-center text-base">
@@ -10871,8 +10962,8 @@ setInterval(() => {
   <!-- ============================================================ -->
   <!-- 💎 MODAL: CREATE / EDIT SUBSCRIPTION PLAN TIER -->
   <!-- ============================================================ -->
-  <div id="planTierModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-4">
+  <div id="planTierModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar my-auto">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-2.5">
           <div class="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-base">

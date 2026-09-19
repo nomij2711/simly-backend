@@ -10103,102 +10103,142 @@ function exportData(type) {
           </div>
         `;
 
+        const totalRecordsCount = (data.numbers?.length || 0) + (data.calls?.length || 0) + (data.sms?.length || 0);
+
         tabsRow.innerHTML = `
-          <button onclick="setKpiFilter('all')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'all' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">All Records</button>
-          <button onclick="setKpiFilter('numbers')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'numbers' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">📞 Number Subscriptions (${data.numbers.length})</button>
-          <button onclick="setKpiFilter('calls')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'calls' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">🎧 VoIP Calls (${data.calls.length})</button>
-          <button onclick="setKpiFilter('sms')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'sms' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">💬 SMS (${data.sms.length})</button>
+          <button onclick="setKpiFilter('all')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'all' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">⚡ All Unified Records (${totalRecordsCount})</button>
+          <button onclick="setKpiFilter('numbers')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'numbers' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">📞 Line Subscriptions (${data.numbers?.length || 0})</button>
+          <button onclick="setKpiFilter('calls')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'calls' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">🎧 VoIP Calls (${data.calls?.length || 0})</button>
+          <button onclick="setKpiFilter('sms')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'sms' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">💬 SMS (${data.sms?.length || 0})</button>
         `;
 
         thead.innerHTML = `
           <tr>
-            <th class="p-3">Resource / Item</th>
+            <th class="p-3">Resource / Activity</th>
+            <th class="p-3">Type</th>
             <th class="p-3">Customer Profile</th>
-            <th class="p-3">Subscription Plan</th>
+            <th class="p-3">Plan / Destination</th>
             <th class="p-3 text-right">Retail Billed</th>
             <th class="p-3 text-right">Wholesale Cost</th>
             <th class="p-3 text-right">Net Profit</th>
             <th class="p-3 text-right">Margin %</th>
+            <th class="p-3 text-right text-emerald-400 font-bold bg-emerald-500/5">Running Profit Balance 📈</th>
           </tr>
         `;
 
-        let rows = [];
-        if (kpiCurrentTableFilter === 'all' || kpiCurrentTableFilter === 'numbers') {
-          data.numbers.forEach(n => {
-            rows.push(`
-              <tr class="hover:bg-slate-800/40 transition-colors">
-                <td class="p-3 flex items-center gap-2">
-                  <span class="w-6 h-6 rounded bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs"><i class="fa-solid fa-phone"></i></span>
-                  <div>
-                    <div class="font-bold text-white font-mono">${n.phoneNumber}</div>
-                    <div class="text-[10px] text-slate-500">${n.countryCode} Line</div>
-                  </div>
-                </td>
-                <td class="p-3">
-                  <div class="font-semibold text-slate-200">${n.userName}</div>
-                  <div class="text-[10px] text-slate-500">${n.userEmail}</div>
-                </td>
-                <td class="p-3">
-                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">${n.planDaysLabel}</span>
-                  <div class="text-[10px] text-slate-500 mt-0.5">${new Date(n.createdAt).toLocaleDateString()}</div>
-                </td>
-                <td class="p-3 text-right font-mono font-bold text-indigo-400">${formatUSD8(n.retailPrice)}</td>
-                <td class="p-3 text-right font-mono font-bold text-cyan-400">${formatUSD8(n.wholesaleCost)}</td>
-                <td class="p-3 text-right font-mono font-bold text-emerald-400">+${formatUSD8(n.netProfit)}</td>
-                <td class="p-3 text-right font-mono font-bold text-emerald-400">${n.marginPercent}%</td>
-              </tr>
-            `);
-          });
-        }
+        let allEvents = [];
 
-        if (kpiCurrentTableFilter === 'all' || kpiCurrentTableFilter === 'calls') {
-          data.calls.forEach(c => {
-            rows.push(`
-              <tr class="hover:bg-slate-800/40 transition-colors">
-                <td class="p-3 flex items-center gap-2">
-                  <span class="w-6 h-6 rounded bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs"><i class="fa-solid fa-phone-flip"></i></span>
-                  <div>
-                    <div class="font-bold text-white font-mono">${c.myNumber || 'VoIP Call'} &rarr; ${c.contactNumber}</div>
-                    <div class="text-[10px] text-slate-500">Outbound Call</div>
-                  </div>
-                </td>
-                <td class="p-3 text-slate-400">Simly Customer</td>
-                <td class="p-3">
-                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400">${c.durationFormatted}</span>
-                </td>
-                <td class="p-3 text-right font-mono font-bold text-indigo-400">${formatUSD8(c.retailCharge)}</td>
-                <td class="p-3 text-right font-mono font-bold text-cyan-400">${formatUSD8(c.wholesaleCost)}</td>
-                <td class="p-3 text-right font-mono font-bold text-emerald-400">+${formatUSD8(c.netProfit)}</td>
-                <td class="p-3 text-right font-mono font-bold text-emerald-400">${c.retailCharge > 0 ? (((c.retailCharge - c.wholesaleCost) / c.retailCharge) * 100).toFixed(2) : '0.00'}%</td>
-              </tr>
-            `);
+        // 1. Gather Number Subscriptions
+        (data.numbers || []).forEach(n => {
+          allEvents.push({
+            id: n.id,
+            category: 'numbers',
+            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-phone mr-1"></i>Line Subscription</span>',
+            title: n.phoneNumber,
+            subtitle: `${n.countryCode || 'US'} Dedicated Virtual Line`,
+            iconBg: 'bg-emerald-500/10 text-emerald-400',
+            icon: 'fa-phone',
+            userName: n.userName || 'Simly Customer',
+            userEmail: n.userEmail || '',
+            planLabel: n.planDaysLabel || '30 Days Monthly',
+            date: new Date(n.createdAt || Date.now()),
+            dateFormatted: new Date(n.createdAt || Date.now()).toLocaleString(),
+            retail: Number(n.retailPrice || 0),
+            wholesale: Number(n.wholesaleCost || 0),
+            profit: Number(n.netProfit || 0),
+            margin: n.marginPercent || '0.00'
           });
-        }
+        });
 
-        if (kpiCurrentTableFilter === 'all' || kpiCurrentTableFilter === 'sms') {
-          data.sms.forEach(m => {
-            rows.push(`
-              <tr class="hover:bg-slate-800/40 transition-colors">
-                <td class="p-3 flex items-center gap-2">
-                  <span class="w-6 h-6 rounded bg-rose-500/10 text-rose-400 flex items-center justify-center text-xs"><i class="fa-solid fa-comment-dots"></i></span>
-                  <div>
-                    <div class="font-bold text-white font-mono">${m.fromNumber} &rarr; ${m.toNumber}</div>
-                    <div class="text-[10px] text-slate-500 truncate max-w-[200px]">${m.text || 'SMS Message'}</div>
-                  </div>
-                </td>
-                <td class="p-3 text-slate-400">Simly Customer</td>
-                <td class="p-3 text-slate-500 text-[10px]">${new Date(m.createdAt).toLocaleTimeString()}</td>
-                <td class="p-3 text-right font-mono font-bold text-indigo-400">${formatUSD8(m.retailCharge)}</td>
-                <td class="p-3 text-right font-mono font-bold text-cyan-400">${formatUSD8(m.wholesaleCost)}</td>
-                <td class="p-3 text-right font-mono font-bold text-emerald-400">+${formatUSD8(m.netProfit)}</td>
-                <td class="p-3 text-right font-mono font-bold text-emerald-400">75.00%</td>
-              </tr>
-            `);
+        // 2. Gather VoIP Calls
+        (data.calls || []).forEach(c => {
+          allEvents.push({
+            id: c.id,
+            category: 'calls',
+            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-phone-flip mr-1"></i>VoIP Call</span>',
+            title: `${c.myNumber || 'Virtual Line'} → ${c.contactNumber}`,
+            subtitle: `${c.flagEmoji || '🌐'} ${c.destinationCountry || 'International'} (${c.durationFormatted} @ $${Number(c.ratePerMin || 0.05).toFixed(3)}/min)`,
+            iconBg: 'bg-amber-500/10 text-amber-400',
+            icon: 'fa-phone-flip',
+            userName: 'Simly Customer',
+            userEmail: c.myNumber || '',
+            planLabel: `${c.durationFormatted} (${c.destinationCountry || 'Intl'})`,
+            date: new Date(c.createdAt || Date.now()),
+            dateFormatted: new Date(c.createdAt || Date.now()).toLocaleString(),
+            retail: Number(c.retailCharge || 0),
+            wholesale: Number(c.wholesaleCost || 0),
+            profit: Number(c.netProfit || 0),
+            margin: c.marginPercent || '0.00'
           });
-        }
+        });
 
-        tbody.innerHTML = rows.join('') || '<tr><td colspan="7" class="p-8 text-center text-slate-500">No profit records found yet.</td></tr>';
-        footerCount.innerText = `Showing ${rows.length} profit transaction records`;
+        // 3. Gather SMS Messages
+        (data.sms || []).forEach(m => {
+          allEvents.push({
+            id: m.id,
+            category: 'sms',
+            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-comment-dots mr-1"></i>SMS</span>',
+            title: `${m.fromNumber || 'Line'} → ${m.toNumber}`,
+            subtitle: `${m.flagEmoji || '🌐'} ${m.destinationCountry || 'Destination'} "${m.text ? (m.text.length > 24 ? m.text.substring(0, 24) + '...' : m.text) : 'SMS'}"`,
+            iconBg: 'bg-rose-500/10 text-rose-400',
+            icon: 'fa-comment-dots',
+            userName: 'Simly Customer',
+            userEmail: m.fromNumber || '',
+            planLabel: '1 SMS Segment',
+            date: new Date(m.createdAt || Date.now()),
+            dateFormatted: new Date(m.createdAt || Date.now()).toLocaleString(),
+            retail: Number(m.retailCharge || 0),
+            wholesale: Number(m.wholesaleCost || 0),
+            profit: Number(m.netProfit || 0),
+            margin: m.marginPercent || '0.00'
+          });
+        });
+
+        // 4. Chronological sort (oldest to newest) to calculate cumulative running profit balance
+        allEvents.sort((a, b) => a.date - b.date);
+
+        let runningCumulativeProfit = 0;
+        allEvents.forEach(e => {
+          runningCumulativeProfit += e.profit;
+          e.runningProfitBalance = runningCumulativeProfit;
+        });
+
+        // 5. Reverse so newest entries appear at top with their final accumulated balance
+        allEvents.reverse();
+
+        // 6. Filter based on active tab
+        const filteredEvents = kpiCurrentTableFilter === 'all'
+          ? allEvents
+          : allEvents.filter(e => e.category === kpiCurrentTableFilter);
+
+        let rows = filteredEvents.map(e => `
+          <tr class="hover:bg-slate-800/40 transition-colors">
+            <td class="p-3 flex items-center gap-2.5">
+              <span class="w-7 h-7 rounded-lg ${e.iconBg} flex items-center justify-center text-xs shadow"><i class="fa-solid ${e.icon}"></i></span>
+              <div>
+                <div class="font-bold text-white font-mono text-xs">${e.title}</div>
+                <div class="text-[10px] text-slate-400">${e.subtitle}</div>
+                <div class="text-[9px] text-slate-500 mt-0.5">${e.dateFormatted}</div>
+              </div>
+            </td>
+            <td class="p-3">${e.badge}</td>
+            <td class="p-3">
+              <div class="font-semibold text-slate-200 text-xs">${e.userName}</div>
+              <div class="text-[10px] text-slate-500">${e.userEmail}</div>
+            </td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">${e.planLabel}</span>
+            </td>
+            <td class="p-3 text-right font-mono font-bold text-indigo-400">${formatUSD8(e.retail)}</td>
+            <td class="p-3 text-right font-mono font-bold text-cyan-400">${formatUSD8(e.wholesale)}</td>
+            <td class="p-3 text-right font-mono font-bold text-emerald-400">+${formatUSD8(e.profit)}</td>
+            <td class="p-3 text-right font-mono font-bold text-emerald-400">${e.margin}%</td>
+            <td class="p-3 text-right font-mono font-black text-emerald-300 bg-emerald-500/5">${formatUSD8(e.runningProfitBalance)}</td>
+          </tr>
+        `);
+
+        tbody.innerHTML = rows.join('') || '<tr><td colspan="9" class="p-8 text-center text-slate-500">No profit records found yet.</td></tr>';
+        footerCount.innerText = `Showing ${filteredEvents.length} profit transaction records (Cumulative Profit: ${formatUSD8(runningCumulativeProfit)})`;
 
       } else if (type === 'wholesale_cost') {
         summaryRow.innerHTML = `

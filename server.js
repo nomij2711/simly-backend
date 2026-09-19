@@ -1264,6 +1264,16 @@ function getAllMergedRates() {
     const allowSms = dbOverride ? (dbOverride.allowOutboundSms !== false) : true;
     const isActive = dbOverride ? (dbOverride.isActive !== false) : true;
 
+    const callWholesale = (dbOverride && dbOverride.callWholesaleCostPerMin != null)
+      ? Number(dbOverride.callWholesaleCostPerMin)
+      : parseFloat((callRate / CALLING_RETAIL_MULTIPLIER).toFixed(4));
+    const smsWholesale = (dbOverride && dbOverride.smsWholesaleCost != null)
+      ? Number(dbOverride.smsWholesaleCost)
+      : parseFloat((smsRate / NUMBER_RETAIL_MULTIPLIER).toFixed(4));
+    const numberWholesale = (dbOverride && dbOverride.numberWholesaleCost != null)
+      ? Number(dbOverride.numberWholesaleCost)
+      : parseFloat((monthlyPrice / NUMBER_RETAIL_MULTIPLIER).toFixed(4));
+
     result.push({
       country: (dbOverride && dbOverride.countryName) || c.name,
       countryName: (dbOverride && dbOverride.countryName) || c.name,
@@ -1273,11 +1283,14 @@ function getAllMergedRates() {
       dialCode: (dbOverride && dbOverride.dialCode) || c.dialCode,
       flag: (dbOverride && dbOverride.flagEmoji) || c.flag,
       flagEmoji: (dbOverride && dbOverride.flagEmoji) || c.flag,
-      callRatePerMin: parseFloat(callRate.toFixed(3)),
-      callRate: parseFloat(callRate.toFixed(3)),
-      smsRate: parseFloat(smsRate.toFixed(3)),
+      callRatePerMin: parseFloat(callRate.toFixed(4)),
+      callRate: parseFloat(callRate.toFixed(4)),
+      callWholesaleCostPerMin: parseFloat(callWholesale.toFixed(4)),
+      smsRate: parseFloat(smsRate.toFixed(4)),
+      smsWholesaleCost: parseFloat(smsWholesale.toFixed(4)),
       monthlyPrice: parseFloat(monthlyPrice.toFixed(2)),
       numberMonthlyPrice: parseFloat(monthlyPrice.toFixed(2)),
+      numberWholesaleCost: parseFloat(numberWholesale.toFixed(4)),
       yearlyPrice: parseFloat(yearlyPrice.toFixed(2)),
       numberYearlyPrice: parseFloat(yearlyPrice.toFixed(2)),
       sevenDayPrice: parseFloat(sevenDayPrice.toFixed(2)),
@@ -1295,6 +1308,12 @@ function getAllMergedRates() {
         const monthlyPrice = Number(r.numberMonthlySellPrice || 1.50);
         const yearlyPrice = Number(r.numberYearlySellPrice || monthlyPrice * 10);
         const sevenDayPrice = Number(r.number7DaySellPrice || Math.max(0.50, monthlyPrice * 0.5));
+        const callRate = Number(r.callSellPricePerMin || 0.05);
+        const smsRate = Number(r.smsSellPrice || 0.05);
+        const callWholesale = r.callWholesaleCostPerMin != null ? Number(r.callWholesaleCostPerMin) : parseFloat((callRate / CALLING_RETAIL_MULTIPLIER).toFixed(4));
+        const smsWholesale = r.smsWholesaleCost != null ? Number(r.smsWholesaleCost) : parseFloat((smsRate / NUMBER_RETAIL_MULTIPLIER).toFixed(4));
+        const numberWholesale = r.numberWholesaleCost != null ? Number(r.numberWholesaleCost) : parseFloat((monthlyPrice / NUMBER_RETAIL_MULTIPLIER).toFixed(4));
+
         result.push({
           country: r.countryName,
           countryName: r.countryName,
@@ -1304,11 +1323,14 @@ function getAllMergedRates() {
           dialCode: r.dialCode,
           flag: r.flagEmoji,
           flagEmoji: r.flagEmoji,
-          callRatePerMin: parseFloat((r.callSellPricePerMin || 0.05).toFixed(3)),
-          callRate: parseFloat((r.callSellPricePerMin || 0.05).toFixed(3)),
-          smsRate: parseFloat((r.smsSellPrice || 0.05).toFixed(3)),
+          callRatePerMin: parseFloat(callRate.toFixed(4)),
+          callRate: parseFloat(callRate.toFixed(4)),
+          callWholesaleCostPerMin: parseFloat(callWholesale.toFixed(4)),
+          smsRate: parseFloat(smsRate.toFixed(4)),
+          smsWholesaleCost: parseFloat(smsWholesale.toFixed(4)),
           monthlyPrice: parseFloat(monthlyPrice.toFixed(2)),
           numberMonthlyPrice: parseFloat(monthlyPrice.toFixed(2)),
+          numberWholesaleCost: parseFloat(numberWholesale.toFixed(4)),
           yearlyPrice: parseFloat(yearlyPrice.toFixed(2)),
           numberYearlyPrice: parseFloat(yearlyPrice.toFixed(2)),
           sevenDayPrice: parseFloat(sevenDayPrice.toFixed(2)),
@@ -1327,7 +1349,7 @@ function getAllMergedRates() {
 // 📞 Resolves exact calling & SMS rate for any international destination phone number
 function getRateForDestinationNumber(phoneNumber) {
   if (!phoneNumber) {
-    return { callRatePerMin: 0.04, callRate: 0.04, smsRate: 0.05, country: 'International', code: 'INTL', dialCode: '+', flag: '🌐' };
+    return { callRatePerMin: 0.05, callRate: 0.05, callWholesaleCostPerMin: 0.02, smsRate: 0.05, smsWholesaleCost: 0.02, country: 'International', code: 'INTL', dialCode: '+', flag: '🌐' };
   }
   let cleanNum = phoneNumber.toString().trim().replace(/[^\d+]/g, '');
   if (!cleanNum.startsWith('+')) cleanNum = '+' + cleanNum;
@@ -1337,7 +1359,7 @@ function getRateForDestinationNumber(phoneNumber) {
   const sortedRates = [...allRates].sort((a, b) => (b.dialCode || '').length - (a.dialCode || '').length);
   const matched = sortedRates.find(r => cleanNum.startsWith(r.dialCode));
   if (matched) return matched;
-  return { callRatePerMin: 0.05, callRate: 0.05, smsRate: 0.05, country: 'International Destination', code: 'INTL', dialCode: '+', flag: '🌐' };
+  return { callRatePerMin: 0.05, callRate: 0.05, callWholesaleCostPerMin: 0.02, smsRate: 0.05, smsWholesaleCost: 0.02, country: 'International Destination', code: 'INTL', dialCode: '+', flag: '🌐' };
 }
 
 // 💎 Constructs dynamic plan tiers for any country (Combining active tiers + base rates + custom overrides)
@@ -2626,14 +2648,14 @@ app.post('/api/calls/log', async (req, res) => {
 
       const minutes = durSec > 0 ? Math.ceil(durSec / 60) : 1;
       const destRate = getRateForDestinationNumber(cleanContact);
-      const ratePerMin = parseFloat(Number(destRate.callRatePerMin || 0.05).toFixed(3));
-      callCost = parseFloat((minutes * ratePerMin).toFixed(2));
+      const ratePerMin = parseFloat(Number(destRate.callRatePerMin || destRate.callRate || 0.05).toFixed(4));
+      callCost = parseFloat((minutes * ratePerMin).toFixed(4));
 
       if (durSec > 0) {
         if (user.walletBalance < callCost || user.walletBalance <= 0) {
           return res.status(402).json({
             success: false,
-            error: `Insufficient wallet balance. Call duration (${durSec}s) cost $${callCost.toFixed(2)}, but balance is $${user.walletBalance.toFixed(2)}. Please top up your wallet.`,
+            error: `Insufficient wallet balance. Call duration (${durSec}s) cost $${callCost.toFixed(3)}, but balance is $${user.walletBalance.toFixed(3)}. Please top up your wallet.`,
             requiredAmount: callCost,
             currentBalance: user.walletBalance
           });
@@ -2649,11 +2671,11 @@ app.post('/api/calls/log', async (req, res) => {
             userId: user.id,
             type: 'call',
             amount: -callCost,
-            description: `Outbound Call (${durSec}s @ $${ratePerMin}/min) to ${cleanContact}`
+            description: `Outbound Call (${durSec}s @ $${ratePerMin.toFixed(3)}/min) to ${cleanContact}`
           }
         });
 
-        console.log(`📞 [BILLING - CALL] Deducted $${callCost.toFixed(2)} from ${user.email} (Remaining Balance: $${(user.walletBalance - callCost).toFixed(2)})`);
+        console.log(`📞 [BILLING - CALL] Deducted $${callCost.toFixed(4)} from ${user.email} (Remaining Balance: $${(user.walletBalance - callCost).toFixed(4)})`);
       }
     }
 
@@ -4339,15 +4361,36 @@ async function calculateMasterFinancials() {
     wholesaleNumberCost += calculateNumberWholesaleCost(n.countryCode, n.planType);
   });
 
-  // B. Calls Wholesale Cost: Termination per second ($0.00900000 / min = $0.00015000 / sec)
-  const allCalls = await prisma.callLog.findMany({ select: { durationSeconds: true, status: true } });
-  const totalCallSeconds = allCalls.reduce((acc, c) => acc + (c.durationSeconds || 0), 0);
+  // B. Calls Wholesale Cost: Dynamic wholesale per destination country
+  const allCalls = await prisma.callLog.findMany({ 
+    where: { direction: 'outbound' },
+    select: { contactNumber: true, durationSeconds: true, status: true } 
+  });
+  let wholesaleCallCost = 0;
+  let totalCallSeconds = 0;
+  allCalls.forEach(c => {
+    const durSec = c.durationSeconds || 0;
+    totalCallSeconds += durSec;
+    if (durSec > 0 || c.status === 'completed') {
+      const dest = getRateForDestinationNumber(c.contactNumber);
+      const minutes = durSec > 0 ? Math.ceil(durSec / 60) : 1;
+      const wholesaleRate = Number(dest.callWholesaleCostPerMin != null ? dest.callWholesaleCostPerMin : ((dest.callRatePerMin || 0.05) / CALLING_RETAIL_MULTIPLIER));
+      wholesaleCallCost += (minutes * wholesaleRate);
+    }
+  });
   const totalCallMinutes = totalCallSeconds / 60;
-  const wholesaleCallCost = totalCallSeconds * (0.00900000 / 60);
 
-  // C. SMS Wholesale Cost: Outbound carrier cost ($0.00750000 / SMS)
-  const allSmsOutbound = await prisma.message.count({ where: { direction: 'outbound' } });
-  const wholesaleSmsCost = allSmsOutbound * 0.00750000;
+  // C. SMS Wholesale Cost: Dynamic carrier cost per destination
+  const allSmsOutbound = await prisma.message.findMany({ 
+    where: { direction: 'outbound' },
+    select: { toNumber: true }
+  });
+  let wholesaleSmsCost = 0;
+  allSmsOutbound.forEach(m => {
+    const dest = getRateForDestinationNumber(m.toNumber);
+    const wholesaleRate = Number(dest.smsWholesaleCost != null ? dest.smsWholesaleCost : ((dest.smsRate || 0.05) / NUMBER_RETAIL_MULTIPLIER));
+    wholesaleSmsCost += wholesaleRate;
+  });
 
   const totalWholesaleCost = wholesaleNumberCost + wholesaleCallCost + wholesaleSmsCost;
 
@@ -4382,7 +4425,7 @@ async function calculateMasterFinancials() {
     totalUserBalanceStr: totalUserBalance.toFixed(8),
     totalCallSeconds,
     totalCallMinutes: parseFloat(totalCallMinutes.toFixed(4)),
-    totalSmsSent: allSmsOutbound,
+    totalSmsSent: allSmsOutbound.length,
     activeNumbers: purchasedNumbers.length
   };
 }
@@ -4449,51 +4492,68 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
       };
     });
 
-    // 2. Call Logs Breakdown
+    // 2. Call Logs Breakdown (100% Dynamic Destination Country Rates)
     const callLogs = await prisma.callLog.findMany({
-      take: 150,
+      take: 250,
       orderBy: { createdAt: 'desc' }
     });
     const callsDetailed = callLogs.map(c => {
       const durSec = c.durationSeconds || 0;
-      const wholesale = durSec * (0.00900000 / 60);
-      const retail = Math.ceil(durSec / 60) * 0.05000000; // $0.05/min standard
+      const dest = getRateForDestinationNumber(c.contactNumber);
+      const minutes = durSec > 0 ? Math.ceil(durSec / 60) : (c.status === 'completed' ? 1 : 0);
+      const retailRate = Number(dest.callRatePerMin || dest.callRate || 0.05);
+      const wholesaleRate = Number(dest.callWholesaleCostPerMin != null ? dest.callWholesaleCostPerMin : (retailRate / CALLING_RETAIL_MULTIPLIER));
+      
+      const retail = minutes * retailRate;
+      const wholesale = minutes * wholesaleRate;
       const profit = retail - wholesale;
+      const margin = retail > 0 ? ((profit / retail) * 100).toFixed(2) : '0.00';
+
       return {
         id: c.id,
         myNumber: c.myNumber,
         contactNumber: c.contactNumber,
+        destinationCountry: dest.country || dest.countryName || 'International',
+        flagEmoji: dest.flag || dest.flagEmoji || '🌐',
         direction: c.direction,
         status: c.status,
         durationSeconds: durSec,
         durationFormatted: Math.floor(durSec / 60) + 'm ' + (durSec % 60) + 's',
+        ratePerMin: parseFloat(retailRate.toFixed(4)),
         wholesaleCost: parseFloat(wholesale.toFixed(8)),
         retailCharge: parseFloat(retail.toFixed(8)),
         netProfit: parseFloat(profit.toFixed(8)),
+        marginPercent: margin,
         createdAt: c.createdAt
       };
     });
 
-    // 3. Outbound SMS Breakdown
+    // 3. Outbound SMS Breakdown (100% Dynamic Destination Country Rates)
     const smsLogs = await prisma.message.findMany({
       where: { direction: 'outbound' },
-      take: 150,
+      take: 250,
       orderBy: { createdAt: 'desc' }
     });
     const smsDetailed = smsLogs.map(m => {
-      const wholesale = 0.00750000;
-      const retail = 0.03000000;
+      const dest = getRateForDestinationNumber(m.toNumber);
+      const retail = Number(dest.smsRate || dest.smsSellPrice || 0.05);
+      const wholesale = Number(dest.smsWholesaleCost != null ? dest.smsWholesaleCost : (retail / NUMBER_RETAIL_MULTIPLIER));
       const profit = retail - wholesale;
+      const margin = retail > 0 ? ((profit / retail) * 100).toFixed(2) : '0.00';
+
       return {
         id: m.id,
         fromNumber: m.fromNumber,
         toNumber: m.toNumber,
+        destinationCountry: dest.country || dest.countryName || 'International',
+        flagEmoji: dest.flag || dest.flagEmoji || '🌐',
         text: m.text,
         status: m.status,
         telnyxMessageId: m.telnyxMessageId,
-        wholesaleCost: wholesale,
-        retailCharge: retail,
-        netProfit: profit,
+        wholesaleCost: parseFloat(wholesale.toFixed(8)),
+        retailCharge: parseFloat(retail.toFixed(8)),
+        netProfit: parseFloat(profit.toFixed(8)),
+        marginPercent: margin,
         createdAt: m.createdAt
       };
     });

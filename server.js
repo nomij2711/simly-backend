@@ -1675,6 +1675,20 @@ const handleBuyTest = async (req, res) => {
 
     console.log(`💳 [BILLING - NUMBER PURCHASE] Deducted $${price.toFixed(2)} from ${user.email} (New Balance: $${updatedUser.walletBalance.toFixed(2)})`);
 
+    // 🔔 Save In-App Notification in User's Private Inbox
+    prisma.inAppNotification.create({
+      data: {
+        userId: user.id,
+        title: '🎉 Number Activated!',
+        message: `Your virtual number ${cleanPhoneNumber} is now active for ${durationDays} days. Ready for voice calls & SMS.`,
+        type: 'ACCOUNT',
+        icon: 'phone',
+        actionType: 'navigate_my_numbers',
+        buttonText: 'View My Numbers',
+        isRead: false
+      }
+    }).catch(e => console.error('⚠️ [IN-APP NOTIF ERROR]:', e.message));
+
     res.json({
       success: true,
       message: `Number purchased! $${price.toFixed(2)} deducted from wallet.`,
@@ -1829,6 +1843,20 @@ app.post('/api/numbers/renew', async (req, res) => {
 
     console.log(`🔄 [BILLING - LINE RENEW] Number ${existing.phoneNumber} renewed for $${price.toFixed(2)}. New balance: $${updatedUser.walletBalance.toFixed(2)}`);
 
+    // 🔔 Save In-App Notification in User's Private Inbox
+    prisma.inAppNotification.create({
+      data: {
+        userId: user.id,
+        title: '🔄 Line Renewed Successfully!',
+        message: `Line ${existing.phoneNumber} renewed for +${durationDays} days. New validity until ${newExpiresAt.toLocaleDateString()}.`,
+        type: 'WALLET',
+        icon: 'phone',
+        actionType: 'navigate_my_numbers',
+        buttonText: 'View My Numbers',
+        isRead: false
+      }
+    }).catch(e => console.error('⚠️ [IN-APP NOTIF ERROR]:', e.message));
+
     res.json({
       success: true,
       message: `Line renewed for +${durationDays} days! $${price.toFixed(2)} deducted.`,
@@ -1981,6 +2009,32 @@ app.post('/api/numbers/transfer', async (req, res) => {
         description: `Line Ownership Received: ${updated.phoneNumber}`
       }
     });
+
+    // 🔔 1. Save In-App Notification in Recipient's Private Inbox
+    prisma.inAppNotification.create({
+      data: {
+        userId: targetUser.id,
+        title: '📱 Virtual Line Received!',
+        message: `Virtual number ${updated.phoneNumber} has been transferred and assigned to your account.`,
+        type: 'ACCOUNT',
+        icon: 'phone',
+        actionType: 'navigate_my_numbers',
+        buttonText: 'View My Numbers',
+        isRead: false
+      }
+    }).catch(e => console.error('⚠️ [IN-APP NOTIF ERROR]:', e.message));
+
+    // 🔔 2. Send Lockscreen Push Notification to Recipient
+    sendOneSignalPush({
+      title: '📱 Virtual Line Transferred to You!',
+      body: `Virtual line ${updated.phoneNumber} has been transferred to your SimlyX account!`,
+      userId: [targetUser.id, targetUser.email].filter(Boolean),
+      audience: 'user',
+      data: {
+        type: 'in_app_notification',
+        actionType: 'navigate_my_numbers'
+      }
+    }).catch(e => console.error('⚠️ [ONESIGNAL NUMBER TRANSFER ERROR]:', e.message));
 
     res.json({
       success: true,
@@ -2997,14 +3051,43 @@ app.post('/api/wallet/transfer', async (req, res) => {
 
     console.log(`💸 [P2P WALLET] Transferred $${transferAmount.toFixed(2)} from ${sender.email} to ${recipient.email}`);
 
-    // 🔔 Lockscreen Push Notification to Recipient
+    // 🔔 1. Save In-App Notification in Recipient's Private Inbox
+    prisma.inAppNotification.create({
+      data: {
+        userId: recipient.id,
+        title: '💸 Funds Received!',
+        message: `You received $${transferAmount.toFixed(2)} from ${sender.name || sender.email}. New Balance: $${updatedRecipient.walletBalance.toFixed(2)}`,
+        type: 'WALLET',
+        icon: 'wallet',
+        actionType: 'navigate_wallet',
+        buttonText: 'View Wallet',
+        isRead: false
+      }
+    }).catch(e => console.error('⚠️ [IN-APP NOTIF ERROR]:', e.message));
+
+    // 🔔 2. Save In-App Notification in Sender's Private Inbox
+    prisma.inAppNotification.create({
+      data: {
+        userId: sender.id,
+        title: '💸 Balance Transferred',
+        message: `Transferred $${transferAmount.toFixed(2)} to ${recipient.name || recipient.email}. Remaining Balance: $${updatedSender.walletBalance.toFixed(2)}`,
+        type: 'WALLET',
+        icon: 'wallet',
+        actionType: 'navigate_wallet',
+        buttonText: 'View Wallet',
+        isRead: false
+      }
+    }).catch(e => console.error('⚠️ [IN-APP NOTIF ERROR]:', e.message));
+
+    // 🔔 3. Lockscreen Push Notification to Recipient (dispatched to UUID & Email)
     sendOneSignalPush({
       title: '💸 Funds Received!',
       body: `You received $${transferAmount.toFixed(2)} from ${sender.name || sender.email}!`,
-      userId: recipient.id,
+      userId: [recipient.id, recipient.email].filter(Boolean),
       audience: 'user',
       data: {
-        type: 'wallet_transfer_received',
+        type: 'in_app_notification',
+        actionType: 'navigate_wallet',
         amount: transferAmount,
         sender: sender.name || sender.email,
         newBalance: updatedRecipient.walletBalance

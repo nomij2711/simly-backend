@@ -1689,6 +1689,18 @@ const handleBuyTest = async (req, res) => {
       }
     }).catch(e => console.error('⚠️ [IN-APP NOTIF ERROR]:', e.message));
 
+    // 🔔 Lockscreen Push Notification on Number Purchase
+    sendOneSignalPush({
+      title: '🎉 Virtual Line Activated!',
+      body: `Line ${cleanPhoneNumber} is active for ${durationDays} days and ready for calls & SMS.`,
+      userId: [user.id, user.email].filter(Boolean),
+      audience: 'user',
+      data: {
+        type: 'in_app_notification',
+        actionType: 'navigate_my_numbers'
+      }
+    }).catch(e => console.error('⚠️ [ONESIGNAL NUMBER PURCHASE ERROR]:', e.message));
+
     res.json({
       success: true,
       message: `Number purchased! $${price.toFixed(2)} deducted from wallet.`,
@@ -1856,6 +1868,18 @@ app.post('/api/numbers/renew', async (req, res) => {
         isRead: false
       }
     }).catch(e => console.error('⚠️ [IN-APP NOTIF ERROR]:', e.message));
+
+    // 🔔 Lockscreen Push Notification on Number Renewal
+    sendOneSignalPush({
+      title: '🔄 Line Renewed Successfully!',
+      body: `Line ${existing.phoneNumber} extended for +${durationDays} days. Valid until ${newExpiresAt.toLocaleDateString()}.`,
+      userId: [user.id, user.email].filter(Boolean),
+      audience: 'user',
+      data: {
+        type: 'in_app_notification',
+        actionType: 'navigate_my_numbers'
+      }
+    }).catch(e => console.error('⚠️ [ONESIGNAL NUMBER RENEW ERROR]:', e.message));
 
     res.json({
       success: true,
@@ -3093,6 +3117,21 @@ app.post('/api/wallet/transfer', async (req, res) => {
         newBalance: updatedRecipient.walletBalance
       }
     }).catch(e => console.error('⚠️ [ONESIGNAL TRANSFER ERROR]:', e.message));
+
+    // 🔔 4. Lockscreen Push Notification to Sender (Confirmation)
+    sendOneSignalPush({
+      title: '💸 Balance Sent Successfully!',
+      body: `You sent $${transferAmount.toFixed(2)} to ${recipient.name || recipient.email}. Remaining balance: $${updatedSender.walletBalance.toFixed(2)}`,
+      userId: [sender.id, sender.email].filter(Boolean),
+      audience: 'user',
+      data: {
+        type: 'in_app_notification',
+        actionType: 'navigate_wallet',
+        amount: transferAmount,
+        recipient: recipient.name || recipient.email,
+        newBalance: updatedSender.walletBalance
+      }
+    }).catch(e => console.error('⚠️ [ONESIGNAL SENDER PUSH ERROR]:', e.message));
 
     res.json({
       success: true,
@@ -5691,6 +5730,34 @@ app.post('/api/admin/numbers/:id/extend', requireAdmin, async (req, res) => {
         planType: planType || (days === 7 ? '7_days' : days === 365 ? '365_days' : days === 90 ? '90_days' : days === 180 ? '180_days' : '30_days')
       }
     });
+
+    if (user) {
+      // 🔔 1. Save In-App Notification in User's Private Inbox
+      prisma.inAppNotification.create({
+        data: {
+          userId: user.id,
+          title: '🔄 Line Renewed Successfully!',
+          message: `Your virtual line ${existing.phoneNumber} has been extended for +${days} days (${matchedPlan?.name || `${days} Days`}). Valid until ${newExpiry.toLocaleDateString()}.`,
+          type: 'WALLET',
+          icon: 'phone',
+          actionType: 'navigate_my_numbers',
+          buttonText: 'View My Numbers',
+          isRead: false
+        }
+      }).catch(e => console.error('⚠️ [IN-APP NOTIF ERROR]:', e.message));
+
+      // 🔔 2. Send Lockscreen Push Notification to User
+      sendOneSignalPush({
+        title: '🔄 Line Renewed Successfully!',
+        body: `Line ${existing.phoneNumber} extended for +${days} days. Valid until ${newExpiry.toLocaleDateString()}.`,
+        userId: [user.id, user.email].filter(Boolean),
+        audience: 'user',
+        data: {
+          type: 'in_app_notification',
+          actionType: 'navigate_my_numbers'
+        }
+      }).catch(e => console.error('⚠️ [ONESIGNAL NUMBER RENEW ERROR]:', e.message));
+    }
 
     res.json({
       success: true,

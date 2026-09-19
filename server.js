@@ -3272,7 +3272,10 @@ const retailRates = baseRates.map(r => ({
 app.get('/api/rates', async (req, res) => {
   try {
     await refreshDynamicCaches();
-    const allRates = getAllMergedRates();
+    let allRates = getAllMergedRates();
+    if (req.query.activeOnly === 'true' || req.query.active === 'true') {
+      allRates = allRates.filter(r => r.isActive !== false);
+    }
     res.json({
       success: true,
       count: allRates.length,
@@ -3316,6 +3319,7 @@ app.get([
   '/api/countries',
   '/api/app/countries',
   '/api/numbers/countries',
+  '/api/numbers/active-countries',
   '/api/numbers/available-countries',
   '/api/numbers/country-list',
   '/api/marketplace/countries',

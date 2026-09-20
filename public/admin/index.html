@@ -8251,6 +8251,31 @@
       }, 300);
     }
 
+    function updateCsatKpiCards(agentId) {
+      if (!rawCsatStats) return;
+      if (agentId && agentId !== 'all' && rawCsatStats.agentScorecards) {
+        const agentCard = rawCsatStats.agentScorecards.find(a => a.staffId === agentId);
+        if (agentCard) {
+          const s = agentCard.starCounts || { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+          renderCsatMetrics({
+            csatPercentage: agentCard.csatPercentage || 100,
+            positiveCount: (s[5] || 0) + (s[4] || 0),
+            neutralCount: s[3] || 0,
+            negativeCount: (s[2] || 0) + (s[1] || 0),
+            averageRating: agentCard.averageRating || 5.0,
+            totalReviews: agentCard.totalReviews || 0,
+            totalSkipped: agentCard.skippedCount || 0,
+            flaggedCount: agentCard.flaggedCount || 0,
+            starCounts: s
+          });
+          return;
+        }
+      }
+      if (rawCsatStats.stats) {
+        renderCsatMetrics(rawCsatStats.stats);
+      }
+    }
+
     function filterReviewsByRating(val) {
       const select = document.getElementById('csatRatingFilter');
       if (select) select.value = val;
@@ -8260,17 +8285,20 @@
     function filterReviewsByAgent(agentId) {
       const select = document.getElementById('csatAgentFilter');
       if (select) select.value = agentId;
+      updateCsatKpiCards(agentId);
       applyCsatFilters();
     }
 
     async function applyCsatFilters() {
+      const agentFilter = document.getElementById('csatAgentFilter')?.value || 'all';
+      updateCsatKpiCards(agentFilter);
+
       const container = document.getElementById('csatReviewsFeedContainer');
       if (container) container.innerHTML = '<div class="text-center py-12 text-slate-500 text-xs">Applying filters...</div>';
 
       try {
         const search = document.getElementById('csatSearchInput')?.value.trim() || '';
         const ratingFilter = document.getElementById('csatRatingFilter')?.value || 'all';
-        const agentFilter = document.getElementById('csatAgentFilter')?.value || 'all';
 
         const params = new URLSearchParams({ limit: '100' });
         if (search) params.append('search', search);

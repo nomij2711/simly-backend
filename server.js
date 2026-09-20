@@ -7016,17 +7016,32 @@ app.get('/api/admin/support/ratings/stats', requireStaffPermission('can_handle_s
       })
     ]);
 
-    // If staff is NOT Super Admin, filter ratings strictly to their own!
-    let allRatings = allRatingsRaw;
+    const requestedStaffId = req.query.staffId;
+
+    // Filter ratings to only those associated with real staff members
+    const cleanRatingsRaw = allRatingsRaw.filter(r => r.staffId !== 'unassigned');
+
+    let allRatings = cleanRatingsRaw;
     let staffList = staffListRaw;
 
     if (!isSuperAdmin) {
-      allRatings = allRatingsRaw.filter(r => 
+      allRatings = cleanRatingsRaw.filter(r => 
         r.staffId === currentStaffId || 
         r.staffName === currentStaffName || 
         (req.staff.chatDisplayName && r.staffName === req.staff.chatDisplayName)
       );
       staffList = staffListRaw.filter(s => s.id === currentStaffId);
+    } else if (requestedStaffId && requestedStaffId !== 'all') {
+      const targetAgent = staffListRaw.find(s => s.id === requestedStaffId);
+      if (targetAgent) {
+        const isSuper = targetAgent.role === 'super_admin';
+        allRatings = cleanRatingsRaw.filter(r => 
+          r.staffId === targetAgent.id || 
+          r.staffName === targetAgent.name ||
+          (targetAgent.chatDisplayName && r.staffName === targetAgent.chatDisplayName) ||
+          (isSuper && (r.staffId === 'root_super_admin' || r.staffName === 'Owner (Super Admin)'))
+        );
+      }
     }
 
     const nonSkipped = allRatings.filter(r => !r.isSkipped && r.rating > 0);

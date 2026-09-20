@@ -10165,26 +10165,110 @@ function exportData(type) {
 
       // 1. NET PROFIT
       if (type === 'net_profit') {
+        let allEvents = [];
+
+        // 1. Gather Number Subscriptions
+        (data.numbers || []).forEach(n => {
+          allEvents.push({
+            id: n.id,
+            category: 'numbers',
+            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-phone mr-1"></i>Line Subscription</span>',
+            title: n.phoneNumber,
+            subtitle: `${n.countryCode || 'US'} Dedicated Virtual Line`,
+            iconBg: 'bg-emerald-500/10 text-emerald-400',
+            icon: 'fa-phone',
+            userName: n.userName || 'Simly Customer',
+            userEmail: n.userEmail || '',
+            planLabel: n.planDaysLabel || '30 Days Monthly',
+            date: new Date(n.createdAt || Date.now()),
+            dateFormatted: new Date(n.createdAt || Date.now()).toLocaleString(),
+            retail: Number(n.retailCharge || n.retailPrice || 0),
+            wholesale: Number(n.wholesaleCost || 0),
+            profit: Number(n.netProfit || n.profit || 0),
+            margin: n.marginPercent || '0.00'
+          });
+        });
+
+        // 2. Gather VoIP Calls
+        (data.calls || []).forEach(c => {
+          allEvents.push({
+            id: c.id,
+            category: 'calls',
+            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-phone-flip mr-1"></i>VoIP Call</span>',
+            title: `${c.myNumber || 'Virtual Line'} → ${c.contactNumber}`,
+            subtitle: `${c.flagEmoji || '🌐'} ${c.destinationCountry || 'International'} (${c.durationFormatted} @ $${Number(c.ratePerMin || 0.05).toFixed(3)}/min)`,
+            iconBg: 'bg-amber-500/10 text-amber-400',
+            icon: 'fa-phone-flip',
+            userName: 'Simly Customer',
+            userEmail: c.myNumber || '',
+            planLabel: `${c.durationFormatted} (${c.destinationCountry || 'Intl'})`,
+            date: new Date(c.createdAt || Date.now()),
+            dateFormatted: new Date(c.createdAt || Date.now()).toLocaleString(),
+            retail: Number(c.retailCharge || c.retailPrice || 0),
+            wholesale: Number(c.wholesaleCost || 0),
+            profit: Number(c.netProfit || c.profit || 0),
+            margin: c.marginPercent || '0.00'
+          });
+        });
+
+        // 3. Gather SMS Messages
+        (data.sms || []).forEach(m => {
+          allEvents.push({
+            id: m.id,
+            category: 'sms',
+            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-comment-dots mr-1"></i>SMS</span>',
+            title: `${m.fromNumber || 'Line'} → ${m.toNumber}`,
+            subtitle: `${m.flagEmoji || '🌐'} ${m.destinationCountry || 'Destination'} "${m.text ? (m.text.length > 24 ? m.text.substring(0, 24) + '...' : m.text) : 'SMS'}"`,
+            iconBg: 'bg-rose-500/10 text-rose-400',
+            icon: 'fa-comment-dots',
+            userName: 'Simly Customer',
+            userEmail: m.fromNumber || '',
+            planLabel: '1 SMS Segment',
+            date: new Date(m.createdAt || Date.now()),
+            dateFormatted: new Date(m.createdAt || Date.now()).toLocaleString(),
+            retail: Number(m.retailCharge || m.retailPrice || 0),
+            wholesale: Number(m.wholesaleCost || 0),
+            profit: Number(m.netProfit || m.profit || 0),
+            margin: m.marginPercent || '0.00'
+          });
+        });
+
+        // 4. Chronological sort (oldest to newest) to calculate cumulative running profit balance
+        allEvents.sort((a, b) => a.date - b.date);
+
+        let runningCumulativeProfit = 0;
+        let totalRetailSum = 0;
+        let totalWholesaleSum = 0;
+        allEvents.forEach(e => {
+          runningCumulativeProfit += e.profit;
+          totalRetailSum += e.retail;
+          totalWholesaleSum += e.wholesale;
+          e.runningProfitBalance = runningCumulativeProfit;
+        });
+
+        const totalProfitSum = runningCumulativeProfit;
+        const totalMarginPercent = totalRetailSum > 0 ? ((totalProfitSum / totalRetailSum) * 100) : 0;
+
         summaryRow.innerHTML = `
           <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
             <span class="text-[10px] text-slate-400 uppercase font-semibold">Net Real Profit</span>
-            <div class="text-base font-bold font-mono text-emerald-400 mt-1">${formatUSD8(fin.netProfit)}</div>
+            <div class="text-base font-bold font-mono text-emerald-400 mt-1">${formatUSD8(totalProfitSum)}</div>
           </div>
           <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
             <span class="text-[10px] text-slate-400 uppercase font-semibold">Overall Margin %</span>
-            <div class="text-base font-bold font-mono text-emerald-400 mt-1">${(fin.marginPercent || 0).toFixed(2)}%</div>
+            <div class="text-base font-bold font-mono text-emerald-400 mt-1">${totalMarginPercent.toFixed(2)}%</div>
           </div>
           <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
             <span class="text-[10px] text-slate-400 uppercase font-semibold">Gross Retail Revenue</span>
-            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(fin.totalRetailRevenue)}</div>
+            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(totalRetailSum)}</div>
           </div>
           <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
             <span class="text-[10px] text-slate-400 uppercase font-semibold">Wholesale Carrier Cost</span>
-            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(fin.totalWholesaleCost)}</div>
+            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(totalWholesaleSum)}</div>
           </div>
         `;
 
-        const totalRecordsCount = (data.numbers?.length || 0) + (data.calls?.length || 0) + (data.sms?.length || 0);
+        const totalRecordsCount = allEvents.length;
 
         tabsRow.innerHTML = `
           <button onclick="setKpiFilter('all')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'all' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">⚡ All Unified Records (${totalRecordsCount})</button>
@@ -10206,83 +10290,6 @@ function exportData(type) {
             <th class="p-3 text-right text-emerald-400 font-bold bg-emerald-500/10 min-w-[200px] pr-4">Running Profit Balance 📈</th>
           </tr>
         `;
-
-        let allEvents = [];
-
-        // 1. Gather Number Subscriptions
-        (data.numbers || []).forEach(n => {
-          allEvents.push({
-            id: n.id,
-            category: 'numbers',
-            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-phone mr-1"></i>Line Subscription</span>',
-            title: n.phoneNumber,
-            subtitle: `${n.countryCode || 'US'} Dedicated Virtual Line`,
-            iconBg: 'bg-emerald-500/10 text-emerald-400',
-            icon: 'fa-phone',
-            userName: n.userName || 'Simly Customer',
-            userEmail: n.userEmail || '',
-            planLabel: n.planDaysLabel || '30 Days Monthly',
-            date: new Date(n.createdAt || Date.now()),
-            dateFormatted: new Date(n.createdAt || Date.now()).toLocaleString(),
-            retail: Number(n.retailPrice || 0),
-            wholesale: Number(n.wholesaleCost || 0),
-            profit: Number(n.netProfit || 0),
-            margin: n.marginPercent || '0.00'
-          });
-        });
-
-        // 2. Gather VoIP Calls
-        (data.calls || []).forEach(c => {
-          allEvents.push({
-            id: c.id,
-            category: 'calls',
-            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-phone-flip mr-1"></i>VoIP Call</span>',
-            title: `${c.myNumber || 'Virtual Line'} → ${c.contactNumber}`,
-            subtitle: `${c.flagEmoji || '🌐'} ${c.destinationCountry || 'International'} (${c.durationFormatted} @ $${Number(c.ratePerMin || 0.05).toFixed(3)}/min)`,
-            iconBg: 'bg-amber-500/10 text-amber-400',
-            icon: 'fa-phone-flip',
-            userName: 'Simly Customer',
-            userEmail: c.myNumber || '',
-            planLabel: `${c.durationFormatted} (${c.destinationCountry || 'Intl'})`,
-            date: new Date(c.createdAt || Date.now()),
-            dateFormatted: new Date(c.createdAt || Date.now()).toLocaleString(),
-            retail: Number(c.retailCharge || 0),
-            wholesale: Number(c.wholesaleCost || 0),
-            profit: Number(c.netProfit || 0),
-            margin: c.marginPercent || '0.00'
-          });
-        });
-
-        // 3. Gather SMS Messages
-        (data.sms || []).forEach(m => {
-          allEvents.push({
-            id: m.id,
-            category: 'sms',
-            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-comment-dots mr-1"></i>SMS</span>',
-            title: `${m.fromNumber || 'Line'} → ${m.toNumber}`,
-            subtitle: `${m.flagEmoji || '🌐'} ${m.destinationCountry || 'Destination'} "${m.text ? (m.text.length > 24 ? m.text.substring(0, 24) + '...' : m.text) : 'SMS'}"`,
-            iconBg: 'bg-rose-500/10 text-rose-400',
-            icon: 'fa-comment-dots',
-            userName: 'Simly Customer',
-            userEmail: m.fromNumber || '',
-            planLabel: '1 SMS Segment',
-            date: new Date(m.createdAt || Date.now()),
-            dateFormatted: new Date(m.createdAt || Date.now()).toLocaleString(),
-            retail: Number(m.retailCharge || 0),
-            wholesale: Number(m.wholesaleCost || 0),
-            profit: Number(m.netProfit || 0),
-            margin: m.marginPercent || '0.00'
-          });
-        });
-
-        // 4. Chronological sort (oldest to newest) to calculate cumulative running profit balance
-        allEvents.sort((a, b) => a.date - b.date);
-
-        let runningCumulativeProfit = 0;
-        allEvents.forEach(e => {
-          runningCumulativeProfit += e.profit;
-          e.runningProfitBalance = runningCumulativeProfit;
-        });
 
         // 5. Reverse so newest entries appear at top with their final accumulated balance
         allEvents.reverse();
@@ -10322,26 +10329,105 @@ function exportData(type) {
         footerCount.innerText = `Showing ${filteredEvents.length} profit transaction records (Cumulative Profit: ${formatUSD8(runningCumulativeProfit)})`;
 
       } else if (type === 'wholesale_cost') {
+        let allWholesaleEvents = [];
+        let numbersWholesaleSum = 0;
+        let callsWholesaleSum = 0;
+        let smsWholesaleSum = 0;
+
+        // 1. Gather Number Leases
+        (data.numbers || []).forEach(n => {
+          const cost = Number(n.wholesaleCost || 0);
+          numbersWholesaleSum += cost;
+          allWholesaleEvents.push({
+            id: n.id,
+            category: 'numbers',
+            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"><i class="fa-solid fa-server mr-1"></i>DID Line Lease</span>',
+            title: n.phoneNumber,
+            subtitle: `Telnyx Direct Leased Line • ${n.userName || 'Assigned User'}`,
+            destination: `${n.countryCode || 'US'} Route`,
+            metric: n.planDaysLabel || '30 Days Monthly',
+            cost: cost,
+            status: n.status || 'ACTIVE',
+            iconBg: 'bg-cyan-500/10 text-cyan-400',
+            icon: 'fa-server',
+            date: new Date(n.createdAt || Date.now()),
+            dateFormatted: new Date(n.createdAt || Date.now()).toLocaleDateString()
+          });
+        });
+
+        // 2. Gather Voice Call Termination
+        (data.calls || []).forEach(c => {
+          const cost = Number(c.wholesaleCost || 0);
+          callsWholesaleSum += cost;
+          allWholesaleEvents.push({
+            id: c.id,
+            category: 'calls',
+            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-phone-flip mr-1"></i>PSTN Termination</span>',
+            title: `${c.myNumber || 'Virtual Line'} → ${c.contactNumber}`,
+            subtitle: `Carrier Voice Termination • ${c.durationFormatted}`,
+            destination: `${c.flagEmoji || '🌐'} ${c.destinationCountry || 'International'}`,
+            metric: c.durationFormatted,
+            cost: cost,
+            status: c.status === 'completed' ? 'COMPLETED' : 'MISSED',
+            iconBg: 'bg-amber-500/10 text-amber-400',
+            icon: 'fa-phone-flip',
+            date: new Date(c.createdAt || Date.now()),
+            dateFormatted: new Date(c.createdAt || Date.now()).toLocaleString()
+          });
+        });
+
+        // 3. Gather SMS Routing
+        (data.sms || []).forEach(m => {
+          const cost = Number(m.wholesaleCost || 0);
+          smsWholesaleSum += cost;
+          allWholesaleEvents.push({
+            id: m.id,
+            category: 'sms',
+            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-comment-dots mr-1"></i>SMS Gateway</span>',
+            title: `${m.fromNumber || 'Line'} → ${m.toNumber}`,
+            subtitle: `Carrier SMS Routing • "${m.text ? (m.text.length > 20 ? m.text.substring(0, 20) + '...' : m.text) : 'SMS'}"`,
+            destination: `${m.flagEmoji || '🌐'} ${m.destinationCountry || 'Destination'}`,
+            metric: '1 Segment',
+            cost: cost,
+            status: m.status === 'delivered' ? 'DELIVERED' : 'SENT',
+            iconBg: 'bg-rose-500/10 text-rose-400',
+            icon: 'fa-comment-dots',
+            date: new Date(m.createdAt || Date.now()),
+            dateFormatted: new Date(m.createdAt || Date.now()).toLocaleString()
+          });
+        });
+
+        // 4. Chronological sort (oldest first) to calculate cumulative running expense balance
+        allWholesaleEvents.sort((a, b) => a.date - b.date);
+
+        let runningWholesaleBalance = 0;
+        allWholesaleEvents.forEach(e => {
+          runningWholesaleBalance += e.cost;
+          e.runningExpensePaid = runningWholesaleBalance;
+        });
+
+        const totalWholesaleSum = numbersWholesaleSum + callsWholesaleSum + smsWholesaleSum;
+
         summaryRow.innerHTML = `
           <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
             <span class="text-[10px] text-slate-400 uppercase font-semibold">Total Wholesale Cost</span>
-            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(fin.totalWholesaleCost)}</div>
+            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(totalWholesaleSum)}</div>
           </div>
           <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
             <span class="text-[10px] text-slate-400 uppercase font-semibold">Numbers Leased Base Cost</span>
-            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(fin.wholesaleNumberCost)}</div>
+            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(numbersWholesaleSum)}</div>
           </div>
           <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
             <span class="text-[10px] text-slate-400 uppercase font-semibold">Carrier Call Termination</span>
-            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(fin.wholesaleCallCost)}</div>
+            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(callsWholesaleSum)}</div>
           </div>
           <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
             <span class="text-[10px] text-slate-400 uppercase font-semibold">Carrier SMS Routing</span>
-            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(fin.wholesaleSmsCost)}</div>
+            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(smsWholesaleSum)}</div>
           </div>
         `;
 
-        const totalWholesaleEventsCount = (data.numbers?.length || 0) + (data.calls?.length || 0) + (data.sms?.length || 0);
+        const totalWholesaleEventsCount = allWholesaleEvents.length;
 
         tabsRow.innerHTML = `
           <button onclick="setKpiFilter('all')" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${kpiCurrentTableFilter === 'all' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">⚡ All Carrier Expenses (${totalWholesaleEventsCount})</button>
@@ -10362,74 +10448,6 @@ function exportData(type) {
             <th class="p-3 text-right text-cyan-400 font-bold bg-cyan-500/10 min-w-[210px] pr-4">Running Carrier Expense Paid 📉</th>
           </tr>
         `;
-
-        let allWholesaleEvents = [];
-
-        // 1. Gather Number Leases
-        (data.numbers || []).forEach(n => {
-          allWholesaleEvents.push({
-            id: n.id,
-            category: 'numbers',
-            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"><i class="fa-solid fa-server mr-1"></i>DID Line Lease</span>',
-            title: n.phoneNumber,
-            subtitle: `Telnyx Direct Leased Line • ${n.userName || 'Assigned User'}`,
-            destination: `${n.countryCode || 'US'} Route`,
-            metric: n.planDaysLabel || '30 Days Monthly',
-            cost: Number(n.wholesaleCost || 0),
-            status: n.status || 'ACTIVE',
-            iconBg: 'bg-cyan-500/10 text-cyan-400',
-            icon: 'fa-server',
-            date: new Date(n.createdAt || Date.now()),
-            dateFormatted: new Date(n.createdAt || Date.now()).toLocaleDateString()
-          });
-        });
-
-        // 2. Gather Voice Call Termination
-        (data.calls || []).forEach(c => {
-          allWholesaleEvents.push({
-            id: c.id,
-            category: 'calls',
-            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-phone-flip mr-1"></i>PSTN Termination</span>',
-            title: `${c.myNumber || 'Virtual Line'} → ${c.contactNumber}`,
-            subtitle: `Carrier Voice Termination • ${c.durationFormatted}`,
-            destination: `${c.flagEmoji || '🌐'} ${c.destinationCountry || 'International'}`,
-            metric: c.durationFormatted,
-            cost: Number(c.wholesaleCost || 0),
-            status: c.status === 'completed' ? 'COMPLETED' : 'MISSED',
-            iconBg: 'bg-amber-500/10 text-amber-400',
-            icon: 'fa-phone-flip',
-            date: new Date(c.createdAt || Date.now()),
-            dateFormatted: new Date(c.createdAt || Date.now()).toLocaleString()
-          });
-        });
-
-        // 3. Gather SMS Routing
-        (data.sms || []).forEach(m => {
-          allWholesaleEvents.push({
-            id: m.id,
-            category: 'sms',
-            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-comment-dots mr-1"></i>SMS Gateway</span>',
-            title: `${m.fromNumber || 'Line'} → ${m.toNumber}`,
-            subtitle: `Carrier SMS Routing • "${m.text ? (m.text.length > 20 ? m.text.substring(0, 20) + '...' : m.text) : 'SMS'}"`,
-            destination: `${m.flagEmoji || '🌐'} ${m.destinationCountry || 'Destination'}`,
-            metric: '1 Segment',
-            cost: Number(m.wholesaleCost || 0),
-            status: m.status === 'delivered' ? 'DELIVERED' : 'SENT',
-            iconBg: 'bg-rose-500/10 text-rose-400',
-            icon: 'fa-comment-dots',
-            date: new Date(m.createdAt || Date.now()),
-            dateFormatted: new Date(m.createdAt || Date.now()).toLocaleString()
-          });
-        });
-
-        // 4. Chronological sort (oldest first) to calculate cumulative running expense balance
-        allWholesaleEvents.sort((a, b) => a.date - b.date);
-
-        let runningWholesaleBalance = 0;
-        allWholesaleEvents.forEach(e => {
-          runningWholesaleBalance += e.cost;
-          e.runningExpensePaid = runningWholesaleBalance;
-        });
 
         // 5. Reverse for display so the newest expenses appear at top
         allWholesaleEvents.reverse();
@@ -10468,26 +10486,10 @@ function exportData(type) {
         footerCount.innerText = `Showing ${filteredWholesaleEvents.length} wholesale expense records (Total Carrier Payout: ${formatUSD8(runningWholesaleBalance)})`;
 
       } else if (type === 'retail_revenue') {
-        summaryRow.innerHTML = `
-          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
-            <span class="text-[10px] text-slate-400 uppercase font-semibold">Total Retail Revenue</span>
-            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(fin.totalRetailRevenue)}</div>
-          </div>
-          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
-            <span class="text-[10px] text-slate-400 uppercase font-semibold">Virtual Lines Billed</span>
-            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(fin.retailLineRevenue)}</div>
-          </div>
-          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
-            <span class="text-[10px] text-slate-400 uppercase font-semibold">Voice Calls Billed</span>
-            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(fin.retailCallRevenue)}</div>
-          </div>
-          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
-            <span class="text-[10px] text-slate-400 uppercase font-semibold">SMS Messages Billed</span>
-            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(fin.retailSmsRevenue)}</div>
-          </div>
-        `;
-
         let allRetailEvents = [];
+        let numbersRetailSum = 0;
+        let callsRetailSum = 0;
+        let smsRetailSum = 0;
 
         (data.retailCharges || []).forEach(r => {
           let category = 'other';
@@ -10496,9 +10498,11 @@ function exportData(type) {
           let badge = '';
           let iconBg = 'bg-indigo-500/10 text-indigo-400';
           let icon = 'fa-receipt';
+          const amt = Number(r.amount || 0);
 
           if (typeLower.includes('number') || typeLower.includes('renewal') || descLower.includes('line purchase') || descLower.includes('line renewal') || descLower.includes('number')) {
             category = 'numbers';
+            numbersRetailSum += amt;
             badge = (typeLower.includes('renewal') || descLower.includes('renewal'))
               ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20"><i class="fa-solid fa-rotate mr-1"></i>Line Renewal</span>'
               : '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"><i class="fa-solid fa-phone mr-1"></i>Line Purchase</span>';
@@ -10506,11 +10510,13 @@ function exportData(type) {
             icon = 'fa-phone';
           } else if (typeLower.includes('call') || descLower.includes('call') || descLower.includes('min') || descLower.includes('@ $')) {
             category = 'calls';
+            callsRetailSum += amt;
             badge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-phone-flip mr-1"></i>VoIP Call</span>';
             iconBg = 'bg-amber-500/10 text-amber-400';
             icon = 'fa-phone-flip';
           } else if (typeLower.includes('sms') || descLower.includes('sms')) {
             category = 'sms';
+            smsRetailSum += amt;
             badge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-comment-dots mr-1"></i>SMS Message</span>';
             iconBg = 'bg-rose-500/10 text-rose-400';
             icon = 'fa-comment-dots';
@@ -10525,7 +10531,7 @@ function exportData(type) {
             userName: r.userName || 'Customer',
             userEmail: r.userEmail || '',
             description: r.description || 'Platform Service Usage',
-            amount: Number(r.amount || 0),
+            amount: amt,
             iconBg: iconBg,
             icon: icon,
             date: new Date(r.createdAt || Date.now()),
@@ -10541,6 +10547,27 @@ function exportData(type) {
           runningRetailBalance += e.amount;
           e.runningRetailRevenue = runningRetailBalance;
         });
+
+        const totalRetailSum = runningRetailBalance;
+
+        summaryRow.innerHTML = `
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Total Retail Revenue</span>
+            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(totalRetailSum)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Virtual Lines Billed</span>
+            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(numbersRetailSum)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Voice Calls Billed</span>
+            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(callsRetailSum)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">SMS Messages Billed</span>
+            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(smsRetailSum)}</div>
+          </div>
+        `;
 
         // Reverse for display so newest appears at top
         allRetailEvents.reverse();
@@ -10593,25 +10620,6 @@ function exportData(type) {
         footerCount.innerText = `Showing ${filteredRetailEvents.length} retail billing records (Total Retail Collected: ${formatUSD8(runningRetailBalance)})`;
 
       } else if (type === 'customer_deposits') {
-        summaryRow.innerHTML = `
-          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
-            <span class="text-[10px] text-slate-400 uppercase font-semibold">Total Deposits</span>
-            <div class="text-base font-bold font-mono text-amber-400 mt-1">${formatUSD8(fin.totalCustomerDeposits)}</div>
-          </div>
-          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
-            <span class="text-[10px] text-slate-400 uppercase font-semibold">Active Escrow Balances</span>
-            <div class="text-base font-bold font-mono text-emerald-400 mt-1">${formatUSD8(fin.totalUserBalance)}</div>
-          </div>
-          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
-            <span class="text-[10px] text-slate-400 uppercase font-semibold">Realized Spent Usage</span>
-            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(fin.totalRetailRevenue)}</div>
-          </div>
-          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
-            <span class="text-[10px] text-slate-400 uppercase font-semibold">Total Top-Ups</span>
-            <div class="text-base font-bold font-mono text-white mt-1">${data.deposits.length}</div>
-          </div>
-        `;
-
         let allDeposits = [...(data.deposits || [])];
         allDeposits.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
@@ -10620,6 +10628,29 @@ function exportData(type) {
           runningDepositsTotal += Number(d.amount || 0);
           d.runningDepositsInflow = runningDepositsTotal;
         });
+
+        const totalDepositsSum = runningDepositsTotal;
+        const totalUserBalance = Number(fin.totalUserBalance || 0);
+        const realizedSpent = Math.max(0, totalDepositsSum - totalUserBalance);
+
+        summaryRow.innerHTML = `
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Total Deposits</span>
+            <div class="text-base font-bold font-mono text-amber-400 mt-1">${formatUSD8(totalDepositsSum)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Active Escrow Balances</span>
+            <div class="text-base font-bold font-mono text-emerald-400 mt-1">${formatUSD8(totalUserBalance)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Realized Spent Usage</span>
+            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(realizedSpent)}</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
+            <span class="text-[10px] text-slate-400 uppercase font-semibold">Total Top-Ups</span>
+            <div class="text-base font-bold font-mono text-white mt-1">${allDeposits.length}</div>
+          </div>
+        `;
 
         allDeposits.reverse();
 
@@ -10662,27 +10693,32 @@ function exportData(type) {
         footerCount.innerText = `Showing ${rows.length} deposit records (Total Inflow: ${formatUSD8(runningDepositsTotal)})`;
 
       } else if (type === 'outbound_sms') {
+        const smsList = data.sms || [];
+        const wholesaleSmsCost = smsList.reduce((sum, m) => sum + Number(m.wholesaleCost || 0), 0);
+        const retailSmsRevenue = smsList.reduce((sum, m) => sum + Number(m.retailCharge || m.retailPrice || 0), 0);
+        const netSmsProfit = retailSmsRevenue - wholesaleSmsCost;
+
         summaryRow.innerHTML = `
           <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
             <span class="text-[10px] text-slate-400 uppercase font-semibold">Total SMS Sent</span>
-            <div class="text-base font-bold font-mono text-rose-400 mt-1">${data.sms.length}</div>
+            <div class="text-base font-bold font-mono text-rose-400 mt-1">${smsList.length}</div>
           </div>
           <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
             <span class="text-[10px] text-slate-400 uppercase font-semibold">Carrier Route Cost</span>
-            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(fin.wholesaleSmsCost)}</div>
+            <div class="text-base font-bold font-mono text-cyan-400 mt-1">${formatUSD8(wholesaleSmsCost)}</div>
           </div>
           <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
             <span class="text-[10px] text-slate-400 uppercase font-semibold">Retail SMS Billed</span>
-            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(fin.retailSmsRevenue)}</div>
+            <div class="text-base font-bold font-mono text-indigo-400 mt-1">${formatUSD8(retailSmsRevenue)}</div>
           </div>
           <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
             <span class="text-[10px] text-slate-400 uppercase font-semibold">Net SMS Profit</span>
-            <div class="text-base font-bold font-mono text-emerald-400 mt-1">${formatUSD8((fin.retailSmsRevenue || 0) - (fin.wholesaleSmsCost || 0))}</div>
+            <div class="text-base font-bold font-mono text-emerald-400 mt-1">${formatUSD8(netSmsProfit)}</div>
           </div>
         `;
 
         tabsRow.innerHTML = `
-          <button class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-600 text-white shadow-md shadow-rose-600/30">Outbound SMS Logs (${data.sms.length})</button>
+          <button class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-600 text-white shadow-md shadow-rose-600/30">Outbound SMS Logs (${smsList.length})</button>
         `;
 
         thead.innerHTML = `
@@ -10697,13 +10733,13 @@ function exportData(type) {
           </tr>
         `;
 
-        let rows = data.sms.map(m => `
+        let rows = smsList.map(m => `
           <tr class="hover:bg-slate-800/40 transition-colors whitespace-nowrap">
             <td class="p-3 font-mono font-bold text-white">${m.fromNumber}</td>
             <td class="p-3 font-mono font-semibold text-slate-300">${m.toNumber}</td>
             <td class="p-3 text-slate-300 text-xs truncate max-w-[280px]">${m.text || 'SMS Message'}</td>
             <td class="p-3 text-right font-mono font-bold text-cyan-400">${formatUSD8(m.wholesaleCost)}</td>
-            <td class="p-3 text-right font-mono font-bold text-indigo-400">${formatUSD8(m.retailCharge)}</td>
+            <td class="p-3 text-right font-mono font-bold text-indigo-400">${formatUSD8(m.retailCharge || m.retailPrice || 0)}</td>
             <td class="p-3 text-right">
               <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase">${m.status || 'Delivered'}</span>
             </td>
@@ -10885,26 +10921,17 @@ function exportData(type) {
             'Itemized comparison of wholesale carrier costs vs realized retail billed prices'
           );
 
-          const summaryCards = [
-            { label: 'Net Real Profit', value: formatUSD8(fin.netProfit), color: [16, 185, 129] },
-            { label: 'Overall Margin %', value: (fin.marginPercent || 0).toFixed(2) + '%', color: [16, 185, 129] },
-            { label: 'Gross Retail Revenue', value: formatUSD8(fin.totalRetailRevenue), color: [99, 102, 241] },
-            { label: 'Wholesale Telecom Cost', value: formatUSD8(fin.totalWholesaleCost), color: [6, 182, 212] }
-          ];
-
-          const startTableY = drawPdfSummaryCards(doc, summaryCards, 64, margin, contentWidth);
-
           // Build unified records
           let allRecords = [];
           (data.numbers || []).forEach(n => {
             allRecords.push({
               category: 'Line Subscription',
-              customer: `${n.userName} (${n.userEmail})`,
-              details: `${n.phoneNumber} [${n.planDaysLabel}]`,
+              customer: `${n.userName || 'Simly Customer'} (${n.userEmail || n.phoneNumber})`,
+              details: `${n.phoneNumber} [${n.planDaysLabel || '30 Days Monthly'}]`,
               wholesale: Number(n.wholesaleCost || 0),
-              retail: Number(n.retailPrice || 0),
-              profit: Number(n.netProfit || 0),
-              margin: n.marginPercent + '%',
+              retail: Number(n.retailCharge || n.retailPrice || 0),
+              profit: Number(n.netProfit || n.profit || 0),
+              margin: (n.marginPercent || '0.00') + '%',
               date: new Date(n.createdAt || Date.now())
             });
           });
@@ -10912,12 +10939,12 @@ function exportData(type) {
           (data.calls || []).forEach(c => {
             allRecords.push({
               category: 'VoIP Call',
-              customer: c.callerUser ? `${c.callerUser.name} (${c.callerUser.email})` : c.myNumber,
-              details: `${c.myNumber} -> ${c.contactNumber} (${c.destinationCountry}, ${c.minutesBilled}m)`,
+              customer: c.callerUser ? `${c.callerUser.name} (${c.callerUser.email})` : (c.myNumber || 'Virtual Line'),
+              details: `${c.myNumber || 'Line'} -> ${c.contactNumber} (${c.destinationCountry || 'Intl'}, ${c.durationFormatted || (c.durationSeconds + 's')})`,
               wholesale: Number(c.wholesaleCost || 0),
-              retail: Number(c.retailPrice || 0),
-              profit: Number(c.profit || 0),
-              margin: c.marginPercent + '%',
+              retail: Number(c.retailCharge || c.retailPrice || 0),
+              profit: Number(c.netProfit || c.profit || 0),
+              margin: (c.marginPercent || '0.00') + '%',
               date: new Date(c.createdAt || Date.now())
             });
           });
@@ -10925,12 +10952,12 @@ function exportData(type) {
           (data.sms || []).forEach(s => {
             allRecords.push({
               category: 'Outbound SMS',
-              customer: s.senderUser ? `${s.senderUser.name} (${s.senderUser.email})` : s.fromNumber,
-              details: `${s.fromNumber} -> ${s.toNumber}`,
+              customer: s.senderUser ? `${s.senderUser.name} (${s.senderUser.email})` : (s.fromNumber || 'Virtual Line'),
+              details: `${s.fromNumber || 'Line'} -> ${s.toNumber}`,
               wholesale: Number(s.wholesaleCost || 0),
-              retail: Number(s.retailPrice || 0),
-              profit: Number(s.profit || 0),
-              margin: s.marginPercent + '%',
+              retail: Number(s.retailCharge || s.retailPrice || 0),
+              profit: Number(s.netProfit || s.profit || 0),
+              margin: (s.marginPercent || '0.00') + '%',
               date: new Date(s.createdAt || Date.now())
             });
           });
@@ -10938,10 +10965,26 @@ function exportData(type) {
           allRecords.sort((a, b) => a.date - b.date);
 
           let runningProfit = 0;
+          let totalRetail = 0;
+          let totalWholesale = 0;
           allRecords.forEach(r => {
             runningProfit += r.profit;
+            totalRetail += r.retail;
+            totalWholesale += r.wholesale;
             r.runningProfit = runningProfit;
           });
+
+          const totalProfit = runningProfit;
+          const totalMarginPercent = totalRetail > 0 ? ((totalProfit / totalRetail) * 100) : 0;
+
+          const summaryCards = [
+            { label: 'Net Real Profit', value: formatUSD8(totalProfit), color: [16, 185, 129] },
+            { label: 'Overall Margin %', value: totalMarginPercent.toFixed(2) + '%', color: [16, 185, 129] },
+            { label: 'Gross Retail Revenue', value: formatUSD8(totalRetail), color: [99, 102, 241] },
+            { label: 'Wholesale Telecom Cost', value: formatUSD8(totalWholesale), color: [6, 182, 212] }
+          ];
+
+          const startTableY = drawPdfSummaryCards(doc, summaryCards, 64, margin, contentWidth);
 
           allRecords.reverse(); // Newest first
 
@@ -10998,45 +11041,46 @@ function exportData(type) {
             'Direct wholesale expense statement for virtual DIDs, voice minutes, and SMS routing'
           );
 
-          const summaryCards = [
-            { label: 'Total Wholesale Costs', value: formatUSD8(fin.totalWholesaleCost), color: [6, 182, 212] },
-            { label: 'DIDs Lease Expense', value: formatUSD8(fin.wholesaleNumberCost), color: [6, 182, 212] },
-            { label: 'Voice Termination', value: formatUSD8(fin.wholesaleCallCost), color: [6, 182, 212] },
-            { label: 'SMS Carrier Fees', value: formatUSD8(fin.wholesaleSmsCost), color: [6, 182, 212] }
-          ];
-
-          const startTableY = drawPdfSummaryCards(doc, summaryCards, 64, margin, contentWidth);
-
           let allWholesale = [];
+          let numbersWholesaleSum = 0;
+          let callsWholesaleSum = 0;
+          let smsWholesaleSum = 0;
+
           (data.numbers || []).forEach(n => {
+            const cost = Number(n.wholesaleCost || 0);
+            numbersWholesaleSum += cost;
             allWholesale.push({
               category: 'Line Lease',
-              service: `Virtual DID [${n.countryCode}] ${n.phoneNumber}`,
-              details: n.planDaysLabel,
-              rate: formatUSD8(n.wholesaleCost),
-              cost: Number(n.wholesaleCost || 0),
+              service: `Virtual DID [${n.countryCode || 'US'}] ${n.phoneNumber}`,
+              details: n.planDaysLabel || '30 Days Monthly',
+              rate: formatUSD8(cost),
+              cost: cost,
               date: new Date(n.createdAt || Date.now())
             });
           });
 
           (data.calls || []).forEach(c => {
+            const cost = Number(c.wholesaleCost || 0);
+            callsWholesaleSum += cost;
             allWholesale.push({
               category: 'Voice Minutes',
-              service: `${c.myNumber} -> ${c.contactNumber} (${c.destinationCountry})`,
-              details: `${c.durationSeconds}s (${c.minutesBilled} min @ ${formatUSD8(c.wholesaleRate)}/min)`,
-              rate: formatUSD8(c.wholesaleRate),
-              cost: Number(c.wholesaleCost || 0),
+              service: `${c.myNumber} -> ${c.contactNumber} (${c.destinationCountry || 'Intl'})`,
+              details: `${c.durationSeconds || 0}s (${c.durationFormatted || '0m'}) @ ${formatUSD8(c.wholesaleRate || (cost / (c.durationSeconds > 0 ? Math.ceil(c.durationSeconds / 60) : 1)))}/min`,
+              rate: formatUSD8(c.wholesaleRate || (cost / (c.durationSeconds > 0 ? Math.ceil(c.durationSeconds / 60) : 1))),
+              cost: cost,
               date: new Date(c.createdAt || Date.now())
             });
           });
 
           (data.sms || []).forEach(s => {
+            const cost = Number(s.wholesaleCost || 0);
+            smsWholesaleSum += cost;
             allWholesale.push({
               category: 'SMS Routing',
               service: `${s.fromNumber} -> ${s.toNumber}`,
               details: '1 Segment',
-              rate: formatUSD8(s.wholesaleCost),
-              cost: Number(s.wholesaleCost || 0),
+              rate: formatUSD8(cost),
+              cost: cost,
               date: new Date(s.createdAt || Date.now())
             });
           });
@@ -11048,6 +11092,17 @@ function exportData(type) {
             runningWholesale += w.cost;
             w.runningCost = runningWholesale;
           });
+
+          const totalWholesale = numbersWholesaleSum + callsWholesaleSum + smsWholesaleSum;
+
+          const summaryCards = [
+            { label: 'Total Wholesale Costs', value: formatUSD8(totalWholesale), color: [6, 182, 212] },
+            { label: 'DIDs Lease Expense', value: formatUSD8(numbersWholesaleSum), color: [6, 182, 212] },
+            { label: 'Voice Termination', value: formatUSD8(callsWholesaleSum), color: [6, 182, 212] },
+            { label: 'SMS Carrier Fees', value: formatUSD8(smsWholesaleSum), color: [6, 182, 212] }
+          ];
+
+          const startTableY = drawPdfSummaryCards(doc, summaryCards, 64, margin, contentWidth);
 
           allWholesale.reverse();
 
@@ -11100,27 +11155,33 @@ function exportData(type) {
             'Itemized customer billing ledger for line subscriptions, voice calls, and SMS charges'
           );
 
-          const summaryCards = [
-            { label: 'Total Retail Revenue', value: formatUSD8(fin.totalRetailRevenue), color: [99, 102, 241] },
-            { label: 'Virtual Numbers Billed', value: formatUSD8(fin.retailNumberRevenue), color: [99, 102, 241] },
-            { label: 'Voice Calls Billed', value: formatUSD8(fin.retailCallRevenue), color: [99, 102, 241] },
-            { label: 'SMS Charges Billed', value: formatUSD8(fin.retailSmsRevenue), color: [99, 102, 241] }
-          ];
-
-          const startTableY = drawPdfSummaryCards(doc, summaryCards, 64, margin, contentWidth);
-
           let allRetail = [];
+          let numbersRetailSum = 0;
+          let callsRetailSum = 0;
+          let smsRetailSum = 0;
+
           (data.retailCharges || []).forEach(r => {
             let cat = 'Other';
-            if (r.type && r.type.includes('number')) cat = 'Virtual Line';
-            else if (r.type && r.type.includes('call')) cat = 'Voice Call';
-            else if (r.type && r.type.includes('sms')) cat = 'SMS Message';
+            let typeLower = (r.type || '').toLowerCase();
+            let descLower = (r.description || '').toLowerCase();
+            const amt = Number(r.amount || 0);
+
+            if (typeLower.includes('number') || typeLower.includes('renewal') || descLower.includes('line purchase') || descLower.includes('line renewal') || descLower.includes('number')) {
+              cat = 'Virtual Line';
+              numbersRetailSum += amt;
+            } else if (typeLower.includes('call') || descLower.includes('call') || descLower.includes('min') || descLower.includes('@ $')) {
+              cat = 'Voice Call';
+              callsRetailSum += amt;
+            } else if (typeLower.includes('sms') || descLower.includes('sms')) {
+              cat = 'SMS Message';
+              smsRetailSum += amt;
+            }
 
             allRetail.push({
               category: cat,
               customer: `${r.userName || 'Customer'} (${r.userEmail || ''})`,
               description: r.description || 'Platform Service Usage',
-              amount: Number(r.amount || 0),
+              amount: amt,
               date: new Date(r.createdAt || Date.now())
             });
           });
@@ -11132,6 +11193,17 @@ function exportData(type) {
             runningRetail += r.amount;
             r.runningAmount = runningRetail;
           });
+
+          const totalRetail = runningRetail;
+
+          const summaryCards = [
+            { label: 'Total Retail Revenue', value: formatUSD8(totalRetail), color: [99, 102, 241] },
+            { label: 'Virtual Numbers Billed', value: formatUSD8(numbersRetailSum), color: [99, 102, 241] },
+            { label: 'Voice Calls Billed', value: formatUSD8(callsRetailSum), color: [99, 102, 241] },
+            { label: 'SMS Charges Billed', value: formatUSD8(smsRetailSum), color: [99, 102, 241] }
+          ];
+
+          const startTableY = drawPdfSummaryCards(doc, summaryCards, 64, margin, contentWidth);
 
           allRetail.reverse();
 
@@ -11182,15 +11254,6 @@ function exportData(type) {
             'Prepaid wallet top-ups loaded by customers vs outstanding balances currently held in escrow'
           );
 
-          const summaryCards = [
-            { label: 'Total Wallet Deposits', value: formatUSD8(fin.totalWalletDeposits), color: [245, 158, 11] },
-            { label: 'Outstanding User Balances', value: formatUSD8(fin.totalOutstandingUserBalances), color: [100, 116, 139] },
-            { label: 'Realized Platform Utilization', value: formatUSD8(fin.realizedUtilization), color: [16, 185, 129] },
-            { label: 'Total Deposit Records', value: String((data.deposits || []).length), color: [245, 158, 11] }
-          ];
-
-          const startTableY = drawPdfSummaryCards(doc, summaryCards, 64, margin, contentWidth);
-
           let allDeposits = [...(data.deposits || [])];
           allDeposits.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
@@ -11200,13 +11263,26 @@ function exportData(type) {
             d.runningInflow = runningDeposits;
           });
 
+          const totalDeposits = runningDeposits;
+          const outstandingBalance = Number(fin.totalUserBalance || 0);
+          const realizedSpent = Math.max(0, totalDeposits - outstandingBalance);
+
+          const summaryCards = [
+            { label: 'Total Wallet Deposits', value: formatUSD8(totalDeposits), color: [245, 158, 11] },
+            { label: 'Outstanding User Balances', value: formatUSD8(outstandingBalance), color: [100, 116, 139] },
+            { label: 'Realized Platform Utilization', value: formatUSD8(realizedSpent), color: [16, 185, 129] },
+            { label: 'Total Deposit Records', value: String(allDeposits.length), color: [245, 158, 11] }
+          ];
+
+          const startTableY = drawPdfSummaryCards(doc, summaryCards, 64, margin, contentWidth);
+
           allDeposits.reverse();
 
           const tableRows = allDeposits.map(d => [
             `${d.userName || 'Customer'} (${d.userEmail || ''})`,
             d.description || 'Prepaid Wallet Topup',
             formatUSD8(d.amount),
-            formatUSD8(d.userBalance),
+            formatUSD8(d.userCurrentBalance || d.userBalance || 0),
             new Date(d.createdAt || Date.now()).toLocaleString(),
             formatUSD8(d.runningInflow)
           ]);
@@ -11245,24 +11321,30 @@ function exportData(type) {
             'Real-time carrier delivery logs, recipient numbers, text previews, wholesale costs and margins'
           );
 
+          const allSms = data.sms || [];
+          const totalSmsCount = allSms.length;
+          const wholesaleSmsCost = allSms.reduce((sum, s) => sum + Number(s.wholesaleCost || 0), 0);
+          const retailSmsRevenue = allSms.reduce((sum, s) => sum + Number(s.retailCharge || s.retailPrice || 0), 0);
+          const netSmsProfit = retailSmsRevenue - wholesaleSmsCost;
+
           const summaryCards = [
-            { label: 'Total SMS Sent', value: String((data.sms || []).length), color: [244, 63, 94] },
-            { label: 'Carrier Route Cost', value: formatUSD8(fin.wholesaleSmsCost), color: [6, 182, 212] },
-            { label: 'Retail SMS Billed', value: formatUSD8(fin.retailSmsRevenue), color: [99, 102, 241] },
-            { label: 'Net SMS Profit', value: formatUSD8((fin.retailSmsRevenue || 0) - (fin.wholesaleSmsCost || 0)), color: [16, 185, 129] }
+            { label: 'Total SMS Sent', value: String(totalSmsCount), color: [244, 63, 94] },
+            { label: 'Carrier Route Cost', value: formatUSD8(wholesaleSmsCost), color: [6, 182, 212] },
+            { label: 'Retail SMS Billed', value: formatUSD8(retailSmsRevenue), color: [99, 102, 241] },
+            { label: 'Net SMS Profit', value: formatUSD8(netSmsProfit), color: [16, 185, 129] }
           ];
 
           const startTableY = drawPdfSummaryCards(doc, summaryCards, 64, margin, contentWidth);
 
-          const tableRows = (data.sms || []).map(s => [
+          const tableRows = allSms.map(s => [
             s.fromNumber || 'N/A',
             s.toNumber || 'N/A',
             s.senderUser ? `${s.senderUser.name} (${s.senderUser.email})` : 'SimlyX User',
             (s.text || '').slice(0, 45) + ((s.text || '').length > 45 ? '...' : ''),
             s.status ? s.status.toUpperCase() : 'SENT',
-            formatUSD8(s.wholesaleCost),
-            formatUSD8(s.retailPrice),
-            formatUSD8(s.profit),
+            formatUSD8(s.wholesaleCost || 0),
+            formatUSD8(s.retailCharge || s.retailPrice || 0),
+            formatUSD8(s.netProfit || s.profit || 0),
             new Date(s.createdAt || Date.now()).toLocaleString()
           ]);
 

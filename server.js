@@ -4518,7 +4518,9 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
         userEmail: user.email || n.userId,
         wholesaleCost: parseFloat(wholesale.toFixed(8)),
         retailPrice: parseFloat(retail.toFixed(8)),
+        retailCharge: parseFloat(retail.toFixed(8)),
         netProfit: parseFloat(netProfit.toFixed(8)),
+        profit: parseFloat(netProfit.toFixed(8)),
         marginPercent: margin
       };
     });
@@ -4553,7 +4555,9 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
         ratePerMin: parseFloat(retailRate.toFixed(4)),
         wholesaleCost: parseFloat(wholesale.toFixed(8)),
         retailCharge: parseFloat(retail.toFixed(8)),
+        retailPrice: parseFloat(retail.toFixed(8)),
         netProfit: parseFloat(profit.toFixed(8)),
+        profit: parseFloat(profit.toFixed(8)),
         marginPercent: margin,
         createdAt: c.createdAt
       };
@@ -4583,7 +4587,9 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
         telnyxMessageId: m.telnyxMessageId,
         wholesaleCost: parseFloat(wholesale.toFixed(8)),
         retailCharge: parseFloat(retail.toFixed(8)),
+        retailPrice: parseFloat(retail.toFixed(8)),
         netProfit: parseFloat(profit.toFixed(8)),
+        profit: parseFloat(profit.toFixed(8)),
         marginPercent: margin,
         createdAt: m.createdAt
       };

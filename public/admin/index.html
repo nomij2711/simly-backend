@@ -10054,10 +10054,100 @@ function exportData(type) {
     let currentKpiBreakdownType = 'net_profit';
     let kpiBreakdownDataCache = null;
     let kpiCurrentTableFilter = 'all';
+    let kpiCurrentPage = 1;
+    let kpiRowsPerPage = 25;
+    let kpiSearchQuery = '';
+
+    window.changeKpiPage = function(page) {
+      kpiCurrentPage = page;
+      renderKpiBreakdownView();
+    };
+
+    window.changeKpiRowsPerPage = function(rows) {
+      kpiRowsPerPage = rows === 'all' ? 'all' : parseInt(rows, 10);
+      kpiCurrentPage = 1;
+      renderKpiBreakdownView();
+    };
+
+    window.setKpiFilter = function(filter) {
+      kpiCurrentTableFilter = filter;
+      kpiCurrentPage = 1;
+      renderKpiBreakdownView();
+    };
+
+    window.filterKpiModalTable = function(query) {
+      kpiSearchQuery = (query || '').trim().toLowerCase();
+      kpiCurrentPage = 1;
+      renderKpiBreakdownView();
+    };
+
+    function paginateAndRenderKpiTable(filteredEvents, rowGenerator, extraSummaryText = '') {
+      const tbody = document.getElementById('kpiModalTableBody');
+      const paginationEl = document.getElementById('kpiModalPagination');
+      
+      // 1. Search Filter across all fields
+      let activeEvents = filteredEvents;
+      if (kpiSearchQuery) {
+        const q = kpiSearchQuery.toLowerCase();
+        activeEvents = activeEvents.filter(e => {
+          const searchStr = `${e.title || ''} ${e.subtitle || ''} ${e.userName || ''} ${e.userEmail || ''} ${e.description || ''} ${e.phoneNumber || ''} ${e.contactNumber || ''} ${e.fromNumber || ''} ${e.toNumber || ''} ${e.text || ''} ${e.planLabel || ''} ${e.destination || ''}`.toLowerCase();
+          return searchStr.includes(q);
+        });
+      }
+
+      const totalRecords = activeEvents.length;
+      const rpp = kpiRowsPerPage === 'all' ? (totalRecords || 1) : Number(kpiRowsPerPage);
+      const totalPages = (kpiRowsPerPage === 'all' || totalRecords === 0) ? 1 : Math.ceil(totalRecords / rpp);
+      
+      if (kpiCurrentPage > totalPages) kpiCurrentPage = totalPages || 1;
+      if (kpiCurrentPage < 1) kpiCurrentPage = 1;
+
+      const startIdx = kpiRowsPerPage === 'all' ? 0 : (kpiCurrentPage - 1) * rpp;
+      const endIdx = kpiRowsPerPage === 'all' ? totalRecords : Math.min(startIdx + rpp, totalRecords);
+      const pageSlice = activeEvents.slice(startIdx, endIdx);
+
+      const rowsHtml = pageSlice.map(rowGenerator).join('');
+      if (tbody) {
+        tbody.innerHTML = rowsHtml || `<tr><td colspan="10" class="p-8 text-center text-slate-500">${kpiSearchQuery ? 'No matching records found for "' + kpiSearchQuery + '".' : 'No records found.'}</td></tr>`;
+      }
+
+      if (paginationEl) {
+        const startItem = totalRecords === 0 ? 0 : startIdx + 1;
+        const endItem = endIdx;
+
+        paginationEl.innerHTML = `
+          <div class="flex flex-wrap items-center gap-3 text-xs w-full sm:w-auto">
+            <div class="flex items-center gap-1.5 text-slate-400">
+              <span>Rows per page:</span>
+              <select onchange="changeKpiRowsPerPage(this.value)" class="bg-slate-900 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer">
+                <option value="10" ${kpiRowsPerPage == 10 ? 'selected' : ''}>10</option>
+                <option value="25" ${kpiRowsPerPage == 25 ? 'selected' : ''}>25</option>
+                <option value="50" ${kpiRowsPerPage == 50 ? 'selected' : ''}>50</option>
+                <option value="100" ${kpiRowsPerPage == 100 ? 'selected' : ''}>100</option>
+                <option value="all" ${kpiRowsPerPage === 'all' ? 'selected' : ''}>All (${totalRecords})</option>
+              </select>
+            </div>
+            <span class="text-slate-400 font-mono">Showing <span class="text-white font-bold">${startItem}–${endItem}</span> of <span class="text-white font-bold">${totalRecords}</span> records ${extraSummaryText ? `<span class="text-slate-500">(${extraSummaryText})</span>` : ''}</span>
+            <div class="flex items-center gap-1">
+              <button onclick="changeKpiPage(1)" ${kpiCurrentPage <= 1 ? 'disabled class="px-2 py-1 rounded bg-slate-900 text-slate-600 cursor-not-allowed text-xs"' : 'class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors"'} title="First Page"><i class="fa-solid fa-angles-left"></i></button>
+              <button onclick="changeKpiPage(${kpiCurrentPage - 1})" ${kpiCurrentPage <= 1 ? 'disabled class="px-2.5 py-1 rounded bg-slate-900 text-slate-600 cursor-not-allowed text-xs"' : 'class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors"'} title="Previous Page"><i class="fa-solid fa-chevron-left mr-1"></i>Prev</button>
+              <span class="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-indigo-400 font-mono font-bold text-xs">Page ${kpiCurrentPage} / ${totalPages}</span>
+              <button onclick="changeKpiPage(${kpiCurrentPage + 1})" ${kpiCurrentPage >= totalPages ? 'disabled class="px-2.5 py-1 rounded bg-slate-900 text-slate-600 cursor-not-allowed text-xs"' : 'class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors"'} title="Next Page">Next<i class="fa-solid fa-chevron-right ml-1"></i></button>
+              <button onclick="changeKpiPage(${totalPages})" ${kpiCurrentPage >= totalPages ? 'disabled class="px-2.5 py-1 rounded bg-slate-900 text-slate-600 cursor-not-allowed text-xs"' : 'class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors"'} title="Last Page"><i class="fa-solid fa-angles-right"></i></button>
+            </div>
+          </div>
+        `;
+      }
+    }
 
     window.openKpiBreakdown = async function(type) {
       currentKpiBreakdownType = type;
       kpiCurrentTableFilter = 'all';
+      kpiCurrentPage = 1;
+      kpiSearchQuery = '';
+      const searchInput = document.getElementById('kpiModalSearchInput');
+      if (searchInput) searchInput.value = '';
+
       const modal = document.getElementById('kpiBreakdownModal');
       if (!modal) {
         console.error('kpiBreakdownModal element not found');
@@ -10158,8 +10248,6 @@ function exportData(type) {
       const summaryRow = document.getElementById('kpiModalSummaryRow');
       const tabsRow = document.getElementById('kpiModalFilterTabs');
       const thead = document.getElementById('kpiModalTableHead');
-      const tbody = document.getElementById('kpiModalTableBody');
-      const footerCount = document.getElementById('kpiModalFooterCount');
 
       const type = currentKpiBreakdownType;
 
@@ -10167,7 +10255,7 @@ function exportData(type) {
       if (type === 'net_profit') {
         let allEvents = [];
 
-        // 1. Gather Number Subscriptions
+        // 1. Gather Number Subscriptions & Renewals
         (data.numbers || []).forEach(n => {
           const isRen = n.isRenewal || (n.planDaysLabel && n.planDaysLabel.toLowerCase().includes('renewal'));
           allEvents.push({
@@ -10302,7 +10390,7 @@ function exportData(type) {
           ? allEvents
           : allEvents.filter(e => e.category === kpiCurrentTableFilter);
 
-        let rows = filteredEvents.map(e => `
+        paginateAndRenderKpiTable(filteredEvents, e => `
           <tr class="hover:bg-slate-800/40 transition-colors whitespace-nowrap">
             <td class="p-3 flex items-center gap-2.5">
               <span class="w-7 h-7 rounded-lg ${e.iconBg} flex items-center justify-center text-xs shadow flex-shrink-0"><i class="fa-solid ${e.icon}"></i></span>
@@ -10326,10 +10414,7 @@ function exportData(type) {
             <td class="p-3 text-right font-mono font-bold text-emerald-400">${e.margin}%</td>
             <td class="p-3 text-right font-mono font-black text-emerald-300 bg-emerald-500/10 pr-4">${formatUSD8(e.runningProfitBalance)}</td>
           </tr>
-        `);
-
-        tbody.innerHTML = rows.join('') || '<tr><td colspan="9" class="p-8 text-center text-slate-500">No profit records found yet.</td></tr>';
-        footerCount.innerText = `Showing ${filteredEvents.length} profit transaction records (Cumulative Profit: ${formatUSD8(runningCumulativeProfit)})`;
+        `, `Cumulative Profit: ${formatUSD8(runningCumulativeProfit)}`);
 
       } else if (type === 'wholesale_cost') {
         let allWholesaleEvents = [];
@@ -10463,7 +10548,7 @@ function exportData(type) {
           ? allWholesaleEvents
           : allWholesaleEvents.filter(e => e.category === kpiCurrentTableFilter);
 
-        let rows = filteredWholesaleEvents.map(e => `
+        paginateAndRenderKpiTable(filteredWholesaleEvents, e => `
           <tr class="hover:bg-slate-800/40 transition-colors whitespace-nowrap">
             <td class="p-3 flex items-center gap-2.5">
               <span class="w-7 h-7 rounded-lg ${e.iconBg} flex items-center justify-center text-xs shadow flex-shrink-0"><i class="fa-solid ${e.icon}"></i></span>
@@ -10486,10 +10571,7 @@ function exportData(type) {
             <td class="p-3 text-right text-slate-400 text-xs">${e.dateFormatted}</td>
             <td class="p-3 text-right font-mono font-black text-cyan-300 bg-cyan-500/10 pr-4">${formatUSD8(e.runningExpensePaid)}</td>
           </tr>
-        `);
-
-        tbody.innerHTML = rows.join('') || '<tr><td colspan="8" class="p-8 text-center text-slate-500">No wholesale carrier expenses yet.</td></tr>';
-        footerCount.innerText = `Showing ${filteredWholesaleEvents.length} wholesale expense records (Total Carrier Payout: ${formatUSD8(runningWholesaleBalance)})`;
+        `, `Total Carrier Payout: ${formatUSD8(runningWholesaleBalance)}`);
 
       } else if (type === 'retail_revenue') {
         let allRetailEvents = [];
@@ -10605,7 +10687,7 @@ function exportData(type) {
           ? allRetailEvents
           : allRetailEvents.filter(e => e.category === kpiCurrentTableFilter);
 
-        let rows = filteredRetailEvents.map(e => `
+        paginateAndRenderKpiTable(filteredRetailEvents, e => `
           <tr class="hover:bg-slate-800/40 transition-colors whitespace-nowrap">
             <td class="p-3 flex items-center gap-2.5">
               <span class="w-7 h-7 rounded-lg ${e.iconBg} flex items-center justify-center text-xs shadow flex-shrink-0"><i class="fa-solid ${e.icon}"></i></span>
@@ -10620,10 +10702,7 @@ function exportData(type) {
             <td class="p-3 text-right text-slate-400 text-xs">${e.dateFormatted}</td>
             <td class="p-3 text-right font-mono font-black text-indigo-300 bg-indigo-500/10 pr-4">${formatUSD8(e.runningRetailRevenue)}</td>
           </tr>
-        `);
-
-        tbody.innerHTML = rows.join('') || '<tr><td colspan="6" class="p-8 text-center text-slate-500">No retail billing transactions yet.</td></tr>';
-        footerCount.innerText = `Showing ${filteredRetailEvents.length} retail billing records (Total Retail Collected: ${formatUSD8(runningRetailBalance)})`;
+        `, `Total Retail Collected: ${formatUSD8(runningRetailBalance)}`);
 
       } else if (type === 'customer_deposits') {
         let allDeposits = [...(data.deposits || [])];
@@ -10675,7 +10754,7 @@ function exportData(type) {
           </tr>
         `;
 
-        let rows = allDeposits.map(d => `
+        paginateAndRenderKpiTable(allDeposits, d => `
           <tr class="hover:bg-slate-800/40 transition-colors whitespace-nowrap">
             <td class="p-3 flex items-center gap-2.5">
               <span class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs shadow flex-shrink-0"><i class="fa-solid fa-wallet"></i></span>
@@ -10693,10 +10772,7 @@ function exportData(type) {
             <td class="p-3 text-right text-slate-400 text-xs">${new Date(d.createdAt).toLocaleString()}</td>
             <td class="p-3 text-right font-mono font-black text-amber-300 bg-amber-500/10 pr-4">${formatUSD8(d.runningDepositsInflow)}</td>
           </tr>
-        `);
-
-        tbody.innerHTML = rows.join('') || '<tr><td colspan="6" class="p-8 text-center text-slate-500">No deposit records found yet.</td></tr>';
-        footerCount.innerText = `Showing ${rows.length} deposit records (Total Inflow: ${formatUSD8(runningDepositsTotal)})`;
+        `, `Total Inflow: ${formatUSD8(runningDepositsTotal)}`);
 
       } else if (type === 'outbound_sms') {
         const smsList = data.sms || [];
@@ -10739,7 +10815,7 @@ function exportData(type) {
           </tr>
         `;
 
-        let rows = smsList.map(m => `
+        paginateAndRenderKpiTable(smsList, m => `
           <tr class="hover:bg-slate-800/40 transition-colors whitespace-nowrap">
             <td class="p-3 font-mono font-bold text-white">${m.fromNumber}</td>
             <td class="p-3 font-mono font-semibold text-slate-300">${m.toNumber}</td>
@@ -10751,36 +10827,9 @@ function exportData(type) {
             </td>
             <td class="p-3 text-right text-slate-400 text-xs">${new Date(m.createdAt).toLocaleString()}</td>
           </tr>
-        `);
-
-        tbody.innerHTML = rows.join('') || '<tr><td colspan="7" class="p-8 text-center text-slate-500">No outbound SMS messages found.</td></tr>';
-        footerCount.innerText = `Showing ${rows.length} SMS message records`;
+        `, `Total SMS: ${smsList.length}`);
       }
     }
-
-    window.setKpiFilter = function(filter) {
-      kpiCurrentTableFilter = filter;
-      renderKpiBreakdownView();
-    };
-
-    window.filterKpiModalTable = function(query) {
-      const q = query.trim().toLowerCase();
-      const tbody = document.getElementById('kpiModalTableBody');
-      if (!tbody) return;
-      const rows = tbody.getElementsByTagName('tr');
-      let visible = 0;
-      for (let r of rows) {
-        const text = r.innerText.toLowerCase();
-        if (text.includes(q)) {
-          r.style.display = '';
-          visible++;
-        } else {
-          r.style.display = 'none';
-        }
-      }
-      const footerCount = document.getElementById('kpiModalFooterCount');
-      if (footerCount) footerCount.innerText = `Showing ${visible} matching records`;
-    };
 
     // ============================================================================
     // 📄 MASTER SIMLYX FINANCIAL & TELECOM PDF EXPORT ENGINE (1-CLICK DOWNLOADERS)
@@ -12229,12 +12278,14 @@ setInterval(() => {
       </div>
 
       <!-- Modal Footer -->
-      <div class="p-4 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between flex-shrink-0 text-xs">
-        <span id="kpiModalFooterCount" class="text-slate-400 font-mono">Showing 0 records</span>
-        <div class="flex items-center gap-2">
-          <button onclick="downloadCurrentKpiModalPdf()" class="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl font-bold text-xs shadow-md shadow-red-600/30 flex items-center gap-2 transition-all">
+      <div class="p-3 sm:p-4 border-t border-slate-800 bg-slate-950/80 flex flex-col md:flex-row items-center justify-between gap-3 flex-shrink-0 text-xs">
+        <div id="kpiModalPagination" class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <span id="kpiModalFooterCount" class="text-slate-400 font-mono">Showing 0 records</span>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0 w-full md:w-auto justify-end">
+          <button onclick="downloadCurrentKpiModalPdf()" class="px-3.5 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl font-bold text-xs shadow-md shadow-red-600/30 flex items-center gap-1.5 transition-all">
             <i class="fa-solid fa-file-pdf text-amber-300"></i>
-            <span>Download Full Ledger PDF</span>
+            <span>Download PDF</span>
           </button>
           <button onclick="closeKpiBreakdownModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold transition-all">Close</button>
         </div>

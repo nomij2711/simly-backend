@@ -135,12 +135,14 @@ model Announcement {
 model StaffUser {
   id              String    @id @default(uuid())
   name            String
+  chatDisplayName String?   // Clean customer-facing name, e.g. "Hassan"
   email           String    @unique
   password        String
   role            String    @default("support_agent") // "super_admin", "support_agent", "operations_manager", "finance_manager"
   permissions     String    @default("all") // JSON or comma-separated permissions
   avatarUrl       String?
   isActive        Boolean   @default(true)
+  isDeleted       Boolean   @default(false)
   isOnline        Boolean   @default(false)
   lastLoginAt     DateTime?
   ticketsResolved Int       @default(0)

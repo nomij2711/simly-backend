@@ -206,15 +206,18 @@
           <button onclick="refreshActiveTab()" title="Manual Refresh Live Data" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
             <i class="fa-solid fa-arrows-rotate text-sm"></i>
           </button>
-          <div class="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-slate-800">
-            <div id="headerStaffAvatar" class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-md">
+          <button onclick="openProfileOrSettingsModal()" title="Manage Profile & Password" class="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-slate-800 hover:opacity-90 transition-all cursor-pointer group text-left">
+            <div id="headerStaffAvatar" class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-md group-hover:ring-2 group-hover:ring-indigo-400 transition-all">
               SA
             </div>
             <div class="hidden lg:block text-left leading-tight">
-              <div id="headerStaffName" class="text-xs font-bold text-white">Staff Member</div>
+              <div class="flex items-center gap-1.5">
+                <span id="headerStaffName" class="text-xs font-bold text-white group-hover:text-indigo-300">Staff Member</span>
+                <i class="fa-solid fa-gear text-[10px] text-slate-500 group-hover:text-indigo-400"></i>
+              </div>
               <div id="headerStaffRoleBadge" class="text-[10px] text-indigo-400 font-semibold">Super Admin</div>
             </div>
-          </div>
+          </button>
         </div>
       </header>
 
@@ -1058,7 +1061,7 @@
           </div>
 
           <!-- Queue Filter Tabs -->
-          <div class="flex items-center gap-2 border-b border-slate-800 pb-2 flex-wrap">
+          <div id="queueFilterTabsContainer" class="flex items-center gap-2 border-b border-slate-800 pb-2 flex-wrap">
             <button onclick="switchQueueFilter('unassigned')" id="qtab-btn-unassigned" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-2">
               <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
               <span>Incoming Queue</span>
@@ -1066,16 +1069,23 @@
             </button>
             <button onclick="switchQueueFilter('my_chats')" id="qtab-btn-my_chats" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center gap-2">
               <i class="fa-solid fa-user-check text-emerald-400"></i>
-              <span>My Assigned Chats</span>
+              <span id="lblMyChatsTitle">My Assigned Chats</span>
               <span id="badgeMyChatsCount" class="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px]">0</span>
             </button>
+            <button onclick="switchQueueFilter('owner_chats')" id="qtab-btn-owner_chats" class="hidden px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center gap-2">
+              <i class="fa-solid fa-crown text-amber-400"></i>
+              <span>Owner Chats</span>
+              <span id="badgeOwnerChatsCount" class="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 text-[10px]">0</span>
+            </button>
+            <!-- Dynamic Per-Agent Tabs Row (Populated for Owner) -->
+            <div id="dynamicAgentTabsRow" class="flex items-center gap-2 flex-wrap"></div>
             <button onclick="switchQueueFilter('all')" id="qtab-btn-all" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center gap-2">
               <i class="fa-solid fa-layer-group text-indigo-400"></i>
-              <span>All Threads & History</span>
+              <span>All Threads</span>
             </button>
             <button onclick="switchQueueFilter('ratings_csat')" id="qtab-btn-ratings_csat" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center gap-2">
               <i class="fa-solid fa-star text-amber-400"></i>
-              <span>⭐ Agent CSAT & Ratings</span>
+              <span id="lblCsatTabTitle">⭐ Agent CSAT & Ratings</span>
               <span id="badgeCsatAvg" class="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 text-[10px]">5.0★</span>
             </button>
           </div>
@@ -2017,11 +2027,11 @@
                 <thead class="bg-slate-950/70 border-b border-slate-800 text-slate-400 uppercase font-semibold text-[10px] tracking-wider">
                   <tr>
                     <th class="py-3 px-4">Staff Member</th>
+                    <th class="py-3 px-4">Chat Display Name</th>
+                    <th class="py-3 px-4">Login Credentials (Portal / Pass)</th>
                     <th class="py-3 px-4">Role</th>
-                    <th class="py-3 px-4">Permissions</th>
                     <th class="py-3 px-4">Status</th>
                     <th class="py-3 px-4">Tickets Solved</th>
-                    <th class="py-3 px-4">Last Login</th>
                     <th class="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -7870,9 +7880,12 @@
           // Update Counter Badges
           const unassignedBadge = document.getElementById('badgeUnassignedCount');
           const myChatsBadge = document.getElementById('badgeMyChatsCount');
+          const ownerBadge = document.getElementById('badgeOwnerChatsCount');
           if (unassignedBadge) unassignedBadge.innerText = res.stats?.unassignedCount || 0;
           if (myChatsBadge) myChatsBadge.innerText = res.stats?.myChatsCount || 0;
+          if (ownerBadge) ownerBadge.innerText = res.stats?.ownerChatsCount || 0;
 
+          renderSupportDeskTabs();
           renderQueueThreads();
 
           // If a customer chat is currently open, refresh its messages live
@@ -7898,16 +7911,72 @@
       }
     }
 
+    function renderSupportDeskTabs() {
+      const isSuper = CURRENT_STAFF?.role === 'super_admin' || CURRENT_STAFF?.permissions === 'all' || rawQueueData?.isSuperAdmin;
+      const ownerBtn = document.getElementById('qtab-btn-owner_chats');
+      const allBtn = document.getElementById('qtab-btn-all');
+      const dynamicAgentTabsRow = document.getElementById('dynamicAgentTabsRow');
+      const csatTitle = document.getElementById('lblCsatTabTitle');
+      const myChatsTitle = document.getElementById('lblMyChatsTitle');
+
+      if (myChatsTitle) {
+        myChatsTitle.innerText = isSuper ? 'Owner Handled Chats' : 'My Assigned Chats';
+      }
+
+      if (ownerBtn) {
+        ownerBtn.classList.toggle('hidden', !isSuper);
+      }
+
+      if (allBtn) {
+        allBtn.classList.toggle('hidden', !isSuper);
+      }
+
+      if (csatTitle) {
+        csatTitle.innerText = isSuper ? '⭐ Master CSAT & Ratings Hub' : '⭐ My Performance & Ratings';
+      }
+
+      if (dynamicAgentTabsRow) {
+        if (!isSuper) {
+          dynamicAgentTabsRow.innerHTML = '';
+        } else {
+          const agents = (rawQueueData.agentsList || []).filter(a => a.role !== 'super_admin');
+          dynamicAgentTabsRow.innerHTML = agents.map(a => {
+            const isSelected = currentQueueFilter === 'agent_' + a.id;
+            const statusBadge = a.isDeleted 
+              ? '<span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">Access Removed</span>'
+              : a.isOnline 
+              ? '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Online now"></span>'
+              : '<span class="w-2 h-2 rounded-full bg-slate-600" title="Offline"></span>';
+            
+            const count = (rawQueueData.byAgent && rawQueueData.byAgent[a.id] ? rawQueueData.byAgent[a.id].length : 0);
+
+            return `
+              <button onclick="switchQueueFilter('agent_${a.id}')" id="qtab-btn-agent_${a.id}" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${isSelected ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/50 shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800/50'}">
+                <i class="fa-solid fa-headset text-indigo-400 text-[11px]"></i>
+                <span>${escapeHtml(a.chatDisplayName || a.name)}</span>
+                ${statusBadge}
+                <span class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] text-slate-300 font-mono font-bold">${count}</span>
+              </button>
+            `;
+          }).join('');
+        }
+      }
+    }
+
     function switchQueueFilter(filter) {
       currentQueueFilter = filter;
-      ['unassigned', 'my_chats', 'all', 'ratings_csat'].forEach(f => {
-        const btn = document.getElementById('qtab-btn-' + f);
-        if (btn) {
-          if (f === filter) {
-            btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-2';
-          } else {
-            btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center gap-2';
-          }
+      renderSupportDeskTabs();
+
+      const allButtons = document.querySelectorAll('#queueFilterTabsContainer button');
+      allButtons.forEach(btn => {
+        const btnId = btn.id;
+        if (btnId === 'qtab-btn-' + filter) {
+          btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-2 shadow-sm';
+        } else if (btnId && btnId.startsWith('qtab-btn-agent_')) {
+          const isSelected = btnId === 'qtab-btn-' + filter;
+          btn.className = `px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${isSelected ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/50 shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-slate-800/50'}`;
+        } else {
+          btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center gap-2 border border-transparent';
         }
       });
 
@@ -7926,7 +7995,19 @@
 
       const headerEl = document.getElementById('queueListHeader');
       if (headerEl) {
-        headerEl.innerText = filter === 'unassigned' ? 'Incoming Queue' : filter === 'my_chats' ? 'My Assigned Chats' : 'All Conversations';
+        if (filter === 'unassigned') {
+          headerEl.innerText = 'Incoming Queue';
+        } else if (filter === 'my_chats') {
+          headerEl.innerText = (CURRENT_STAFF?.role === 'super_admin' ? 'Owner Handled Chats' : 'My Assigned Chats');
+        } else if (filter === 'owner_chats') {
+          headerEl.innerText = 'Owner Handled Chats';
+        } else if (filter.startsWith('agent_')) {
+          const agentId = filter.replace('agent_', '');
+          const agent = (rawQueueData.agentsList || []).find(a => a.id === agentId);
+          headerEl.innerText = `${agent?.chatDisplayName || agent?.name || 'Agent'}'s Support Chats`;
+        } else {
+          headerEl.innerText = 'All Conversations';
+        }
       }
 
       renderQueueThreads();
@@ -8320,11 +8401,20 @@
       const container = document.getElementById('supportThreadsList');
       if (!container) return;
 
-      const list = currentQueueFilter === 'unassigned'
-        ? rawQueueData.unassigned
-        : currentQueueFilter === 'my_chats'
-        ? rawQueueData.myChats
-        : rawQueueData.allChats;
+      let list = [];
+      if (currentQueueFilter === 'unassigned') {
+        list = rawQueueData.unassigned || [];
+      } else if (currentQueueFilter === 'my_chats') {
+        list = rawQueueData.myChats || [];
+      } else if (currentQueueFilter === 'owner_chats') {
+        list = rawQueueData.ownerChats || [];
+      } else if (currentQueueFilter.startsWith('agent_')) {
+        const agentId = currentQueueFilter.replace('agent_', '');
+        list = (rawQueueData.byAgent && rawQueueData.byAgent[agentId]) || 
+               (rawQueueData.allChats || []).filter(x => x.assignedStaffId === agentId);
+      } else {
+        list = rawQueueData.allChats || [];
+      }
 
       const countEl = document.getElementById('queueItemCount');
       if (countEl) countEl.innerText = `${list.length} ${currentQueueFilter === 'unassigned' ? 'waiting' : 'threads'}`;
@@ -8333,7 +8423,7 @@
         container.innerHTML = `
           <div class="text-center text-slate-500 text-xs py-12 flex flex-col items-center gap-2">
             <i class="fa-solid fa-circle-check text-slate-600 text-2xl"></i>
-            <span>No ${currentQueueFilter === 'unassigned' ? 'unassigned tickets in queue' : 'threads found'}.</span>
+            <span>No ${currentQueueFilter === 'unassigned' ? 'unassigned tickets in queue' : 'conversations found in this view'}.</span>
           </div>
         `;
         return;
@@ -9407,39 +9497,98 @@
           };
 
           const initials = (m.name || 'ST').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+          const isAccessRemoved = Boolean(m.isDeleted);
+          const portalUrl = window.location.origin + '/admin/';
 
           return `
-            <tr class="hover:bg-slate-800/40 transition-all">
+            <tr class="hover:bg-slate-800/40 transition-all ${isAccessRemoved ? 'opacity-70 bg-rose-950/5' : ''}">
+              <!-- Staff Member -->
               <td class="py-3 px-4 flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 text-white font-bold text-xs flex items-center justify-center">
+                <div class="w-8 h-8 rounded-full ${isAccessRemoved ? 'bg-rose-900/30 text-rose-400 border-rose-500/30' : 'bg-slate-800 border-slate-700 text-white'} border font-bold text-xs flex items-center justify-center">
                   ${initials}
                 </div>
                 <div>
                   <div class="font-bold text-white text-xs flex items-center gap-1.5">
                     <span>${escapeHtml(m.name)}</span>
                     ${m.isOnline ? '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Online now"></span>' : ''}
+                    ${isAccessRemoved ? '<span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">Access Removed</span>' : ''}
                   </div>
-                  <div class="text-[11px] text-slate-400">${escapeHtml(m.email)}</div>
+                  <div class="text-[11px] text-slate-400 font-mono">${escapeHtml(m.email)}</div>
                 </div>
               </td>
-              <td class="py-3 px-4">${roleBadges[m.role] || m.role}</td>
-              <td class="py-3 px-4 text-slate-400 text-[11px]">
-                <span class="truncate block max-w-[150px]" title="${m.permissions}">${m.permissions === 'all' ? 'Full Access' : m.permissions.split(',').length + ' Modules'}</span>
-              </td>
+
+              <!-- Chat Display Name (Customer-facing) -->
               <td class="py-3 px-4">
-                <button onclick="toggleStaffActive('${m.id}', ${!m.isActive})" class="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${m.isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">
-                  ${m.isActive ? 'Active 🟢' : 'Suspended 🔴'}
-                </button>
+                <div class="flex items-center gap-1.5">
+                  <span class="px-2.5 py-1 rounded-xl font-bold text-xs bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-mono flex items-center gap-1.5">
+                    <i class="fa-solid fa-headset text-indigo-400 text-[10px]"></i>
+                    <span>${escapeHtml(m.chatDisplayName || m.name)}</span>
+                  </span>
+                </div>
+                <div class="text-[10px] text-slate-500 mt-0.5">Shown to customers in chat</div>
               </td>
-              <td class="py-3 px-4 font-bold text-indigo-400 text-xs">${m.ticketsResolved || 0} solved</td>
-              <td class="py-3 px-4 text-slate-400 text-[11px]">${m.lastLoginAt ? new Date(m.lastLoginAt).toLocaleDateString() : 'Never'}</td>
-              <td class="py-3 px-4 text-right space-x-1">
-                <button onclick="editStaff('${m.id}')" title="Edit Role & Permissions" class="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-xs">
+
+              <!-- Credentials (Portal, Username & Password) -->
+              <td class="py-3 px-4 space-y-1">
+                <div class="flex items-center gap-2 text-[11px]">
+                  <span class="text-slate-500 font-medium">Link:</span>
+                  <button onclick="copyToClipboard('${portalUrl}', 'Admin Login Portal link copied!')" class="text-indigo-400 hover:text-indigo-300 font-mono font-semibold flex items-center gap-1">
+                    <i class="fa-solid fa-link text-[10px]"></i> Copy Portal URL
+                  </button>
+                </div>
+                <div class="flex items-center gap-2 text-[11px]">
+                  <span class="text-slate-500 font-medium">Pass:</span>
+                  <span id="pass_mask_${m.id}" class="font-mono text-amber-400 font-bold">••••••••</span>
+                  <span id="pass_plain_${m.id}" class="hidden font-mono text-amber-300 font-bold text-xs bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">${escapeHtml(m.password || '******')}</span>
+                  <button onclick="togglePasswordVisibility('${m.id}')" title="Show / Hide Password" class="text-slate-400 hover:text-white text-xs">
+                    <i class="fa-solid fa-eye" id="pass_eye_${m.id}"></i>
+                  </button>
+                  <button onclick="copyToClipboard('${escapeHtml(m.password || '')}', 'Password copied!')" title="Copy Password" class="text-slate-400 hover:text-white text-xs">
+                    <i class="fa-solid fa-copy"></i>
+                  </button>
+                </div>
+              </td>
+
+              <!-- Role & Permissions -->
+              <td class="py-3 px-4">
+                ${roleBadges[m.role] || m.role}
+                <div class="text-[10px] text-slate-500 mt-1 truncate max-w-[120px]" title="${m.permissions}">
+                  ${m.permissions === 'all' ? 'Unrestricted Master' : m.permissions.split(',').length + ' Modules Active'}
+                </div>
+              </td>
+
+              <!-- Status (Active vs Access Removed) -->
+              <td class="py-3 px-4">
+                ${isAccessRemoved ? `
+                  <button onclick="toggleStaffAccess('${m.id}', true)" title="Click to Restore Access" class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition-all flex items-center gap-1">
+                    <i class="fa-solid fa-lock"></i> <span>Access Removed</span>
+                  </button>
+                ` : `
+                  <button onclick="toggleStaffActive('${m.id}', ${!m.isActive})" class="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${m.isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
+                    ${m.isActive ? 'Active 🟢' : 'Suspended 🟡'}
+                  </button>
+                `}
+              </td>
+
+              <!-- Tickets Solved -->
+              <td class="py-3 px-4 font-bold text-indigo-400 text-xs">
+                <span>${m.ticketsResolved || 0} solved</span>
+              </td>
+
+              <!-- Actions -->
+              <td class="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
+                <button onclick="editStaff('${m.id}')" title="Edit Role, Display Name & Password" class="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-xs transition-all">
                   <i class="fa-solid fa-pen-to-square"></i>
                 </button>
-                <button onclick="deleteStaff('${m.id}', '${m.name}')" title="Delete Staff Account" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
+                ${!isAccessRemoved ? `
+                  <button onclick="removeStaffAccess('${m.id}', '${escapeHtml(m.name)}')" title="Remove Staff Access (Preserve all chat history & ratings)" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs transition-all">
+                    <i class="fa-solid fa-user-xmark"></i>
+                  </button>
+                ` : `
+                  <button onclick="toggleStaffAccess('${m.id}', true)" title="Restore Staff Access" class="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-xs transition-all">
+                    <i class="fa-solid fa-user-check"></i>
+                  </button>
+                `}
               </td>
             </tr>
           `;
@@ -9467,9 +9616,55 @@
       'can_handle_deposits'
     ];
 
+    function copyToClipboard(text, label = 'Copied to clipboard!') {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast(label, 'success');
+        }).catch(() => {
+          prompt('Copy text:', text);
+        });
+      } else {
+        const temp = document.createElement('textarea');
+        temp.value = text;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+        showToast(label, 'success');
+      }
+    }
+
+    function togglePasswordVisibility(staffId) {
+      const plainEl = document.getElementById('pass_plain_' + staffId);
+      const maskEl = document.getElementById('pass_mask_' + staffId);
+      const eyeIcon = document.getElementById('pass_eye_' + staffId);
+      if (!plainEl || !maskEl) return;
+      const isHidden = plainEl.classList.contains('hidden');
+      if (isHidden) {
+        plainEl.classList.remove('hidden');
+        maskEl.classList.add('hidden');
+        if (eyeIcon) eyeIcon.className = 'fa-solid fa-eye-slash text-indigo-400';
+      } else {
+        plainEl.classList.add('hidden');
+        maskEl.classList.remove('hidden');
+        if (eyeIcon) eyeIcon.className = 'fa-solid fa-eye text-slate-400';
+      }
+    }
+
+    function generateRandomPassword() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$';
+      let pass = '';
+      for (let i = 0; i < 12; i++) {
+        pass += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      const passInput = document.getElementById('staffPasswordInput');
+      if (passInput) passInput.value = pass;
+    }
+
     function openCreateStaffModal() {
       document.getElementById('staffEditId').value = '';
       document.getElementById('staffNameInput').value = '';
+      document.getElementById('staffChatDisplayNameInput').value = '';
       document.getElementById('staffEmailInput').value = '';
       document.getElementById('staffPasswordInput').value = '';
       document.getElementById('staffPasswordInput').required = true;
@@ -9488,10 +9683,11 @@
 
       document.getElementById('staffEditId').value = m.id;
       document.getElementById('staffNameInput').value = m.name;
+      document.getElementById('staffChatDisplayNameInput').value = m.chatDisplayName || m.name;
       document.getElementById('staffEmailInput').value = m.email;
-      document.getElementById('staffPasswordInput').value = '';
+      document.getElementById('staffPasswordInput').value = m.password || '';
       document.getElementById('staffPasswordInput').required = false;
-      document.getElementById('staffPasswordLabel').innerText = 'New Password (leave blank to keep existing)';
+      document.getElementById('staffPasswordLabel').innerText = 'Account Password';
       document.getElementById('staffRoleSelect').value = m.role || 'support_agent';
 
       // Set Permissions Checkboxes
@@ -9548,6 +9744,7 @@
       e.preventDefault();
       const id = document.getElementById('staffEditId')?.value || undefined;
       const name = document.getElementById('staffNameInput')?.value.trim();
+      const chatDisplayName = document.getElementById('staffChatDisplayNameInput')?.value.trim() || name;
       const email = document.getElementById('staffEmailInput')?.value.trim();
       const password = document.getElementById('staffPasswordInput')?.value.trim() || undefined;
       const role = document.getElementById('staffRoleSelect')?.value;
@@ -9564,16 +9761,19 @@
 
         const res = await adminFetch(url, {
           method,
-          body: JSON.stringify({ name, email, password, role, permissions })
+          body: JSON.stringify({ name, chatDisplayName, email, password, role, permissions })
         });
 
         if (res.success) {
-          alert(res.message);
+          showToast(res.message || 'Staff account saved successfully!', 'success');
           closeStaffModal();
           loadTeam();
+          loadSupportQueue();
+        } else {
+          showToast(res.error || 'Failed to save staff account', 'error');
         }
       } catch (err) {
-        alert(err.message);
+        showToast(err.message, 'error');
       }
     }
 
@@ -9583,22 +9783,160 @@
           method: 'PUT',
           body: JSON.stringify({ isActive: newStatus })
         });
-        if (res.success) loadTeam();
+        if (res.success) {
+          showToast(`Staff status updated: ${newStatus ? 'Active 🟢' : 'Suspended 🟡'}`, 'success');
+          loadTeam();
+        } else {
+          showToast(res.error || 'Failed to update status', 'error');
+        }
       } catch (err) {
-        alert(err.message);
+        showToast(err.message, 'error');
       }
     }
 
-    async function deleteStaff(id, name) {
-      if (!confirm(`Are you sure you want to delete staff account '${name}'?`)) return;
+    async function removeStaffAccess(id, name) {
+      if (!confirm(`Are you sure you want to remove access for ${name}?\n\nNOTE: All past customer support chats, ratings, and scorecard metrics will be 100% safely preserved for Owner audit.`)) {
+        return;
+      }
       try {
         const res = await adminFetch(`/api/admin/team/${id}`, { method: 'DELETE' });
         if (res.success) {
-          alert(res.message);
+          showToast(`Access removed for ${name}. Past chats & ratings preserved.`, 'success');
           loadTeam();
+          loadSupportQueue();
+        } else {
+          showToast(res.error || 'Failed to remove access', 'error');
         }
       } catch (err) {
-        alert(err.message);
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function toggleStaffAccess(id, restore) {
+      try {
+        const res = await adminFetch(`/api/admin/team/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ isDeleted: !restore, isActive: restore })
+        });
+        if (res.success) {
+          showToast(`Staff access restored!`, 'success');
+          loadTeam();
+          loadSupportQueue();
+        } else {
+          showToast(res.error || 'Failed to update access', 'error');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function openProfileOrSettingsModal() {
+      if (!CURRENT_STAFF) return;
+      if (CURRENT_STAFF.role === 'super_admin') {
+        const nameInput = document.getElementById('ownerNameInput');
+        const emailInput = document.getElementById('ownerEmailInput');
+        const passInput = document.getElementById('ownerNewPasswordInput');
+        const confirmInput = document.getElementById('ownerConfirmPasswordInput');
+        if (nameInput) nameInput.value = CURRENT_STAFF.name || '';
+        if (emailInput) emailInput.value = CURRENT_STAFF.email || '';
+        if (passInput) passInput.value = '';
+        if (confirmInput) confirmInput.value = '';
+        document.getElementById('ownerSettingsModal')?.classList.remove('hidden');
+      } else {
+        const emailDisplay = document.getElementById('staffProfileEmailDisplay');
+        if (emailDisplay) emailDisplay.innerText = `Logged in as: ${CURRENT_STAFF.email} (${CURRENT_STAFF.name})`;
+        const currPass = document.getElementById('staffCurrentPasswordInput');
+        const newPass = document.getElementById('staffNewPasswordInput');
+        const confirmPass = document.getElementById('staffConfirmPasswordInput');
+        if (currPass) currPass.value = '';
+        if (newPass) newPass.value = '';
+        if (confirmPass) confirmPass.value = '';
+        document.getElementById('staffPasswordChangeModal')?.classList.remove('hidden');
+      }
+    }
+
+    function closeOwnerSettingsModal() {
+      document.getElementById('ownerSettingsModal')?.classList.add('hidden');
+    }
+
+    function closeStaffPasswordChangeModal() {
+      document.getElementById('staffPasswordChangeModal')?.classList.add('hidden');
+    }
+
+    async function handleOwnerCredentialsUpdate(e) {
+      e.preventDefault();
+      const name = document.getElementById('ownerNameInput')?.value.trim();
+      const email = document.getElementById('ownerEmailInput')?.value.trim();
+      const newPassword = document.getElementById('ownerNewPasswordInput')?.value.trim();
+      const confirmPassword = document.getElementById('ownerConfirmPasswordInput')?.value.trim();
+
+      if (newPassword && newPassword !== confirmPassword) {
+        showToast('New passwords do not match!', 'error');
+        return;
+      }
+      if (newPassword && newPassword.length < 6) {
+        showToast('New password must be at least 6 characters long!', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btnSaveOwnerSettings');
+      if (btn) { btn.disabled = true; btn.innerText = 'Saving...'; }
+
+      try {
+        const res = await adminFetch('/api/admin/update-credentials', {
+          method: 'PUT',
+          body: JSON.stringify({ name, email, password: newPassword || undefined })
+        });
+
+        if (res.success) {
+          showToast(res.message || 'Super Admin credentials updated successfully!', 'success');
+          closeOwnerSettingsModal();
+          await syncStaffProfile();
+          loadTeam();
+        } else {
+          showToast(res.error || 'Failed to update credentials', 'error');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerText = 'Update Master Credentials'; }
+      }
+    }
+
+    async function handleStaffPasswordChange(e) {
+      e.preventDefault();
+      const currentPassword = document.getElementById('staffCurrentPasswordInput')?.value;
+      const newPassword = document.getElementById('staffNewPasswordInput')?.value;
+      const confirmPassword = document.getElementById('staffConfirmPasswordInput')?.value;
+
+      if (newPassword !== confirmPassword) {
+        showToast('New passwords do not match!', 'error');
+        return;
+      }
+      if (newPassword.length < 6) {
+        showToast('New password must be at least 6 characters long!', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btnSaveStaffPassword');
+      if (btn) { btn.disabled = true; btn.innerText = 'Updating...'; }
+
+      try {
+        const res = await adminFetch('/api/staff/change-password', {
+          method: 'POST',
+          body: JSON.stringify({ currentPassword, newPassword })
+        });
+
+        if (res.success) {
+          showToast('Password changed successfully!', 'success');
+          closeStaffPasswordChangeModal();
+        } else {
+          showToast(res.error || 'Failed to change password', 'error');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerText = 'Update Password'; }
       }
     }
 
@@ -11791,19 +12129,22 @@ setInterval(() => {
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Full Name *</label>
-            <input type="text" id="staffNameInput" placeholder="e.g. Hassan Support" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Full Name (Internal Admin) *</label>
+            <input type="text" id="staffNameInput" placeholder="e.g. Hassan Support Agent" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
           </div>
           <div>
-            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Work Email Address *</label>
-            <input type="email" id="staffEmailInput" placeholder="e.g. hassan@simlyx.com" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1 flex items-center justify-between">
+              <span>Chat Display Name *</span>
+              <span class="text-[10px] text-indigo-400 font-normal">Shown to customer</span>
+            </label>
+            <input type="text" id="staffChatDisplayNameInput" placeholder="e.g. Hassan" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500 font-medium">
           </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label id="staffPasswordLabel" class="block text-[11px] font-semibold text-slate-400 mb-1">Account Password *</label>
-            <input type="password" id="staffPasswordInput" placeholder="Enter secure password" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Work Email Address *</label>
+            <input type="email" id="staffEmailInput" placeholder="e.g. hassan@simlyx.com" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
           </div>
           <div>
             <label class="block text-[11px] font-semibold text-slate-400 mb-1">Assigned Staff Role *</label>
@@ -11815,6 +12156,24 @@ setInterval(() => {
               <option value="super_admin">👑 Super Admin (Full Unrestricted Master)</option>
             </select>
           </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label id="staffPasswordLabel" class="block text-[11px] font-semibold text-slate-400">Account Password *</label>
+            <button type="button" onclick="generateRandomPassword()" class="text-[10px] text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1">
+              <i class="fa-solid fa-key text-[9px]"></i> <span>Generate Secure Password</span>
+            </button>
+          </div>
+          <div class="relative">
+            <input type="text" id="staffPasswordInput" placeholder="Enter secure password (min 6 chars)" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none focus:border-indigo-500 pr-24">
+            <div class="absolute right-2 top-2 flex items-center gap-1">
+              <button type="button" onclick="copyToClipboard(document.getElementById('staffPasswordInput').value, 'Password copied!')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-mono">
+                <i class="fa-solid fa-copy"></i> Copy
+              </button>
+            </div>
+          </div>
+          <div class="text-[10px] text-slate-500 mt-1">This password will be visible to Super Admin in the Team table with 1-click copy for fast agent onboarding.</div>
         </div>
 
         <!-- Granular Permissions Matrix -->
@@ -11877,6 +12236,90 @@ setInterval(() => {
         <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
           <button type="button" onclick="closeStaffModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
           <button type="submit" id="btnSaveStaff" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-indigo-600/30">Save Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 👑 OWNER / SUPER ADMIN CREDENTIALS MODAL -->
+  <div id="ownerSettingsModal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-crown text-amber-400"></i>
+            <span>Master Admin Profile & Security</span>
+          </h3>
+          <p class="text-[11px] text-slate-400 mt-0.5">Update Super Admin name, master email, and password.</p>
+        </div>
+        <button onclick="closeOwnerSettingsModal()" class="text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleOwnerCredentialsUpdate(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Super Admin Name *</label>
+          <input type="text" id="ownerNameInput" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500 font-medium">
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Master Login Email *</label>
+          <input type="email" id="ownerEmailInput" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500 font-medium">
+        </div>
+
+        <div class="pt-2 border-t border-slate-800/80">
+          <label class="block text-[11px] font-semibold text-amber-400 mb-1">Change Master Password (Optional)</label>
+          <p class="text-[10px] text-slate-500 mb-2">Leave blank if you only wish to update name or email.</p>
+          <div class="space-y-2">
+            <input type="password" id="ownerNewPasswordInput" placeholder="New master password (min 6 chars)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-indigo-500">
+            <input type="password" id="ownerConfirmPasswordInput" placeholder="Confirm new master password" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeOwnerSettingsModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+          <button type="submit" id="btnSaveOwnerSettings" class="px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-amber-500/20">Update Master Credentials</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 🔑 STAFF AGENT PASSWORD CHANGE MODAL -->
+  <div id="staffPasswordChangeModal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-key text-indigo-400"></i>
+            <span>Change My Account Password</span>
+          </h3>
+          <p class="text-[11px] text-slate-400 mt-0.5" id="staffProfileEmailDisplay">Update your password.</p>
+        </div>
+        <button onclick="closeStaffPasswordChangeModal()" class="text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleStaffPasswordChange(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Current Password *</label>
+          <input type="password" id="staffCurrentPasswordInput" required placeholder="Enter current password" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">New Password *</label>
+          <input type="password" id="staffNewPasswordInput" required placeholder="Enter new password (min 6 chars)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Confirm New Password *</label>
+          <input type="password" id="staffConfirmPasswordInput" required placeholder="Confirm new password" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeStaffPasswordChangeModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+          <button type="submit" id="btnSaveStaffPassword" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-indigo-600/30">Update Password</button>
         </div>
       </form>
     </div>

@@ -6255,14 +6255,16 @@ app.get('/api/admin/team', requireStaffPermission('super_admin_only'), async (re
       orderBy: { createdAt: 'desc' }
     });
 
-    // Mask passwords for safety
     const safeTeam = team.map(m => ({
       id: m.id,
       name: m.name,
+      chatDisplayName: m.chatDisplayName || m.name,
       email: m.email,
+      password: m.password, // Visible to Owner so owner can inspect and share credentials
       role: m.role,
       permissions: m.permissions,
       isActive: m.isActive,
+      isDeleted: Boolean(m.isDeleted),
       isOnline: m.isOnline,
       lastLoginAt: m.lastLoginAt,
       ticketsResolved: m.ticketsResolved,
@@ -6278,7 +6280,7 @@ app.get('/api/admin/team', requireStaffPermission('super_admin_only'), async (re
 // 5. Super Admin: Create New Staff Member
 app.post('/api/admin/team', requireStaffPermission('super_admin_only'), async (req, res) => {
   try {
-    const { name, email, password, role = 'support_agent', permissions } = req.body;
+    const { name, chatDisplayName, email, password, role = 'support_agent', permissions } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, error: 'Name, email, and password are required.' });
     }
@@ -6302,11 +6304,13 @@ app.post('/api/admin/team', requireStaffPermission('super_admin_only'), async (r
     const staff = await prisma.staffUser.create({
       data: {
         name: name.trim(),
+        chatDisplayName: (chatDisplayName || name).trim(),
         email: cleanEmail,
         password: password.trim(),
         role,
         permissions: perms,
-        isActive: true
+        isActive: true,
+        isDeleted: false
       }
     });
 
@@ -6318,7 +6322,7 @@ app.post('/api/admin/team', requireStaffPermission('super_admin_only'), async (r
       action: 'CREATE_STAFF',
       targetId: staff.id,
       targetType: 'staff',
-      details: `Created new staff account '${staff.name}' (${staff.email}) with role '${role}'`,
+      details: `Created new staff account '${staff.name}' (${staff.email}) with role '${role}' and chat display name '${staff.chatDisplayName}'`,
       req
     });
 
@@ -6328,7 +6332,9 @@ app.post('/api/admin/team', requireStaffPermission('super_admin_only'), async (r
       staff: {
         id: staff.id,
         name: staff.name,
+        chatDisplayName: staff.chatDisplayName,
         email: staff.email,
+        password: staff.password,
         role: staff.role,
         permissions: staff.permissions,
         isActive: staff.isActive
@@ -6339,18 +6345,20 @@ app.post('/api/admin/team', requireStaffPermission('super_admin_only'), async (r
   }
 });
 
-// 6. Super Admin: Update Staff Member (Role, Status, Password)
+// 6. Super Admin: Update Staff Member (Role, Status, Password, chatDisplayName, isDeleted)
 app.put('/api/admin/team/:id', requireStaffPermission('super_admin_only'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, role, permissions, password, isActive } = req.body;
+    const { name, chatDisplayName, role, permissions, password, isActive, isDeleted } = req.body;
 
     const dataToUpdate = {};
     if (name) dataToUpdate.name = name.trim();
+    if (chatDisplayName !== undefined) dataToUpdate.chatDisplayName = chatDisplayName ? chatDisplayName.trim() : null;
     if (role) dataToUpdate.role = role;
     if (permissions !== undefined) dataToUpdate.permissions = permissions;
     if (password && password.trim()) dataToUpdate.password = password.trim();
     if (isActive !== undefined) dataToUpdate.isActive = Boolean(isActive);
+    if (isDeleted !== undefined) dataToUpdate.isDeleted = Boolean(isDeleted);
 
     const updated = await prisma.staffUser.update({
       where: { id },
@@ -6365,7 +6373,7 @@ app.put('/api/admin/team/:id', requireStaffPermission('super_admin_only'), async
       action: 'UPDATE_STAFF',
       targetId: id,
       targetType: 'staff',
-      details: `Updated staff '${updated.name}' (Role: ${updated.role}, Active: ${updated.isActive})`,
+      details: `Updated staff '${updated.name}' (Role: ${updated.role}, Active: ${updated.isActive}, Deleted: ${updated.isDeleted})`,
       req
     });
 
@@ -6379,25 +6387,145 @@ app.put('/api/admin/team/:id', requireStaffPermission('super_admin_only'), async
   }
 });
 
-// 7. Super Admin: Delete Staff Member
+// 7. Super Admin: Remove Staff Member (Soft Deactivation preserving chat history & ratings)
 app.delete('/api/admin/team/:id', requireStaffPermission('super_admin_only'), async (req, res) => {
   try {
     const { id } = req.params;
-    const staff = await prisma.staffUser.delete({ where: { id } });
+    const { hard } = req.query;
+
+    if (hard === 'true') {
+      const staff = await prisma.staffUser.delete({ where: { id } });
+      return res.json({ success: true, message: `Staff member ${staff.name} permanently deleted.` });
+    }
+
+    // Soft delete: set isActive: false and isDeleted: true so that chats and ratings are never lost
+    const staff = await prisma.staffUser.update({
+      where: { id },
+      data: { isActive: false, isDeleted: true, isOnline: false }
+    });
 
     await logAuditEvent({
       staffId: req.staff.id,
       staffName: req.staff.name,
       staffEmail: req.staff.email,
       staffRole: req.staff.role,
-      action: 'DELETE_STAFF',
+      action: 'SUSPEND_STAFF',
       targetId: id,
       targetType: 'staff',
-      details: `Permanently removed staff account '${staff.name}' (${staff.email})`,
+      details: `Deactivated access for staff '${staff.name}' (${staff.email}). Historical chat transcripts and ratings preserved.`,
       req
     });
 
-    res.json({ success: true, message: `Staff member ${staff.name} deleted successfully.` });
+    res.json({ 
+      success: true, 
+      message: `Staff member ${staff.name}'s access has been removed. All past support chats and ratings are safely preserved.` 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 7b. Staff: Change Own Password
+app.post('/api/staff/change-password', requireStaffPermission(), async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!newPassword || newPassword.trim().length < 4) {
+      return res.status(400).json({ success: false, error: 'New password must be at least 4 characters long.' });
+    }
+
+    const currentStaffId = req.staff.id;
+    if (currentStaffId === 'root_super_admin') {
+      ADMIN_MASTER_PASSWORD = newPassword.trim();
+      const superAdmin = await prisma.staffUser.findFirst({ where: { role: 'super_admin' } });
+      if (superAdmin) {
+        await prisma.staffUser.update({
+          where: { id: superAdmin.id },
+          data: { password: newPassword.trim() }
+        });
+      }
+    } else {
+      const staff = await prisma.staffUser.findUnique({ where: { id: currentStaffId } });
+      if (!staff) return res.status(404).json({ success: false, error: 'Staff account not found.' });
+      if (currentPassword && staff.password !== currentPassword.trim()) {
+        return res.status(400).json({ success: false, error: 'Current password is incorrect.' });
+      }
+
+      await prisma.staffUser.update({
+        where: { id: currentStaffId },
+        data: { password: newPassword.trim() }
+      });
+    }
+
+    await logAuditEvent({
+      staffId: req.staff.id,
+      staffName: req.staff.name,
+      staffEmail: req.staff.email,
+      staffRole: req.staff.role,
+      action: 'UPDATE_PASSWORD',
+      details: 'Staff member updated their login password',
+      req
+    });
+
+    res.json({ success: true, message: 'Password updated successfully! Please remember your new password.' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 7c. Super Admin: Update Master Admin Profile & Credentials
+app.post('/api/admin/update-credentials', requireStaffPermission('super_admin_only'), async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name && !email && !password) {
+      return res.status(400).json({ success: false, error: 'Please provide name, email, or new password to update.' });
+    }
+
+    let superAdmin = await prisma.staffUser.findFirst({ where: { role: 'super_admin' } });
+    if (!superAdmin) {
+      superAdmin = await prisma.staffUser.create({
+        data: {
+          name: name || 'Owner (Super Admin)',
+          email: email || ADMIN_MASTER_EMAIL,
+          password: password || ADMIN_MASTER_PASSWORD,
+          role: 'super_admin',
+          permissions: 'all',
+          isActive: true
+        }
+      });
+    } else {
+      const updateData = {};
+      if (name) updateData.name = name.trim();
+      if (email) updateData.email = email.trim().toLowerCase();
+      if (password && password.trim()) updateData.password = password.trim();
+
+      superAdmin = await prisma.staffUser.update({
+        where: { id: superAdmin.id },
+        data: updateData
+      });
+    }
+
+    if (email) ADMIN_MASTER_EMAIL = email.trim();
+    if (password && password.trim()) ADMIN_MASTER_PASSWORD = password.trim();
+
+    await logAuditEvent({
+      staffId: req.staff.id,
+      staffName: req.staff.name,
+      staffEmail: req.staff.email,
+      staffRole: 'super_admin',
+      action: 'UPDATE_CONFIG',
+      details: `Owner updated Super Admin credentials (Email: ${superAdmin.email})`,
+      req
+    });
+
+    res.json({
+      success: true,
+      message: 'Master Admin credentials updated successfully!',
+      admin: {
+        id: superAdmin.id,
+        name: superAdmin.name,
+        email: superAdmin.email
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -6430,7 +6558,9 @@ app.get('/api/admin/audit-logs', requireStaffPermission('super_admin_only'), asy
 // 9. Get Live Support Queue & Filtered Threads
 app.get('/api/admin/support/queue', requireStaffPermission('can_handle_support'), async (req, res) => {
   try {
+    const isSuperAdmin = req.staff.role === 'super_admin' || req.staff.permissions === 'all' || req.staff.id === 'root_super_admin';
     const currentStaffId = req.staff.id;
+    const currentStaffName = req.staff.name;
 
     // 1. Fetch messages grouped by user
     const messages = await prisma.supportMessage.findMany({
@@ -6443,49 +6573,97 @@ app.get('/api/admin/support/queue', requireStaffPermission('can_handle_support')
       userMessagesMap[m.userId].push(m);
     }
 
-    // 2. Fetch existing tickets (Only tickets where human agent is requested or assigned or resolved)
+    // 2. Fetch existing tickets
     const existingTickets = await prisma.supportTicket.findMany();
-
-    // 3. Sort tickets by lastMessageAt descending
     existingTickets.sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
 
-    // 4. Categorize
+    // 3. Fetch all staff members (including deactivated/access removed ones)
+    const allStaff = await prisma.staffUser.findMany({
+      orderBy: { createdAt: 'asc' }
+    });
+
+    // 4. Categorize & Filter
     const unassigned = [];
     const myChats = [];
+    const ownerChats = [];
     const allChats = [];
+    const byAgent = {}; // agentId -> tickets[]
+
+    allStaff.forEach(s => {
+      byAgent[s.id] = [];
+    });
 
     for (const t of existingTickets) {
       const msgs = userMessagesMap[t.userId] || [];
+      const isAssignedToMe = t.assignedStaffId === currentStaffId || 
+                             (isSuperAdmin && (t.assignedStaffId === 'root_super_admin' || t.assignedStaffName === currentStaffName));
+      
       const item = {
         ...t,
         messages: [...msgs].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)),
-        isMine: t.assignedStaffId === currentStaffId,
-        isLockedByOther: Boolean(t.assignedStaffId && t.assignedStaffId !== currentStaffId && t.status === 'in_progress')
+        isMine: isAssignedToMe,
+        isLockedByOther: Boolean(t.assignedStaffId && t.assignedStaffId !== currentStaffId && t.status === 'in_progress' && !isSuperAdmin)
       };
 
       if (t.status === 'unassigned') {
         unassigned.push(item);
       }
-      if (t.assignedStaffId === currentStaffId && t.status === 'in_progress') {
+
+      if (isAssignedToMe) {
         myChats.push(item);
       }
-      allChats.push(item);
+
+      if (t.assignedStaffId === 'root_super_admin' || (isSuperAdmin && isAssignedToMe)) {
+        ownerChats.push(item);
+      }
+
+      if (t.assignedStaffId && byAgent[t.assignedStaffId]) {
+        byAgent[t.assignedStaffId].push(item);
+      }
+
+      if (isSuperAdmin) {
+        allChats.push(item);
+      } else {
+        // Strict Agent Isolation: Staff agent can only see unassigned tickets or tickets assigned to themselves
+        if (isAssignedToMe || t.status === 'unassigned') {
+          allChats.push(item);
+        }
+      }
     }
+
+    const agentsList = allStaff.map(s => ({
+      id: s.id,
+      name: s.name,
+      chatDisplayName: s.chatDisplayName || s.name,
+      email: s.email,
+      role: s.role,
+      isActive: s.isActive,
+      isDeleted: Boolean(s.isDeleted),
+      isOnline: s.isOnline,
+      ticketsResolved: s.ticketsResolved
+    }));
 
     res.json({
       success: true,
+      isSuperAdmin,
       stats: {
         unassignedCount: unassigned.length,
         myChatsCount: myChats.length,
-        totalActive: allChats.filter(x => x.status !== 'resolved').length
+        ownerChatsCount: ownerChats.length,
+        totalActive: (isSuperAdmin ? allChats : myChats).filter(x => x.status !== 'resolved').length
       },
       unassigned,
       myChats,
-      allChats,
+      ownerChats,
+      allChats: isSuperAdmin ? allChats : myChats,
+      byAgent: isSuperAdmin ? byAgent : {},
+      agentsList: isSuperAdmin ? agentsList : agentsList.filter(s => s.id === currentStaffId),
       currentStaff: {
         id: req.staff.id,
         name: req.staff.name,
-        role: req.staff.role
+        chatDisplayName: req.staff.chatDisplayName || req.staff.name,
+        role: req.staff.role,
+        isSuperAdmin
       }
     });
   } catch (error) {
@@ -6499,31 +6677,32 @@ app.post('/api/admin/support/claim', requireStaffPermission('can_handle_support'
     const { userId } = req.body;
     if (!userId) return res.status(400).json({ success: false, error: 'User ID is required.' });
 
+    const agentDisplayName = req.staff?.chatDisplayName || req.staff?.name || 'Support Specialist';
+
     const ticket = await prisma.supportTicket.upsert({
       where: { userId },
       update: {
         status: 'in_progress',
         assignedStaffId: req.staff.id,
-        assignedStaffName: req.staff.name,
+        assignedStaffName: agentDisplayName,
         claimedAt: new Date()
       },
       create: {
         userId,
         status: 'in_progress',
         assignedStaffId: req.staff.id,
-        assignedStaffName: req.staff.name,
+        assignedStaffName: agentDisplayName,
         claimedAt: new Date()
       }
     });
 
     // Notify customer in real-time that human agent joined chat
-    const agentDisplayName = req.staff?.name || 'Support Agent';
     await prisma.supportMessage.create({
       data: {
         userId,
         sender: 'system',
         senderName: 'SimlyX Support',
-        text: `🎧 ${agentDisplayName} (Support Agent) has joined the chat to assist you.`
+        text: `🎧 ${agentDisplayName} has joined the chat to assist you.`
       }
     });
 
@@ -6566,7 +6745,7 @@ app.post('/api/admin/support/transfer', requireStaffPermission('can_handle_suppo
       where: { userId },
       data: {
         assignedStaffId: targetStaff.id,
-        assignedStaffName: targetStaff.name,
+        assignedStaffName: targetStaff.chatDisplayName || targetStaff.name,
         status: 'in_progress',
         internalNotes: internalNotes.trim() ? internalNotes.trim() : undefined
       }
@@ -6586,7 +6765,7 @@ app.post('/api/admin/support/transfer', requireStaffPermission('can_handle_suppo
 
     res.json({
       success: true,
-      message: `Ticket successfully transferred to ${targetStaff.name}!`,
+      message: `Ticket successfully transferred to ${targetStaff.chatDisplayName || targetStaff.name}!`,
       ticket
     });
   } catch (error) {
@@ -6609,7 +6788,7 @@ app.post('/api/admin/support/resolve', requireStaffPermission('can_handle_suppor
     });
 
     // Notify customer that ticket is resolved and prompt rating
-    const agentDisplayName = req.staff?.name || 'Your Support Agent';
+    const agentDisplayName = req.staff?.chatDisplayName || req.staff?.name || 'Your Support Agent';
     await prisma.supportMessage.create({
       data: {
         userId,
@@ -6620,15 +6799,16 @@ app.post('/api/admin/support/resolve', requireStaffPermission('can_handle_suppor
     });
 
     // Increment agent's resolved count
-    if (req.staff?.id) {
-      let targetStaffId = req.staff.id;
-      if (targetStaffId === 'root_super_admin') {
-        const superAdmin = await prisma.staffUser.findFirst({ where: { role: 'super_admin' } });
-        if (superAdmin) targetStaffId = superAdmin.id;
-      }
-      if (targetStaffId && targetStaffId !== 'root_super_admin') {
+    if (ticket.assignedStaffId && ticket.assignedStaffId !== 'root_super_admin') {
+      await prisma.staffUser.update({
+        where: { id: ticket.assignedStaffId },
+        data: { ticketsResolved: { increment: 1 } }
+      }).catch(() => {});
+    } else {
+      const superAdmin = await prisma.staffUser.findFirst({ where: { role: 'super_admin' } });
+      if (superAdmin) {
         await prisma.staffUser.update({
-          where: { id: targetStaffId },
+          where: { id: superAdmin.id },
           data: { ticketsResolved: { increment: 1 } }
         }).catch(() => {});
       }
@@ -6642,13 +6822,13 @@ app.post('/api/admin/support/resolve', requireStaffPermission('can_handle_suppor
       action: 'RESOLVE_TICKET',
       targetId: userId,
       targetType: 'ticket',
-      details: `Marked ticket for User '${userId}' as Resolved ✅`,
+      details: `Resolved support conversation with User '${userId}'`,
       req
     });
 
     res.json({
       success: true,
-      message: 'Ticket marked as Resolved and moved to completed archive.',
+      message: `Ticket marked as resolved. Rating request has been dispatched to customer.`,
       ticket
     });
   } catch (error) {
@@ -6818,19 +6998,36 @@ app.post('/api/support/rate', async (req, res) => {
 // 12c. Endpoint: Get Support Ratings & CSAT Analytics Stats for Admin
 app.get('/api/admin/support/ratings/stats', requireStaffPermission('can_handle_support'), async (req, res) => {
   try {
-    const [allRatings, staffList, resolvedTickets] = await Promise.all([
+    const isSuperAdmin = req.staff.role === 'super_admin' || req.staff.permissions === 'all' || req.staff.id === 'root_super_admin';
+    const currentStaffId = req.staff.id;
+    const currentStaffName = req.staff.name;
+
+    const [allRatingsRaw, staffListRaw, resolvedTickets] = await Promise.all([
       prisma.supportRating.findMany({
         orderBy: { createdAt: 'desc' }
       }),
       prisma.staffUser.findMany({
-        where: { isActive: true },
-        select: { id: true, name: true, email: true, role: true, isOnline: true, ticketsResolved: true }
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, name: true, chatDisplayName: true, email: true, role: true, isActive: true, isDeleted: true, isOnline: true, ticketsResolved: true }
       }),
       prisma.supportTicket.findMany({
         where: { status: 'resolved' },
         select: { assignedStaffId: true, assignedStaffName: true }
       })
     ]);
+
+    // If staff is NOT Super Admin, filter ratings strictly to their own!
+    let allRatings = allRatingsRaw;
+    let staffList = staffListRaw;
+
+    if (!isSuperAdmin) {
+      allRatings = allRatingsRaw.filter(r => 
+        r.staffId === currentStaffId || 
+        r.staffName === currentStaffName || 
+        (req.staff.chatDisplayName && r.staffName === req.staff.chatDisplayName)
+      );
+      staffList = staffListRaw.filter(s => s.id === currentStaffId);
+    }
 
     const nonSkipped = allRatings.filter(r => !r.isSkipped && r.rating > 0);
     const skippedCount = allRatings.filter(r => r.isSkipped).length;
@@ -6861,8 +7058,11 @@ app.get('/api/admin/support/ratings/stats', requireStaffPermission('can_handle_s
     // Per-Agent breakdown
     const agentScorecards = staffList.map(agent => {
       const isSuper = agent.role === 'super_admin';
-      const agentRatings = allRatings.filter(r => 
-        r.staffId === agent.id || (isSuper && (r.staffId === 'root_super_admin' || r.staffName === agent.name))
+      const agentRatings = allRatingsRaw.filter(r => 
+        r.staffId === agent.id || 
+        r.staffName === agent.name ||
+        (agent.chatDisplayName && r.staffName === agent.chatDisplayName) ||
+        (isSuper && (r.staffId === 'root_super_admin' || r.staffName === 'Owner (Super Admin)'))
       );
       const agentNonSkipped = agentRatings.filter(r => !r.isSkipped && r.rating > 0);
       const agentSkipped = agentRatings.filter(r => r.isSkipped).length;
@@ -6885,15 +7085,21 @@ app.get('/api/admin/support/ratings/stats', requireStaffPermission('can_handle_s
 
       // Count actual resolved tickets from DB
       const resolvedFromTickets = resolvedTickets.filter(t => 
-        t.assignedStaffId === agent.id || (isSuper && (t.assignedStaffId === 'root_super_admin' || !t.assignedStaffId))
+        t.assignedStaffId === agent.id || 
+        t.assignedStaffName === agent.name ||
+        (agent.chatDisplayName && t.assignedStaffName === agent.chatDisplayName) ||
+        (isSuper && (t.assignedStaffId === 'root_super_admin' || !t.assignedStaffId))
       ).length;
       const effectiveResolved = Math.max(agent.ticketsResolved || 0, resolvedFromTickets);
 
       return {
         staffId: agent.id,
         name: agent.name,
+        chatDisplayName: agent.chatDisplayName || agent.name,
         email: agent.email,
         role: agent.role,
+        isActive: agent.isActive,
+        isDeleted: Boolean(agent.isDeleted),
         isOnline: agent.isOnline,
         ticketsResolved: effectiveResolved,
         totalReviews: aTotalRated,
@@ -6907,6 +7113,7 @@ app.get('/api/admin/support/ratings/stats', requireStaffPermission('can_handle_s
 
     res.json({
       success: true,
+      isSuperAdmin,
       stats: {
         totalReviews: totalRated,
         totalSkipped: skippedCount,
@@ -6929,16 +7136,34 @@ app.get('/api/admin/support/ratings/stats', requireStaffPermission('can_handle_s
 // 12d. Endpoint: Get Paginated/Filtered Support Ratings Reviews Feed
 app.get('/api/admin/support/ratings', requireStaffPermission('can_handle_support'), async (req, res) => {
   try {
+    const isSuperAdmin = req.staff.role === 'super_admin' || req.staff.permissions === 'all' || req.staff.id === 'root_super_admin';
+    const currentStaffId = req.staff.id;
+    const currentStaffName = req.staff.name;
+
     const { staffId, minRating, maxRating, isSkipped, search, limit = 100, page = 1 } = req.query;
 
     const where = {};
-    if (staffId && staffId !== 'all') {
+    if (!isSuperAdmin) {
+      // Strictly isolate to this agent only!
+      where.OR = [
+        { staffId: currentStaffId },
+        { staffName: currentStaffName },
+        { staffName: req.staff.chatDisplayName || currentStaffName }
+      ];
+    } else if (staffId && staffId !== 'all') {
       const selectedStaff = await prisma.staffUser.findUnique({ where: { id: staffId } });
       if (selectedStaff && selectedStaff.role === 'super_admin') {
         where.OR = [
           { staffId: staffId },
           { staffId: 'root_super_admin' },
-          { staffName: selectedStaff.name }
+          { staffName: selectedStaff.name },
+          { staffName: 'Owner (Super Admin)' }
+        ];
+      } else if (selectedStaff) {
+        where.OR = [
+          { staffId: staffId },
+          { staffName: selectedStaff.name },
+          { staffName: selectedStaff.chatDisplayName || selectedStaff.name }
         ];
       } else {
         where.staffId = staffId;
@@ -7447,7 +7672,7 @@ app.post('/api/admin/support/reply', requireStaffPermission('can_handle_support'
       });
     }
 
-    const agentName = `${currentStaffName} (SimlyX Support)`;
+    const agentName = req.staff?.chatDisplayName || currentStaffName;
 
     const saved = await prisma.supportMessage.create({
       data: {

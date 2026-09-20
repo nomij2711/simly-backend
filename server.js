@@ -4330,7 +4330,57 @@ app.post('/api/admin/login', (req, res) => {
 // ============================================================
 // 💎 MASTER TELECOM FINANCIAL & PROFIT ENGINE (8-DECIMAL ACCURACY)
 // ============================================================
+function parseLineTxDetails(t, userMap = {}) {
+  const retail = Math.abs(t.amount || 0);
+  const desc = (t.description || '').toLowerCase();
+  let cc = 'US';
+  if (desc.includes('+44')) cc = 'GB';
+  else if (desc.includes('+49')) cc = 'DE';
+  else if (desc.includes('+61')) cc = 'AU';
+  else if (desc.includes('+1')) cc = 'US';
+
+  let plan = '30_days';
+  let planDaysLabel = '30 Days Monthly';
+  if (desc.includes('7 days') || desc.includes('7_days') || desc.includes('weekly')) {
+    plan = '7_days';
+    planDaysLabel = '7 Days Weekly';
+  } else if (desc.includes('365') || desc.includes('1 year') || desc.includes('yearly') || retail >= 10) {
+    plan = '365_days';
+    planDaysLabel = '365 Days Yearly';
+  }
+
+  const wholesale = calculateNumberWholesaleCost(cc, plan);
+  const profit = retail - wholesale;
+  const margin = retail > 0 ? ((profit / retail) * 100).toFixed(2) : '0.00';
+  
+  const phoneMatch = (t.description || '').match(/\+?\d{8,15}/);
+  const phone = phoneMatch ? phoneMatch[0] : (desc.includes('line') ? (t.description.split(':')[1] || t.description).trim() : `Line ${t.id.substring(0, 8)}`);
+  const isRenewal = t.type.includes('renewal') || desc.includes('renewal');
+  const user = userMap[t.userId] || { name: 'SimlyX Customer', email: t.userId };
+
+  return {
+    id: t.id,
+    phoneNumber: phone,
+    countryCode: cc,
+    planType: plan,
+    planDaysLabel: isRenewal ? `${planDaysLabel} (Renewal)` : planDaysLabel,
+    isRenewal,
+    status: 'active',
+    userName: user.name || 'SimlyX Customer',
+    userEmail: user.email || t.userId,
+    wholesaleCost: parseFloat(wholesale.toFixed(8)),
+    retailPrice: parseFloat(retail.toFixed(8)),
+    retailCharge: parseFloat(retail.toFixed(8)),
+    netProfit: parseFloat(profit.toFixed(8)),
+    profit: parseFloat(profit.toFixed(8)),
+    marginPercent: margin,
+    createdAt: t.createdAt
+  };
+}
+
 async function calculateMasterFinancials() {
+  await refreshDynamicCaches();
+
   // 1. Total Customer Deposits (All-time topups/deposits loaded into prepaid wallets)
   const depositTx = await prisma.transaction.findMany({
     where: { type: { in: ['topup', 'deposit', 'crypto_deposit', 'stripe_deposit'] } },
@@ -4342,71 +4392,77 @@ async function calculateMasterFinancials() {
   const allUsers = await prisma.user.findMany({ select: { walletBalance: true } });
   const totalUserBalance = allUsers.reduce((sum, u) => sum + (u.walletBalance || 0), 0);
 
-  // 3. Realized Retail Revenue (Actual charges paid by users for platform services)
-  const [lineTx, callTx, smsTx] = await Promise.all([
+  // 3. Realized Retail Revenue & Wholesale Costs
+  const [lineTx, callTx, smsTx, allCalls, allSmsOutbound] = await Promise.all([
     prisma.transaction.findMany({
       where: { type: { in: ['number_purchase', 'renewal', 'number_renewal'] } },
-      select: { amount: true }
+      orderBy: { createdAt: 'asc' }
     }),
     prisma.transaction.findMany({
       where: { type: { in: ['call', 'call_charge'] } },
-      select: { amount: true }
+      orderBy: { createdAt: 'asc' }
     }),
     prisma.transaction.findMany({
       where: { type: { in: ['sms', 'sms_charge'] } },
-      select: { amount: true }
+      orderBy: { createdAt: 'asc' }
+    }),
+    prisma.callLog.findMany({ 
+      where: { direction: 'outbound' },
+      orderBy: { createdAt: 'asc' }
+    }),
+    prisma.message.findMany({ 
+      where: { direction: 'outbound' },
+      orderBy: { createdAt: 'asc' }
     })
   ]);
 
-  const retailLineRevenue = lineTx.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
-  const retailCallRevenue = callTx.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
-  const retailSmsRevenue = smsTx.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
-  const totalRetailRevenue = retailLineRevenue + retailCallRevenue + retailSmsRevenue;
-
-  // 4. Wholesale Telecom Carrier Costs (Telnyx Direct Wholesale DIDs, Termination & SMS)
-  // A. Numbers Wholesale Cost: Exact Telnyx wholesale DID rate per country & plan
-  const purchasedNumbers = await prisma.purchasedNumber.findMany({ select: { id: true, countryCode: true, planType: true, createdAt: true } });
+  // A. Number subscriptions & renewals (All line transactions)
+  let retailLineRevenue = 0;
   let wholesaleNumberCost = 0;
-  purchasedNumbers.forEach(n => {
-    wholesaleNumberCost += calculateNumberWholesaleCost(n.countryCode, n.planType);
+  lineTx.forEach(t => {
+    const item = parseLineTxDetails(t);
+    retailLineRevenue += item.retailCharge;
+    wholesaleNumberCost += item.wholesaleCost;
   });
 
-  // B. Calls Wholesale Cost: Dynamic wholesale per destination country
-  const allCalls = await prisma.callLog.findMany({ 
-    where: { direction: 'outbound' },
-    select: { contactNumber: true, durationSeconds: true, status: true } 
-  });
+  // B. Outbound Calls (100% Dynamic Destination Rate Deck)
+  let retailCallRevenue = 0;
   let wholesaleCallCost = 0;
   let totalCallSeconds = 0;
-  allCalls.forEach(c => {
+  allCalls.forEach((c, i) => {
     const durSec = c.durationSeconds || 0;
     totalCallSeconds += durSec;
-    if (durSec > 0 || c.status === 'completed') {
-      const dest = getRateForDestinationNumber(c.contactNumber);
-      const minutes = durSec > 0 ? Math.ceil(durSec / 60) : 1;
-      const wholesaleRate = Number(dest.callWholesaleCostPerMin != null ? dest.callWholesaleCostPerMin : ((dest.callRatePerMin || 0.05) / CALLING_RETAIL_MULTIPLIER));
-      wholesaleCallCost += (minutes * wholesaleRate);
-    }
+    const dest = getRateForDestinationNumber(c.contactNumber);
+    const minutes = durSec > 0 ? Math.ceil(durSec / 60) : (c.status === 'completed' ? 1 : 0);
+    const wholesaleRate = Number(dest.callWholesaleCostPerMin != null ? dest.callWholesaleCostPerMin : ((dest.callSellPricePerMin || dest.callRatePerMin || 0.05) / CALLING_RETAIL_MULTIPLIER));
+    const wholesale = minutes * wholesaleRate;
+    wholesaleCallCost += wholesale;
+
+    const retailRate = Number(dest.callSellPricePerMin || dest.callRatePerMin || 0.05);
+    const retail = (callTx[i] && i < callTx.length) ? Math.abs(callTx[i].amount) : (minutes * retailRate);
+    retailCallRevenue += retail;
   });
   const totalCallMinutes = totalCallSeconds / 60;
 
-  // C. SMS Wholesale Cost: Dynamic carrier cost per destination
-  const allSmsOutbound = await prisma.message.findMany({ 
-    where: { direction: 'outbound' },
-    select: { toNumber: true }
-  });
+  // C. Outbound SMS (100% Dynamic Destination Rate Deck)
+  let retailSmsRevenue = 0;
   let wholesaleSmsCost = 0;
-  allSmsOutbound.forEach(m => {
+  allSmsOutbound.forEach((m, i) => {
     const dest = getRateForDestinationNumber(m.toNumber);
-    const wholesaleRate = Number(dest.smsWholesaleCost != null ? dest.smsWholesaleCost : ((dest.smsRate || 0.05) / NUMBER_RETAIL_MULTIPLIER));
+    const wholesaleRate = Number(dest.smsWholesaleCost != null ? dest.smsWholesaleCost : ((dest.smsSellPrice || dest.smsRate || 0.05) / NUMBER_RETAIL_MULTIPLIER));
     wholesaleSmsCost += wholesaleRate;
+
+    const matchedTx = (smsTx[i] && i < smsTx.length) ? smsTx[i] : smsTx.find(t => t.description && t.description.includes(m.toNumber));
+    const retail = matchedTx ? Math.abs(matchedTx.amount) : Number(dest.smsSellPrice || dest.smsRate || 0.05);
+    retailSmsRevenue += retail;
   });
 
+  const totalRetailRevenue = retailLineRevenue + retailCallRevenue + retailSmsRevenue;
   const totalWholesaleCost = wholesaleNumberCost + wholesaleCallCost + wholesaleSmsCost;
-
-  // 5. TRUE NET REALIZED PROFIT (Retail Billed Revenue - Wholesale Carrier Costs)
   const netProfit = totalRetailRevenue - totalWholesaleCost;
   const marginPercent = totalRetailRevenue > 0 ? ((netProfit / totalRetailRevenue) * 100) : 0.0;
+
+  const activeNumbersCount = await prisma.purchasedNumber.count({ where: { status: 'active' } });
 
   return {
     netProfit: parseFloat(netProfit.toFixed(8)),
@@ -4436,7 +4492,7 @@ async function calculateMasterFinancials() {
     totalCallSeconds,
     totalCallMinutes: parseFloat(totalCallMinutes.toFixed(4)),
     totalSmsSent: allSmsOutbound.length,
-    activeNumbers: purchasedNumbers.length
+    activeNumbers: activeNumbersCount
   };
 }
 
@@ -4444,101 +4500,64 @@ async function calculateMasterFinancials() {
 // 2b. Master Dashboard KPI Detailed Breakdown (Wholesale, Profit, Subscriptions, CDR & Deposits)
 app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
   try {
+    await refreshDynamicCaches();
     const fin = await calculateMasterFinancials();
 
-    // 1. Numbers Fleet Breakdown with wholesale vs retail pricing & user details
-    // 1. Numbers Fleet Breakdown with wholesale vs retail pricing & user details
-    const numbers = await prisma.purchasedNumber.findMany({
-      orderBy: { createdAt: 'desc' }
-    });
+    const [lineTx, callTx, smsTx, allCalls, allSmsOutbound, deposits, retailCharges, allUsers] = await Promise.all([
+      prisma.transaction.findMany({
+        where: { type: { in: ['number_purchase', 'renewal', 'number_renewal'] } },
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.transaction.findMany({
+        where: { type: { in: ['call', 'call_charge'] } },
+        orderBy: { createdAt: 'asc' }
+      }),
+      prisma.transaction.findMany({
+        where: { type: { in: ['sms', 'sms_charge'] } },
+        orderBy: { createdAt: 'asc' }
+      }),
+      prisma.callLog.findMany({
+        where: { direction: 'outbound' },
+        orderBy: { createdAt: 'asc' }
+      }),
+      prisma.message.findMany({
+        where: { direction: 'outbound' },
+        orderBy: { createdAt: 'asc' }
+      }),
+      prisma.transaction.findMany({
+        where: { type: { in: ['topup', 'deposit', 'crypto_deposit', 'stripe_deposit'] } },
+        take: 500,
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.transaction.findMany({
+        where: { type: { in: ['number_purchase', 'renewal', 'number_renewal', 'call', 'call_charge', 'sms', 'sms_charge'] } },
+        take: 500,
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.user.findMany({
+        select: { id: true, name: true, email: true, phone: true, walletBalance: true }
+      })
+    ]);
 
-    // Fetch all number purchase transactions to get exact historical billed price
-    const purchaseTransactions = await prisma.transaction.findMany({
-      where: { type: { in: ['number_purchase', 'renewal', 'number_renewal'] } },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    // 4. Customer Deposit Transactions
-    const deposits = await prisma.transaction.findMany({
-      where: { type: { in: ['topup', 'deposit', 'crypto_deposit', 'stripe_deposit'] } },
-      take: 250,
-      orderBy: { createdAt: 'desc' }
-    });
-
-    // 5. Retail Usage / Purchase Transactions
-    const retailCharges = await prisma.transaction.findMany({
-      where: { type: { in: ['number_purchase', 'renewal', 'number_renewal', 'call', 'call_charge', 'sms', 'sms_charge'] } },
-      take: 250,
-      orderBy: { createdAt: 'desc' }
-    });
-
-    const userIds = [...new Set([
-      ...numbers.map(n => n.userId),
-      ...purchaseTransactions.map(t => t.userId),
-      ...deposits.map(d => d.userId),
-      ...retailCharges.map(r => r.userId)
-    ].filter(Boolean))];
-
-    const users = await prisma.user.findMany({
-      where: { id: { in: userIds } },
-      select: { id: true, name: true, email: true, phone: true, walletBalance: true }
-    });
     const userMap = {};
-    users.forEach(u => {
+    allUsers.forEach(u => {
       userMap[u.id] = u;
       if (u.email) userMap[u.email.toLowerCase()] = u;
     });
 
-    const numbersDetailed = numbers.map(n => {
-      const cc = (n.countryCode || 'US').toUpperCase();
-      const plan = n.planType || '30_days';
-      
-      // Look for the exact purchase transaction of this number
-      const matchedTx = purchaseTransactions.find(t => t.description && t.description.includes(n.phoneNumber));
-      const retail = matchedTx ? Math.abs(matchedTx.amount) : calculateNumberPrice(cc, plan, plan === '7_days' ? 7 : plan === '365_days' ? 365 : 30, n.phoneNumber);
-      
-      // Calculate exact carrier wholesale base cost
-      const wholesale = calculateNumberWholesaleCost(cc, plan);
-      
-      const planDaysLabel = plan === '7_days' ? '7 Days Weekly' : plan === '365_days' ? '365 Days Yearly' : '30 Days Monthly';
-      const netProfit = retail - wholesale;
-      const margin = retail > 0 ? ((netProfit / retail) * 100).toFixed(2) : '0.00';
-      const user = userMap[n.userId] || { name: 'SimlyX User', email: n.userId };
+    // 1. Line purchases & renewals (All itemized financial records)
+    const numbersDetailed = lineTx.map(t => parseLineTxDetails(t, userMap));
 
-      return {
-        id: n.id,
-        phoneNumber: n.phoneNumber,
-        countryCode: cc,
-        planType: plan,
-        planDaysLabel,
-        status: n.status || 'active',
-        createdAt: n.createdAt,
-        expiresAt: n.expiresAt,
-        userName: user.name || 'SimlyX Customer',
-        userEmail: user.email || n.userId,
-        wholesaleCost: parseFloat(wholesale.toFixed(8)),
-        retailPrice: parseFloat(retail.toFixed(8)),
-        retailCharge: parseFloat(retail.toFixed(8)),
-        netProfit: parseFloat(netProfit.toFixed(8)),
-        profit: parseFloat(netProfit.toFixed(8)),
-        marginPercent: margin
-      };
-    });
-
-    // 2. Call Logs Breakdown (100% Dynamic Destination Country Rates)
-    const callLogs = await prisma.callLog.findMany({
-      take: 250,
-      orderBy: { createdAt: 'desc' }
-    });
-    const callsDetailed = callLogs.map(c => {
+    // 2. Outbound Calls
+    const callsDetailed = allCalls.map((c, i) => {
       const durSec = c.durationSeconds || 0;
       const dest = getRateForDestinationNumber(c.contactNumber);
       const minutes = durSec > 0 ? Math.ceil(durSec / 60) : (c.status === 'completed' ? 1 : 0);
-      const retailRate = Number(dest.callRatePerMin || dest.callRate || 0.05);
-      const wholesaleRate = Number(dest.callWholesaleCostPerMin != null ? dest.callWholesaleCostPerMin : (retailRate / CALLING_RETAIL_MULTIPLIER));
-      
-      const retail = minutes * retailRate;
+      const wholesaleRate = Number(dest.callWholesaleCostPerMin != null ? dest.callWholesaleCostPerMin : ((dest.callSellPricePerMin || dest.callRatePerMin || 0.05) / CALLING_RETAIL_MULTIPLIER));
       const wholesale = minutes * wholesaleRate;
+
+      const retailRate = Number(dest.callSellPricePerMin || dest.callRatePerMin || 0.05);
+      const retail = (callTx[i] && i < callTx.length) ? Math.abs(callTx[i].amount) : (minutes * retailRate);
       const profit = retail - wholesale;
       const margin = retail > 0 ? ((profit / retail) * 100).toFixed(2) : '0.00';
 
@@ -4546,13 +4565,14 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
         id: c.id,
         myNumber: c.myNumber,
         contactNumber: c.contactNumber,
-        destinationCountry: dest.country || dest.countryName || 'International',
-        flagEmoji: dest.flag || dest.flagEmoji || '🌐',
+        destinationCountry: dest.countryName || dest.country || 'International',
+        flagEmoji: dest.flagEmoji || dest.flag || '🌐',
         direction: c.direction,
         status: c.status,
         durationSeconds: durSec,
         durationFormatted: Math.floor(durSec / 60) + 'm ' + (durSec % 60) + 's',
         ratePerMin: parseFloat(retailRate.toFixed(4)),
+        wholesaleRate: parseFloat(wholesaleRate.toFixed(4)),
         wholesaleCost: parseFloat(wholesale.toFixed(8)),
         retailCharge: parseFloat(retail.toFixed(8)),
         retailPrice: parseFloat(retail.toFixed(8)),
@@ -4561,18 +4581,16 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
         marginPercent: margin,
         createdAt: c.createdAt
       };
-    });
+    }).reverse();
 
-    // 3. Outbound SMS Breakdown (100% Dynamic Destination Country Rates)
-    const smsLogs = await prisma.message.findMany({
-      where: { direction: 'outbound' },
-      take: 250,
-      orderBy: { createdAt: 'desc' }
-    });
-    const smsDetailed = smsLogs.map(m => {
+    // 3. Outbound SMS
+    const smsDetailed = allSmsOutbound.map((m, i) => {
       const dest = getRateForDestinationNumber(m.toNumber);
-      const retail = Number(dest.smsRate || dest.smsSellPrice || 0.05);
-      const wholesale = Number(dest.smsWholesaleCost != null ? dest.smsWholesaleCost : (retail / NUMBER_RETAIL_MULTIPLIER));
+      const wholesaleRate = Number(dest.smsWholesaleCost != null ? dest.smsWholesaleCost : ((dest.smsSellPrice || dest.smsRate || 0.05) / NUMBER_RETAIL_MULTIPLIER));
+      const wholesale = wholesaleRate;
+
+      const matchedTx = (smsTx[i] && i < smsTx.length) ? smsTx[i] : smsTx.find(t => t.description && t.description.includes(m.toNumber));
+      const retail = matchedTx ? Math.abs(matchedTx.amount) : Number(dest.smsSellPrice || dest.smsRate || 0.05);
       const profit = retail - wholesale;
       const margin = retail > 0 ? ((profit / retail) * 100).toFixed(2) : '0.00';
 
@@ -4580,8 +4598,8 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
         id: m.id,
         fromNumber: m.fromNumber,
         toNumber: m.toNumber,
-        destinationCountry: dest.country || dest.countryName || 'International',
-        flagEmoji: dest.flag || dest.flagEmoji || '🌐',
+        destinationCountry: dest.countryName || dest.country || 'International',
+        flagEmoji: dest.flagEmoji || dest.flag || '🌐',
         text: m.text,
         status: m.status,
         telnyxMessageId: m.telnyxMessageId,
@@ -4593,8 +4611,9 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
         marginPercent: margin,
         createdAt: m.createdAt
       };
-    });
+    }).reverse();
 
+    // 4. Deposits
     const depositsDetailed = deposits.map(d => {
       const u = userMap[d.userId] || { name: 'Customer', email: d.userId, walletBalance: 0 };
       return {

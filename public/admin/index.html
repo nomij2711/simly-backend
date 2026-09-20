@@ -10169,14 +10169,17 @@ function exportData(type) {
 
         // 1. Gather Number Subscriptions
         (data.numbers || []).forEach(n => {
+          const isRen = n.isRenewal || (n.planDaysLabel && n.planDaysLabel.toLowerCase().includes('renewal'));
           allEvents.push({
             id: n.id,
             category: 'numbers',
-            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-phone mr-1"></i>Line Subscription</span>',
+            badge: isRen
+              ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20"><i class="fa-solid fa-rotate mr-1"></i>Line Renewal</span>'
+              : '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-phone mr-1"></i>Line Subscription</span>',
             title: n.phoneNumber,
             subtitle: `${n.countryCode || 'US'} Dedicated Virtual Line`,
-            iconBg: 'bg-emerald-500/10 text-emerald-400',
-            icon: 'fa-phone',
+            iconBg: isRen ? 'bg-purple-500/10 text-purple-400' : 'bg-emerald-500/10 text-emerald-400',
+            icon: isRen ? 'fa-rotate' : 'fa-phone',
             userName: n.userName || 'Simly Customer',
             userEmail: n.userEmail || '',
             planLabel: n.planDaysLabel || '30 Days Monthly',
@@ -10338,18 +10341,21 @@ function exportData(type) {
         (data.numbers || []).forEach(n => {
           const cost = Number(n.wholesaleCost || 0);
           numbersWholesaleSum += cost;
+          const isRen = n.isRenewal || (n.planDaysLabel && n.planDaysLabel.toLowerCase().includes('renewal'));
           allWholesaleEvents.push({
             id: n.id,
             category: 'numbers',
-            badge: '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"><i class="fa-solid fa-server mr-1"></i>DID Line Lease</span>',
+            badge: isRen
+              ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20"><i class="fa-solid fa-rotate mr-1"></i>DID Line Renewal</span>'
+              : '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"><i class="fa-solid fa-server mr-1"></i>DID Line Lease</span>',
             title: n.phoneNumber,
             subtitle: `Telnyx Direct Leased Line • ${n.userName || 'Assigned User'}`,
             destination: `${n.countryCode || 'US'} Route`,
             metric: n.planDaysLabel || '30 Days Monthly',
             cost: cost,
             status: n.status || 'ACTIVE',
-            iconBg: 'bg-cyan-500/10 text-cyan-400',
-            icon: 'fa-server',
+            iconBg: isRen ? 'bg-purple-500/10 text-purple-400' : 'bg-cyan-500/10 text-cyan-400',
+            icon: isRen ? 'fa-rotate' : 'fa-server',
             date: new Date(n.createdAt || Date.now()),
             dateFormatted: new Date(n.createdAt || Date.now()).toLocaleDateString()
           });
@@ -10924,8 +10930,9 @@ function exportData(type) {
           // Build unified records
           let allRecords = [];
           (data.numbers || []).forEach(n => {
+            const isRen = n.isRenewal || (n.planDaysLabel && n.planDaysLabel.toLowerCase().includes('renewal'));
             allRecords.push({
-              category: 'Line Subscription',
+              category: isRen ? 'Line Renewal' : 'Line Subscription',
               customer: `${n.userName || 'Simly Customer'} (${n.userEmail || n.phoneNumber})`,
               details: `${n.phoneNumber} [${n.planDaysLabel || '30 Days Monthly'}]`,
               wholesale: Number(n.wholesaleCost || 0),
@@ -11049,8 +11056,9 @@ function exportData(type) {
           (data.numbers || []).forEach(n => {
             const cost = Number(n.wholesaleCost || 0);
             numbersWholesaleSum += cost;
+            const isRen = n.isRenewal || (n.planDaysLabel && n.planDaysLabel.toLowerCase().includes('renewal'));
             allWholesale.push({
-              category: 'Line Lease',
+              category: isRen ? 'DID Line Renewal' : 'DID Line Lease',
               service: `Virtual DID [${n.countryCode || 'US'}] ${n.phoneNumber}`,
               details: n.planDaysLabel || '30 Days Monthly',
               rate: formatUSD8(cost),

@@ -556,8 +556,7 @@ app.post('/api/auth/signup', async (req, res) => {
       success: true,
       requireOtp: true,
       email: cleanEmail,
-      message: `Verification code sent to ${cleanEmail}. Please enter the 6-digit code to activate your account.`,
-      demoCode: code // Available for quick dev fallback
+      message: `Verification code sent to ${cleanEmail}. Please enter the 6-digit code to activate your account.`
     });
   } catch (error) {
     console.error('[SIMLYX AUTH ERROR] Signup failed:', error);
@@ -669,7 +668,6 @@ app.post('/api/auth/send-otp', async (req, res) => {
     res.json({
       success: true,
       message: `Verification code sent to ${cleanTarget}`,
-      demoCode: code,
       expiresInSeconds: 600
     });
   } catch (error) {
@@ -699,13 +697,12 @@ app.post('/api/auth/verify-otp', async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    const isMasterCode = ['123456', '000000', '225689', '999999', '111111', '786786'].includes(enteredCode);
     let isTwilioApproved = false;
     if (!cleanTarget.includes('@')) {
       isTwilioApproved = await verifyTwilioPhoneOtp(cleanTarget, enteredCode);
     }
 
-    if (!otpRecord && !isMasterCode && !isTwilioApproved) {
+    if (!otpRecord && !isTwilioApproved) {
       return res.status(400).json({ success: false, error: 'Invalid or expired verification code. Please request a new one.' });
     }
 
@@ -877,8 +874,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
       return res.json({
         success: true,
-        message: `Password reset code sent to ${cleanEmail}. Check your inbox.`,
-        demoCode: otpCode
+        message: `Password reset code sent to ${cleanEmail}. Check your inbox.`
       });
     }
 
@@ -894,7 +890,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    if (!otpRecord && enteredCode !== '123456') {
+    if (!otpRecord) {
       return res.status(400).json({ success: false, error: 'Invalid or expired recovery code. Please request a new code.' });
     }
 
@@ -4852,8 +4848,11 @@ app.get('/api/admin/users', requireStaffPermission(['can_view_users', 'can_manag
         const accountId = getCustomerAccountId(u);
         const clientIp = u.lastLoginIp || null;
         const geo = clientIp ? getGeoFromIp(clientIp) : null;
+        const safeU = { ...u };
+        delete safeU.password;
+
         return {
-          ...u,
+          ...safeU,
           accountId,
           ip: clientIp,
           geo,
@@ -5073,10 +5072,13 @@ app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_u
 
     const clientIp = user.lastLoginIp || null;
     const geo = clientIp ? getGeoFromIp(clientIp) : null;
+    const safeUser = { ...user };
+    delete safeUser.password;
+
     res.json({
       success: true,
       user: {
-        ...user,
+        ...safeUser,
         accountId: getCustomerAccountId(user),
         ip: clientIp,
         geo,

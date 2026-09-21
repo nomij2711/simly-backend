@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SimlyX - Unlimited Virtual Phone Numbers & Global VoIP Calling</title>
+  <meta name="description" content="SimlyX Ltd provides instant private 2nd phone numbers for calling and SMS 2FA verification. Protect your privacy with unlimited virtual numbers on one phone.">
+  <meta name="keywords" content="virtual phone number, 2nd phone number, SMS verification, OTP receiver, private calling, VoIP phone number, SimlyX Ltd, Fanytel alternative, Vyke alternative">
+  
+  <!-- Open Graph / Meta -->
+  <meta property="og:title" content="SimlyX - Unlimited Virtual Phone Numbers & Global Calling">
+  <meta property="og:description" content="Activate private US, UK, and international virtual numbers instantly. Unlimited numbers on one device without a physical SIM.">
+  <meta property="og:image" content="/logo.png">
+  <meta property="og:type" content="website">
+
+  <!-- Tailwind CSS & Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-card:hover {
+      border-color: rgba(99, 102, 241, 0.35);
+    }
+    .glow-indigo {
+      box-shadow: 0 0 50px -10px rgba(99, 102, 241, 0.25);
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #0b0f19; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white relative overflow-x-hidden">
+
+  <!-- Background Decorative Glowing Orbs -->
+  <div class="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-tr from-indigo-600/15 to-purple-600/15 rounded-full blur-[120px] pointer-events-none z-0"></div>
+  <div class="fixed bottom-10 right-10 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[140px] pointer-events-none z-0"></div>
+
+  <!-- ===================================================================== -->
+  <!-- 🧭 1. NAVIGATION HEADER                                                -->
+  <!-- ===================================================================== -->
+  <header class="sticky top-0 z-50 bg-slate-950/85 backdrop-blur-xl border-b border-slate-800/80 transition-all">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      
+      <!-- Brand Logo -->
+      <a href="/" class="flex items-center gap-3 group">
+        <div class="relative">
+          <img src="/logo.png" alt="SimlyX Ltd Logo" class="w-10 h-10 rounded-2xl shadow-lg shadow-indigo-600/30 object-cover group-hover:scale-105 transition-transform">
+          <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-slate-950 rounded-full animate-pulse" title="Global Carrier Network Online"></span>
+        </div>
+        <div>
+          <div class="font-extrabold text-xl text-white tracking-tight flex items-center gap-1.5">
+            <span>SimlyX</span>
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">LTD</span>
+          </div>
+          <div class="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Virtual Telecom Network</div>
+        </div>
+      </a>
+
+      <!-- Desktop Nav Links -->
+      <nav class="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-300">
+        <a href="#features" class="hover:text-indigo-400 transition-colors">Features</a>
+        <a href="#unlimited" class="hover:text-indigo-400 transition-colors">Unlimited Numbers</a>
+        <a href="#comparison" class="hover:text-indigo-400 transition-colors">Why SimlyX?</a>
+        <a href="#rates" class="hover:text-indigo-400 transition-colors">Country Rates</a>
+        <a href="#compliance" class="hover:text-indigo-400 transition-colors">Carrier Compliance</a>
+        <a href="#contact" class="hover:text-indigo-400 transition-colors">Support</a>
+      </nav>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-3">
+        <a href="/admin/" class="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-300 bg-slate-900 border border-slate-800 hover:bg-slate-800 hover:text-white transition-all">
+          <i class="fa-solid fa-lock text-indigo-400 text-xs"></i>
+          <span>Staff Portal</span>
+        </a>
+        <a href="#download" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2">
+          <i class="fa-solid fa-mobile-screen-button"></i>
+          <span>Get App</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- 🚀 2. HERO SECTION                                                    -->
+  <!-- ===================================================================== -->
+  <section class="relative z-10 pt-16 pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
+    
+    <!-- Carrier Trust Badge -->
+    <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-bold mb-8 animate-fade-in shadow-inner">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+      <span>Direct Tier-1 PSTN Carrier Provisioning • 50+ Countries</span>
+    </div>
+
+    <!-- Main Headline -->
+    <h1 class="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.15] max-w-5xl mx-auto">
+      Unlimited Virtual Numbers. <br class="hidden sm:block"/>
+      <span class="bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">
+        Crystal-Clear Calling & SMS 2FA.
+      </span>
+    </h1>
+
+    <!-- Subtitle -->
+    <p class="mt-6 text-base sm:text-lg text-slate-400 max-w-3xl mx-auto leading-relaxed">
+      Keep your real identity 100% private. Acquire as many private USA, UK, Canada & international phone numbers as you need on a single smartphone. No physical SIM required, no contracts, and zero setup delays.
+    </p>
+
+    <!-- App Store & Google Play Badges CTA -->
+    <div id="download" class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+      <!-- App Store Button -->
+      <button onclick="showDownloadToast('iOS App')" class="w-full sm:w-auto px-6 py-3.5 bg-slate-900 border border-slate-700/80 hover:border-indigo-500 rounded-2xl flex items-center justify-center gap-3 transition-all hover:scale-105 shadow-xl group">
+        <i class="fa-brands fa-apple text-3xl text-white group-hover:text-indigo-400 transition-colors"></i>
+        <div class="text-left">
+          <div class="text-[10px] text-slate-400 uppercase font-semibold">Download on the</div>
+          <div class="text-sm font-bold text-white leading-tight">Apple App Store</div>
+        </div>
+      </button>
+
+      <!-- Google Play Button -->
+      <button onclick="showDownloadToast('Android App')" class="w-full sm:w-auto px-6 py-3.5 bg-slate-900 border border-slate-700/80 hover:border-emerald-500 rounded-2xl flex items-center justify-center gap-3 transition-all hover:scale-105 shadow-xl group">
+        <i class="fa-brands fa-google-play text-2xl text-emerald-400 group-hover:scale-110 transition-transform"></i>
+        <div class="text-left">
+          <div class="text-[10px] text-slate-400 uppercase font-semibold">Get it on</div>
+          <div class="text-sm font-bold text-white leading-tight">Google Play Store</div>
+        </div>
+      </button>
+    </div>
+
+    <!-- Quick Micro Highlights -->
+    <div class="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto text-left">
+      <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80">
+        <div class="text-2xl font-black text-indigo-400 font-mono">Unlimited</div>
+        <div class="text-xs text-slate-400 mt-0.5">Lines on 1 Single Device</div>
+      </div>
+      <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80">
+        <div class="text-2xl font-black text-emerald-400 font-mono">100% Free</div>
+        <div class="text-xs text-slate-400 mt-0.5">Inbound Calls & SMS</div>
+      </div>
+      <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80">
+        <div class="text-2xl font-black text-amber-400 font-mono">$0.50</div>
+        <div class="text-xs text-slate-400 mt-0.5">Low-Cost 7-Day Trial Line</div>
+      </div>
+      <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80">
+        <div class="text-2xl font-black text-cyan-400 font-mono">Instant</div>
+        <div class="text-xs text-slate-400 mt-0.5">Carrier Line Activation</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 🌟 3. CORE PILLARS & FEATURES                                         -->
+  <!-- ===================================================================== -->
+  <section id="features" class="relative z-10 py-20 bg-slate-900/40 border-y border-slate-800/80">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <h2 class="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2">Engineered For Total Privacy & Reliability</h2>
+        <h3 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Everything You Need In A Modern 2nd Phone Line</h3>
+        <p class="text-slate-400 text-sm mt-3">Built on direct tier-1 carrier PSTN interconnects to provide unmatched call clarity, instant SMS delivery, and zero identity exposure.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        
+        <!-- Feature 1: Unlimited Numbers -->
+        <div id="unlimited" class="glass-card rounded-3xl p-8 transition-all hover:-translate-y-1 shadow-xl flex flex-col justify-between">
+          <div>
+            <div class="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-2xl mb-6 border border-indigo-500/20">
+              <i class="fa-solid fa-phone-volume"></i>
+            </div>
+            <h4 class="text-xl font-bold text-white mb-2">Unlimited Numbers, 1 Phone</h4>
+            <p class="text-slate-400 text-xs leading-relaxed">
+              Unlike legacy apps that restrict you to 1 or 4 lines, SimlyX allows you to add as many private virtual numbers as you require. Separate your business, personal life, online dating, and freelancing effortlessly.
+            </p>
+          </div>
+          <div class="mt-6 pt-4 border-t border-slate-800 flex items-center gap-2 text-xs font-semibold text-indigo-400">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>No physical SIM swap needed</span>
+          </div>
+        </div>
+
+        <!-- Feature 2: 2-Way SMS & 2FA OTP -->
+        <div class="glass-card rounded-3xl p-8 transition-all hover:-translate-y-1 shadow-xl flex flex-col justify-between">
+          <div>
+            <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-2xl mb-6 border border-emerald-500/20">
+              <i class="fa-solid fa-message"></i>
+            </div>
+            <h4 class="text-xl font-bold text-white mb-2">2-Way SMS & 2FA Verification</h4>
+            <p class="text-slate-400 text-xs leading-relaxed">
+              Receive SMS verification codes and 2-Factor Authentication (2FA) OTPs for WhatsApp, Telegram, Google, OpenAI, banking, and online services directly inside the SimlyX conversation thread.
+            </p>
+          </div>
+          <div class="mt-6 pt-4 border-t border-slate-800 flex items-center gap-2 text-xs font-semibold text-emerald-400">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Real-time instant inbox delivery</span>
+          </div>
+        </div>
+
+        <!-- Feature 3: HD WebRTC VoIP Calling -->
+        <div class="glass-card rounded-3xl p-8 transition-all hover:-translate-y-1 shadow-xl flex flex-col justify-between">
+          <div>
+            <div class="w-14 h-14 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-2xl mb-6 border border-purple-500/20">
+              <i class="fa-solid fa-tower-broadcast"></i>
+            </div>
+            <h4 class="text-xl font-bold text-white mb-2">Global Crystal-Clear Calling</h4>
+            <p class="text-slate-400 text-xs leading-relaxed">
+              Make and receive international voice calls over high-fidelity Opus and G.711 codecs. Enjoy ultra-low rates to landlines and mobile phones worldwide without expensive carrier roaming surcharges.
+            </p>
+          </div>
+          <div class="mt-6 pt-4 border-t border-slate-800 flex items-center gap-2 text-xs font-semibold text-purple-400">
+            <i class="fa-solid fa-bolt"></i>
+            <span>Tier-1 Global PSTN Termination</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- ⚖️ 4. COMPETITOR BENCHMARK & COMPARISON TABLE (SimlyX Ltd vs Others)  -->
+  <!-- ===================================================================== -->
+  <section id="comparison" class="relative z-10 py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center max-w-3xl mx-auto mb-14">
+      <h2 class="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2">Transparent Market Benchmark</h2>
+      <h3 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">How SimlyX Compares to Legacy Competitors</h3>
+      <p class="text-slate-400 text-sm mt-3">We eliminated high markups, artificial line limits, and hidden fees to deliver the industry's most flexible virtual numbering service.</p>
+    </div>
+
+    <!-- Comparison Table -->
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs sm:text-sm">
+          <thead class="bg-slate-950 border-b border-slate-800 text-slate-400 font-semibold uppercase text-[11px] tracking-wider">
+            <tr>
+              <th class="py-4 px-6">Feature / Capability</th>
+              <th class="py-4 px-6 text-indigo-400 font-black text-sm bg-indigo-950/30 border-x border-indigo-500/20">
+                <div class="flex items-center gap-2">
+                  <img src="/logo.png" class="w-5 h-5 rounded object-cover" alt="SimlyX">
+                  <span>SimlyX Ltd</span>
+                </div>
+              </th>
+              <th class="py-4 px-6 text-slate-300">FanyTel</th>
+              <th class="py-4 px-6 text-slate-300">Vyke</th>
+              <th class="py-4 px-6 text-slate-300">Traditional Telcos</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60 text-slate-300">
+            <!-- Row 1: Line Rental -->
+            <tr class="hover:bg-slate-850 transition-colors">
+              <td class="py-4 px-6 font-bold text-white">Monthly Line Rental (USA/UK)</td>
+              <td class="py-4 px-6 font-extrabold text-emerald-400 bg-indigo-950/20 border-x border-indigo-500/20">
+                $0.50 (Trial) / $1.50/mo 🟢
+              </td>
+              <td class="py-4 px-6">$2.00 - $3.00/mo</td>
+              <td class="py-4 px-6">$2.50 - $4.00/mo</td>
+              <td class="py-4 px-6 text-rose-400">$15.00 - $35.00/mo</td>
+            </tr>
+            <!-- Row 2: Allowed Numbers -->
+            <tr class="hover:bg-slate-850 transition-colors">
+              <td class="py-4 px-6 font-bold text-white">Number Limits per Device</td>
+              <td class="py-4 px-6 font-extrabold text-indigo-300 bg-indigo-950/20 border-x border-indigo-500/20">
+                Unlimited Numbers 🚀
+              </td>
+              <td class="py-4 px-6">Limited Lines</td>
+              <td class="py-4 px-6">Max 4 Numbers</td>
+              <td class="py-4 px-6">1 Number per SIM</td>
+            </tr>
+            <!-- Row 3: Inbound Calls & SMS -->
+            <tr class="hover:bg-slate-850 transition-colors">
+              <td class="py-4 px-6 font-bold text-white">Inbound Calls & SMS Charges</td>
+              <td class="py-4 px-6 font-extrabold text-emerald-400 bg-indigo-950/20 border-x border-indigo-500/20">
+                100% Free (Unlimited)
+              </td>
+              <td class="py-4 px-6">Free Inbound</td>
+              <td class="py-4 px-6">Free Inbound</td>
+              <td class="py-4 px-6 text-rose-400">Roaming Charges Apply</td>
+            </tr>
+            <!-- Row 4: SMS 2FA / OTP Reception -->
+            <tr class="hover:bg-slate-850 transition-colors">
+              <td class="py-4 px-6 font-bold text-white">2-Way SMS & 2FA Verification</td>
+              <td class="py-4 px-6 font-extrabold text-emerald-400 bg-indigo-950/20 border-x border-indigo-500/20">
+                Tier-1 Direct Carrier Delivery
+              </td>
+              <td class="py-4 px-6">Supported</td>
+              <td class="py-4 px-6">Supported</td>
+              <td class="py-4 px-6">Physical SIM Required</td>
+            </tr>
+            <!-- Row 5: Contracts & Paperwork -->
+            <tr class="hover:bg-slate-850 transition-colors">
+              <td class="py-4 px-6 font-bold text-white">Contracts & Credit Checks</td>
+              <td class="py-4 px-6 font-extrabold text-emerald-400 bg-indigo-950/20 border-x border-indigo-500/20">
+                Zero (No KYC Paperwork)
+              </td>
+              <td class="py-4 px-6">No Contract</td>
+              <td class="py-4 px-6">No Contract</td>
+              <td class="py-4 px-6 text-rose-400">12-24 Mo Contracts</td>
+            </tr>
+            <!-- Row 6: Provisioning Speed -->
+            <tr class="hover:bg-slate-850 transition-colors">
+              <td class="py-4 px-6 font-bold text-white">Carrier Line Provisioning Time</td>
+              <td class="py-4 px-6 font-extrabold text-amber-400 bg-indigo-950/20 border-x border-indigo-500/20">
+                Instant (Under 5 Seconds)
+              </td>
+              <td class="py-4 px-6">1-5 Minutes</td>
+              <td class="py-4 px-6">1-5 Minutes</td>
+              <td class="py-4 px-6 text-rose-400">2-5 Business Days</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 🌍 5. INTERACTIVE LIVE DESTINATION RATES CALCULATOR                   -->
+  <!-- ===================================================================== -->
+  <section id="rates" class="relative z-10 py-20 bg-slate-900/40 border-y border-slate-800/80">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+        <div>
+          <h2 class="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1">Global Coverage & Transparent Rates</h2>
+          <h3 class="text-3xl font-extrabold text-white tracking-tight">Search Any Country Destination</h3>
+          <p class="text-slate-400 text-xs mt-1">Real-time carrier rates with zero hidden roaming or connection surcharges.</p>
+        </div>
+
+        <!-- Search Input -->
+        <div class="relative w-full md:w-80">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-500 text-sm"></i>
+          <input type="text" id="countrySearchInput" oninput="filterCountryRates(this.value)" placeholder="Search country (e.g. USA, UK, Canada)..." class="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all">
+        </div>
+      </div>
+
+      <!-- Country Rate Cards Grid -->
+      <div id="countryRatesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto custom-scrollbar pr-1">
+        <!-- JS rendered cards -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 🛡️ 6. CARRIER COMPLIANCE & LEGAL SECTION (Telnyx & Regulatory Stack)   -->
+  <!-- ===================================================================== -->
+  <section id="compliance" class="relative z-10 py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    
+    <div class="text-center max-w-3xl mx-auto mb-14">
+      <h2 class="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2">Carrier Partnership & Governance</h2>
+      <h3 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Enterprise Compliance & Regulatory Standards</h3>
+      <p class="text-slate-400 text-sm mt-3">SimlyX Ltd operates in strict adherence to global telecom regulations, CTIA 10DLC messaging frameworks, GDPR privacy standards, and FCC emergency services disclaimers.</p>
+    </div>
+
+    <!-- 🚨 MANDATORY 911 EMERGENCY NOTICE (Telnyx Carrier Mandatory Requirement) -->
+    <div class="mb-10 p-6 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs sm:text-sm leading-relaxed space-y-2">
+      <div class="font-bold flex items-center gap-2 text-amber-400 text-base">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>Important Regulatory Notice: Emergency Calling (911 / 112 / 999) Limitations</span>
+      </div>
+      <p class="text-slate-300">
+        SimlyX is an Over-The-Top (OTT) Voice-over-IP (VoIP) and virtual messaging software service provided by <b>SimlyX Ltd</b>. SimlyX is <b>NOT</b> a replacement for traditional landline or mobile cellular telephone service and <b>DOES NOT</b> support or carry calls to emergency services numbers (including 911 in the United States & Canada, 112 in the European Union, or 999 in the United Kingdom). Users must maintain access to standard mobile or fixed-line telecommunications for emergency service calls.
+      </p>
+    </div>
+
+    <!-- Legal Documents Tab Matrix -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- Card 1: Terms of Service -->
+      <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-file-contract"></i>
+        </div>
+        <h4 class="text-base font-bold text-white">Terms of Service</h4>
+        <p class="text-slate-400 text-xs leading-relaxed">
+          Governs user rights, digital consumable service delivery, carrier DID line provisioning, and subscription billing policies.
+        </p>
+        <button onclick="openLegalModal('terms')" class="text-indigo-400 hover:text-indigo-300 text-xs font-bold flex items-center gap-1.5 pt-2">
+          <span>Read Full Terms</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>
+        </button>
+      </div>
+
+      <!-- Card 2: Privacy Policy -->
+      <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-user-shield"></i>
+        </div>
+        <h4 class="text-base font-bold text-white">Privacy Policy (GDPR / CCPA)</h4>
+        <p class="text-slate-400 text-xs leading-relaxed">
+          Zero data-selling commitment, end-to-end encrypted VoIP transport, user data retention standards, and right-to-erasure account deletion.
+        </p>
+        <button onclick="openLegalModal('privacy')" class="text-emerald-400 hover:text-emerald-300 text-xs font-bold flex items-center gap-1.5 pt-2">
+          <span>Read Privacy Policy</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>
+        </button>
+      </div>
+
+      <!-- Card 3: Acceptable Use & Anti-Spam -->
+      <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-3">
+        <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-shield-cat"></i>
+        </div>
+        <h4 class="text-base font-bold text-white">Acceptable Use & 10DLC AUP</h4>
+        <p class="text-slate-400 text-xs leading-relaxed">
+          Strict carrier anti-spam, anti-robocall, anti-harassment, and telemarketing prohibition rules ensuring network integrity.
+        </p>
+        <button onclick="openLegalModal('aup')" class="text-purple-400 hover:text-purple-300 text-xs font-bold flex items-center gap-1.5 pt-2">
+          <span>Read AUP Policy</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>
+        </button>
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 📞 7. CONTACT & SUPPORT DESK                                          -->
+  <!-- ===================================================================== -->
+  <section id="contact" class="relative z-10 py-20 bg-slate-900/40 border-t border-slate-800/80">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
+      <div class="w-14 h-14 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center text-2xl mx-auto border border-indigo-500/30">
+        <i class="fa-solid fa-headset"></i>
+      </div>
+      <h3 class="text-3xl font-extrabold text-white tracking-tight">Need Assistance? We're Here 24/7</h3>
+      <p class="text-slate-400 text-sm max-w-xl mx-auto">
+        Have questions about virtual numbers, carrier provisioning, or business wholesale integration? Our dedicated support team is available round the clock.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-4 pt-2">
+        <a href="mailto:support@simlyx.com" class="px-5 py-3 rounded-2xl bg-slate-900 border border-slate-800 hover:border-indigo-500 text-xs font-bold text-white flex items-center gap-2 transition-all">
+          <i class="fa-solid fa-envelope text-indigo-400"></i>
+          <span>support@simlyx.com</span>
+        </a>
+        <a href="mailto:legal@simlyx.com" class="px-5 py-3 rounded-2xl bg-slate-900 border border-slate-800 hover:border-purple-500 text-xs font-bold text-white flex items-center gap-2 transition-all">
+          <i class="fa-solid fa-scale-balanced text-purple-400"></i>
+          <span>legal@simlyx.com</span>
+        </a>
+        <a href="/admin/" class="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white flex items-center gap-2 transition-all shadow-lg shadow-indigo-600/30">
+          <i class="fa-solid fa-comments"></i>
+          <span>Open Live Helpdesk</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 🏢 8. FOOTER                                                          -->
+  <!-- ===================================================================== -->
+  <footer class="bg-slate-950 border-t border-slate-900 text-xs text-slate-500 py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      
+      <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="flex items-center gap-3">
+          <img src="/logo.png" alt="SimlyX Ltd" class="w-8 h-8 rounded-xl object-cover">
+          <div>
+            <div class="font-extrabold text-sm text-white">SimlyX Ltd</div>
+            <div class="text-[10px] text-slate-400">Global Telecom & Virtual Number Systems</div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-6 text-slate-400 font-medium">
+          <button onclick="openLegalModal('terms')" class="hover:text-white transition-colors">Terms of Service</button>
+          <button onclick="openLegalModal('privacy')" class="hover:text-white transition-colors">Privacy Policy</button>
+          <button onclick="openLegalModal('aup')" class="hover:text-white transition-colors">Acceptable Use</button>
+          <button onclick="openLegalModal('refund')" class="hover:text-white transition-colors">Refund Policy</button>
+          <a href="/admin/" class="hover:text-white transition-colors">Staff Login</a>
+        </div>
+      </div>
+
+      <div class="pt-6 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px]">
+        <div>
+          © 2026 <b>SimlyX Ltd</b>. All rights reserved. Registered Telecommunications Software Provider.
+        </div>
+        <div class="flex items-center gap-2 text-slate-400">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span>Carrier Interconnect: Telnyx Global Tier-1 PSTN</span>
+        </div>
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- ===================================================================== -->
+  <!-- 📜 MODAL: LEGAL & COMPLIANCE VIEWER                                   -->
+  <!-- ===================================================================== -->
+  <div id="legalModal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden p-6 space-y-4 max-h-[85vh] flex flex-col animate-scale-up">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+        <div>
+          <h3 id="legalModalTitle" class="text-base font-bold text-white flex items-center gap-2">Legal Policy</h3>
+          <p class="text-[11px] text-slate-400">SimlyX Ltd Compliance & Governance Framework</p>
+        </div>
+        <button onclick="closeLegalModal()" class="text-slate-400 hover:text-white text-lg p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div id="legalModalBody" class="flex-1 overflow-y-auto custom-scrollbar pr-2 text-xs text-slate-300 space-y-4 leading-relaxed">
+        <!-- Content injected dynamically -->
+      </div>
+
+      <div class="flex items-center justify-end pt-3 border-t border-slate-800 shrink-0">
+        <button onclick="closeLegalModal()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-indigo-600/30">Close Document</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🔔 TOAST CONTAINER -->
+  <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <!-- ===================================================================== -->
+  <!-- ⚙️ JAVASCRIPT LOGIC                                                   -->
+  <!-- ===================================================================== -->
+  <script>
+    const COUNTRY_RATES = [
+      { code: 'US', name: 'United States', flag: '🇺🇸', dial: '+1', trial: 0.50, monthly: 1.50, callPerMin: 0.05, smsOut: 0.03 },
+      { code: 'GB', name: 'United Kingdom', flag: '🇬🇧', dial: '+44', trial: 0.50, monthly: 1.50, callPerMin: 0.05, smsOut: 0.04 },
+      { code: 'CA', name: 'Canada', flag: '🇨🇦', dial: '+1', trial: 0.50, monthly: 1.50, callPerMin: 0.05, smsOut: 0.03 },
+      { code: 'AU', name: 'Australia', flag: '🇦🇺', dial: '+61', trial: 0.75, monthly: 2.00, callPerMin: 0.08, smsOut: 0.05 },
+      { code: 'DE', name: 'Germany', flag: '🇩🇪', dial: '+49', trial: 0.75, monthly: 2.20, callPerMin: 0.08, smsOut: 0.06 },
+      { code: 'FR', name: 'France', flag: '🇫🇷', dial: '+33', trial: 0.75, monthly: 2.20, callPerMin: 0.08, smsOut: 0.06 },
+      { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪', dial: '+971', trial: 1.00, monthly: 3.50, callPerMin: 0.18, smsOut: 0.08 },
+      { code: 'SA', name: 'Saudi Arabia', flag: '🇸🇦', dial: '+966', trial: 1.00, monthly: 3.50, callPerMin: 0.16, smsOut: 0.08 },
+      { code: 'PK', name: 'Pakistan', flag: '🇵🇰', dial: '+92', trial: 1.00, monthly: 3.00, callPerMin: 0.12, smsOut: 0.05 },
+      { code: 'IN', name: 'India', flag: '🇮🇳', dial: '+91', trial: 1.00, monthly: 2.50, callPerMin: 0.09, smsOut: 0.05 },
+      { code: 'TR', name: 'Turkey', flag: '🇹🇷', dial: '+90', trial: 0.80, monthly: 2.50, callPerMin: 0.12, smsOut: 0.06 },
+      { code: 'ES', name: 'Spain', flag: '🇪🇸', dial: '+34', trial: 0.75, monthly: 2.00, callPerMin: 0.08, smsOut: 0.06 }
+    ];
+
+    function renderCountryRates(list) {
+      const grid = document.getElementById('countryRatesGrid');
+      if (!grid) return;
+      grid.innerHTML = list.map(c => `
+        <div class="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-indigo-500/50 transition-all space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl">${c.flag}</span>
+              <div>
+                <div class="font-bold text-white text-xs">${c.name}</div>
+                <div class="text-[10px] text-slate-400 font-mono">${c.dial}</div>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active Line</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 text-[11px]">
+            <div>
+              <span class="text-slate-500">7-Day Trial:</span>
+              <div class="font-mono font-bold text-emerald-400">$${c.trial.toFixed(2)}</div>
+            </div>
+            <div>
+              <span class="text-slate-500">30-Day Monthly:</span>
+              <div class="font-mono font-bold text-indigo-300">$${c.monthly.toFixed(2)}</div>
+            </div>
+            <div>
+              <span class="text-slate-500">Call Rate:</span>
+              <div class="font-mono font-medium text-slate-200">$${c.callPerMin.toFixed(2)}/min</div>
+            </div>
+            <div>
+              <span class="text-slate-500">Inbound (Call/SMS):</span>
+              <div class="font-mono font-bold text-emerald-400">FREE 🟢</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterCountryRates(query) {
+      const q = (query || '').toLowerCase().trim();
+      const filtered = COUNTRY_RATES.filter(c => 
+        c.name.toLowerCase().includes(q) || 
+        c.code.toLowerCase().includes(q) || 
+        c.dial.includes(q)
+      );
+      renderCountryRates(filtered);
+    }
+
+    renderCountryRates(COUNTRY_RATES);
+
+    function showDownloadToast(platform) {
+      showToast(`🚀 SimlyX for ${platform} is launching in Q4 2026! Pre-registration open.`, 'info');
+    }
+
+    function showToast(msg, type = 'info') {
+      const c = document.getElementById('toastContainer');
+      if (!c) return;
+      const el = document.createElement('div');
+      el.className = 'px-4 py-3 rounded-2xl bg-slate-900 border border-indigo-500/30 text-white text-xs font-semibold shadow-2xl animate-fade-in flex items-center gap-2 pointer-events-auto';
+      el.innerHTML = `<i class="fa-solid fa-circle-info text-indigo-400"></i> <span>${msg}</span>`;
+      c.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+
+    const LEGAL_TEXTS = {
+      terms: `
+        <h4 class="text-sm font-bold text-white">1. Master Service Agreement & Entity</h4>
+        <p>This Terms of Service agreement is entered into by and between <b>SimlyX Ltd</b> ("Company", "we", "our", or "us") and the user ("Customer" or "you"). SimlyX Ltd provides digital Over-The-Top (OTT) Voice over IP (VoIP) telecommunications, virtual telephone number subscriptions, and SMS transit routing services.</p>
+        
+        <h4 class="text-sm font-bold text-white mt-4">2. Digital Consumables & Non-Refundable Policy</h4>
+        <p>Virtual phone numbers and calling minutes are digital telecommunication services provisioned immediately through licensed tier-1 carrier networks (including Telnyx LLC). Upon allocation of a virtual phone number or consumption of voice/SMS transit, services are considered fully provisioned and non-refundable, except in verified cases of technical provisioning failure acknowledged by our carrier partners.</p>
+
+        <h4 class="text-sm font-bold text-white mt-4">3. Unlimited Numbers Capability</h4>
+        <p>Customers are permitted to purchase and manage unlimited virtual phone numbers under a single registered account, provided all lines are maintained in full compliance with this agreement and applicable telecommunication laws.</p>
+
+        <h4 class="text-sm font-bold text-white mt-4">4. 911 / Emergency Calling Prohibition</h4>
+        <p><b>CRITICAL:</b> SimlyX is strictly a VoIP application and DOES NOT support calls to emergency services (including 911, 112, or 999). You explicitly acknowledge that alternative telephone equipment must be used for emergency communications.</p>
+      `,
+      privacy: `
+        <h4 class="text-sm font-bold text-white">1. Privacy Commitment & GDPR Compliance</h4>
+        <p><b>SimlyX Ltd</b> operates under a strict privacy-first architecture. We do not sell, lease, or monetize customer personal information, call audio, or SMS content to third-party data brokers or advertisers.</p>
+
+        <h4 class="text-sm font-bold text-white mt-4">2. Data Encryption Standards</h4>
+        <p>All signaling and media streams are encrypted using Transport Layer Security (TLS 1.3) and Secure Real-Time Transport Protocol (SRTP). Stored database records are protected with AES-256 encryption at rest.</p>
+
+        <h4 class="text-sm font-bold text-white mt-4">3. Account Deletion & Right to Erasure</h4>
+        <p>Under GDPR and CCPA regulations, users possess the unreserved right to request the permanent deletion of their account profile and associated personal data via the application settings or by contacting <a href="mailto:privacy@simlyx.com" class="text-indigo-400 underline">privacy@simlyx.com</a>.</p>
+      `,
+      aup: `
+        <h4 class="text-sm font-bold text-white">1. Acceptable Use Policy (AUP) & 10DLC Standards</h4>
+        <p>All virtual telephone lines allocated by <b>SimlyX Ltd</b> are subject to strict carrier acceptable use policies. The service must be utilized solely for lawful personal and business communication.</p>
+
+        <h4 class="text-sm font-bold text-white mt-4">2. Strictly Prohibited Activities</h4>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>Automated robocalling, voice broadcasting, or predictive dialer abuse.</li>
+          <li>Unsolicited bulk SMS marketing or spam messaging in violation of CTIA / 10DLC regulations.</li>
+          <li>Phishing, social engineering, identity fraud, or deceptive caller ID spoofing.</li>
+          <li>Harassment, abusive communication, or transmission of malicious content.</li>
+        </ul>
+        <p class="mt-2">SimlyX Ltd reserves the right to immediately terminate any account and reclaim phone numbers involved in AUP violations with zero refund.</p>
+      `,
+      refund: `
+        <h4 class="text-sm font-bold text-white">1. Refund & Provisioning Terms</h4>
+        <p>Due to the real-time wholesale costs incurred when provisioning private telephone lines on global carrier PSTN networks, virtual number subscription fees are non-refundable once line activation is confirmed.</p>
+
+        <h4 class="text-sm font-bold text-white mt-4">2. Wallet Balance Top-Ups</h4>
+        <p>Unused wallet balances top-ups may be reviewed for refund requests within 14 days of purchase if no calls or SMS messages have been dispatched. Contact <a href="mailto:support@simlyx.com" class="text-indigo-400 underline">support@simlyx.com</a> for review.</p>
+      `
+    };
+
+    function openLegalModal(type) {
+      const m = document.getElementById('legalModal');
+      const title = document.getElementById('legalModalTitle');
+      const body = document.getElementById('legalModalBody');
+      if (!m || !body) return;
+
+      const titles = {
+        terms: 'Terms of Service (SimlyX Ltd)',
+        privacy: 'Privacy Policy & Data Protection',
+        aup: 'Acceptable Use Policy & Anti-Spam (10DLC)',
+        refund: 'Refund & Provisioning Policy'
+      };
+
+      title.innerText = titles[type] || 'Legal Governance';
+      body.innerHTML = LEGAL_TEXTS[type] || '<p>Document loading...</p>';
+      m.classList.remove('hidden');
+    }
+
+    function closeLegalModal() {
+      document.getElementById('legalModal')?.classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

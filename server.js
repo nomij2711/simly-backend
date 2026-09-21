@@ -269,7 +269,24 @@ app.get('/api/test-email', async (req, res) => {
   res.json({ success: result.success, email: targetEmail, code: testCode, result });
 });
 
-app.get('/', (req, res) => {
+// Public SimlyX Website & Compliance Portal Routes
+const sendPublicWebsite = (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+};
+
+app.get('/', sendPublicWebsite);
+app.get('/terms', sendPublicWebsite);
+app.get('/privacy', sendPublicWebsite);
+app.get('/acceptable-use', sendPublicWebsite);
+app.get('/aup', sendPublicWebsite);
+app.get('/refund', sendPublicWebsite);
+app.get('/rates', sendPublicWebsite);
+app.get('/pricing', sendPublicWebsite);
+app.get('/compliance', sendPublicWebsite);
+app.get('/contact', sendPublicWebsite);
+
+// API Engine Health Check
+app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     service: 'SimlyX Telecom Engine',

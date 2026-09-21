@@ -1,0 +1,14 @@
+# SimlyX Robots.txt - SEO & Search Engine Indexing Guidelines
+User-agent: *
+Allow: /
+Allow: /privacy
+Allow: /terms
+Allow: /acceptable-use
+Allow: /refund
+Allow: /delete-account
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /api/
+
+# Sitemaps
+Sitemap: https://simlyx.com/sitemap.xml

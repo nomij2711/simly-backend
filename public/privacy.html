@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Privacy Policy - SimlyX (GDPR & CCPA Compliant)</title>
-  <meta name="title" content="Privacy Policy - SimlyX (GDPR & CCPA Compliant)">
-  <meta name="description" content="SimlyX Privacy Policy. Learn how we protect your personal information, encrypted VoIP calls, SMS messages, and data rights under GDPR and CCPA.">
-  <meta name="keywords" content="SimlyX privacy, privacy policy, GDPR compliance, telecom data protection">
+  <title>Privacy Policy - SimlyX (GDPR, CCPA & Global Telecom Data Protection)</title>
+  <meta name="title" content="Privacy Policy - SimlyX (GDPR, CCPA & Global Telecom Data Protection)">
+  <meta name="description" content="Read the comprehensive SimlyX Privacy Policy. Learn how we protect your personal data, encrypted VoIP calls, SMS messages, device permissions, and GDPR/CCPA rights. Zero data selling.">
+  <meta name="keywords" content="SimlyX privacy policy, telecom data protection, GDPR compliance, CCPA, VoIP encryption, virtual phone number privacy">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://simlyx.com/privacy">
 
@@ -28,6 +28,17 @@
         extend: {
           fontFamily: {
             sans: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+            }
           }
         }
       }
@@ -39,7 +50,7 @@
 </head>
 <body class="bg-white text-slate-900 antialiased selection:bg-indigo-600 selection:text-white">
 
-  <!-- Header -->
+  <!-- Header / Navigation -->
   <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
       <a href="/" class="flex items-center gap-3">
@@ -55,93 +66,414 @@
         <a href="/#features" class="hover:text-indigo-600 transition-colors">Features</a>
         <a href="/#faqs" class="hover:text-indigo-600 transition-colors">FAQs</a>
       </nav>
-      <a href="/#download" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md transition-all">
-        Get SimlyX
-      </a>
+      <div class="flex items-center gap-3">
+        <a href="mailto:support@simlyx.com" class="hidden sm:inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-indigo-600 transition-colors px-3 py-2">
+          <i class="fa-regular fa-envelope"></i>
+          <span>support@simlyx.com</span>
+        </a>
+        <a href="/#download" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 transition-all">
+          Get SimlyX
+        </a>
+      </div>
     </div>
   </header>
 
   <!-- Hero Header Banner -->
-  <section class="bg-slate-50 border-b border-slate-200 py-16 px-4 sm:px-6 lg:px-8 text-center">
-    <div class="max-w-4xl mx-auto space-y-3">
-      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-bold">
-        <span>GDPR, CCPA & Global Telecom Data Privacy</span>
+  <section class="bg-gradient-to-b from-slate-50 via-slate-50 to-white border-b border-slate-200 py-16 px-4 sm:px-6 lg:px-8 text-center">
+    <div class="max-w-4xl mx-auto space-y-4">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
+        <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+        <span>GDPR • CCPA/CPRA • Global Telecom Privacy Standards</span>
       </div>
       <h1 class="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight">Privacy Policy</h1>
-      <p class="text-sm sm:text-base text-slate-600">Last updated: September 2026 • We respect your privacy and never sell your data.</p>
+      <p class="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
+        Effective Date: September 2026 • Last Reviewed: September 2026<br>
+        Your privacy is paramount. SimlyX operates with end-to-end telecommunication security and <b>never sells user data</b>.
+      </p>
     </div>
   </section>
 
-  <!-- Main Document Body -->
-  <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-    <div class="space-y-10 text-slate-700 leading-relaxed text-sm sm:text-base">
+  <!-- Main Document Container -->
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
       
-      <!-- Core Commitment Box -->
-      <div class="p-6 rounded-3xl bg-emerald-50 border-2 border-emerald-200 text-emerald-950 space-y-2">
-        <div class="font-bold flex items-center gap-2 text-emerald-800 text-base">
-          <i class="fa-solid fa-shield-halved text-emerald-600 text-lg"></i>
-          <span>Our Privacy Commitment: Zero Data Selling</span>
+      <!-- Table of Contents Sticky Sidebar (Desktop) -->
+      <aside class="hidden lg:block lg:col-span-4">
+        <div class="sticky top-28 p-6 rounded-3xl bg-slate-50 border border-slate-200 space-y-4 text-xs font-bold text-slate-600">
+          <div class="text-slate-900 text-sm font-extrabold uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-list-ul text-indigo-600"></i>
+            <span>Policy Sections</span>
+          </div>
+          <nav class="space-y-2">
+            <a href="#section-1" class="block hover:text-indigo-600 transition-colors py-1">1. Introduction & Entity Scope</a>
+            <a href="#section-2" class="block hover:text-indigo-600 transition-colors py-1">2. Information We Collect</a>
+            <a href="#section-3" class="block hover:text-indigo-600 transition-colors py-1">3. Device Permissions & Contacts</a>
+            <a href="#section-4" class="block hover:text-indigo-600 transition-colors py-1">4. Legal Bases for Processing</a>
+            <a href="#section-5" class="block hover:text-indigo-600 transition-colors py-1">5. How We Use Your Information</a>
+            <a href="#section-6" class="block hover:text-indigo-600 transition-colors py-1">6. Carrier Partners & Third Parties</a>
+            <a href="#section-7" class="block hover:text-indigo-600 transition-colors py-1">7. Data Security & Encryption</a>
+            <a href="#section-8" class="block hover:text-indigo-600 transition-colors py-1">8. Data Retention & Call Records</a>
+            <a href="#section-9" class="block hover:text-indigo-600 transition-colors py-1">9. Your Global Privacy Rights</a>
+            <a href="#section-10" class="block hover:text-indigo-600 transition-colors py-1">10. Account & Data Deletion</a>
+            <a href="#section-11" class="block hover:text-indigo-600 transition-colors py-1">11. Children's Privacy (COPPA)</a>
+            <a href="#section-12" class="block hover:text-indigo-600 transition-colors py-1">12. Emergency Services (911) Disclaimer</a>
+            <a href="#section-13" class="block hover:text-indigo-600 transition-colors py-1">13. Policy Updates & Contact</a>
+          </nav>
+
+          <div class="pt-4 border-t border-slate-200">
+            <div class="text-[11px] text-slate-500 font-semibold mb-1">Official Privacy Desk:</div>
+            <a href="mailto:support@simlyx.com" class="text-indigo-600 hover:underline flex items-center gap-1.5 font-bold">
+              <i class="fa-solid fa-envelope"></i>
+              <span>support@simlyx.com</span>
+            </a>
+          </div>
         </div>
-        <p class="text-sm text-slate-700 leading-relaxed">
-          SimlyX is built on privacy-first infrastructure. We <b>never sell, rent, monetize, or disclose</b> your private phone calls, SMS content, or contact details to third-party advertisers or data brokers.
-        </p>
-      </div>
+      </aside>
 
-      <!-- Section 1 -->
-      <section class="space-y-3">
-        <h2 class="text-xl font-bold text-slate-900 border-b border-slate-200 pb-2">1. Information We Collect</h2>
-        <p>To provide telecommunications routing and maintain active phone lines, SimlyX collects:</p>
-        <ul class="list-disc pl-6 space-y-2 text-sm">
-          <li><b>Account Details:</b> Email address, username, encrypted password hash, and customer identifier (e.g. SIM-XXXXXX).</li>
-          <li><b>Telecommunication Metadata:</b> Call detail records (call start time, duration, destination prefix) strictly required for carrier billing and PSTN interconnect transit.</li>
-          <li><b>Payment Information:</b> Transaction timestamps, gateway reference IDs, and payment method type. We do not store raw credit card numbers; all billing is processed through PCI-DSS Level 1 compliant gateways (Stripe, Apple Pay, Google Pay, Binance Pay).</li>
-          <li><b>Technical Data:</b> Device model, operating system version, and IP address used for fraud prevention and security authentication.</li>
-        </ul>
-      </section>
+      <!-- Main Body Content -->
+      <article class="lg:col-span-8 space-y-12 text-slate-700 leading-relaxed text-sm sm:text-base">
+        
+        <!-- Fundamental Privacy Guarantee Banner -->
+        <div class="p-6 sm:p-8 rounded-3xl bg-emerald-50 border-2 border-emerald-200 text-emerald-950 space-y-3 shadow-sm">
+          <div class="font-black flex items-center gap-2.5 text-emerald-900 text-base sm:text-lg">
+            <i class="fa-solid fa-shield-halved text-emerald-600 text-xl"></i>
+            <span>SimlyX Privacy Guarantee: Zero Data Selling</span>
+          </div>
+          <p class="text-sm text-slate-700 leading-relaxed">
+            SimlyX is architected on a privacy-first telecommunications infrastructure. We <b>never sell, rent, monetize, or trade</b> your personal information, phone numbers, contact address books, SMS payloads, or voice call streams to third-party advertising networks, data brokers, or marketing entities.
+          </p>
+        </div>
 
-      <!-- Section 2 -->
-      <section class="space-y-3">
-        <h2 class="text-xl font-bold text-slate-900 border-b border-slate-200 pb-2">2. End-to-End Signaling & Media Encryption</h2>
-        <p>
-          All SIP signaling and WebRTC audio transmissions are encrypted in transit using <b>Transport Layer Security (TLS 1.3)</b> and <b>Secure Real-Time Transport Protocol (SRTP)</b>. Database records at rest are secured with industry-standard <b>AES-256 encryption</b>.
-        </p>
-      </section>
+        <!-- Section 1 -->
+        <section id="section-1" class="space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs">SECTION 1</span>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">1. Introduction & Entity Scope</h2>
+          <p>
+            This Privacy Policy explains how <b>SimlyX</b> ("we", "us", "our", or "the Company") collects, uses, encrypts, processes, and safeguards personal data when you use our mobile applications (iOS and Android), web dialers, and website located at <a href="https://simlyx.com" class="text-indigo-600 font-bold underline">simlyx.com</a> (collectively, the "Services").
+          </p>
+          <p>
+            SimlyX provides Over-The-Top (OTT) virtual telecommunication services, including virtual telephone number provisioning (USA, UK, Canada, Australia, and 50+ international destinations), Voice-over-IP (VoIP) calling, and SMS Two-Factor Authentication (2FA) reception.
+          </p>
+          <p>
+            By creating an account, provisioning a virtual line, or accessing our Services, you acknowledge that you have read, understood, and agreed to the practices outlined in this Privacy Policy.
+          </p>
+        </section>
 
-      <!-- Section 3 -->
-      <section class="space-y-3">
-        <h2 class="text-xl font-bold text-slate-900 border-b border-slate-200 pb-2">3. How We Use Your Information</h2>
-        <p>We process collected data solely for the following legitimate purposes:</p>
-        <ul class="list-disc pl-6 space-y-2 text-sm">
-          <li>To allocate and manage virtual telephone numbers across global Tier-1 carrier networks.</li>
-          <li>To transmit and deliver incoming SMS 2FA verification codes to your inbox in real time.</li>
-          <li>To prevent fraudulent robocalling, account takeover, or illegal telecommunication abuse.</li>
-          <li>To process billing top-ups and subscription auto-renewals.</li>
-        </ul>
-      </section>
+        <!-- Section 2 -->
+        <section id="section-2" class="space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs">SECTION 2</span>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">2. Information We Collect</h2>
+          <p>
+            To deliver real-time telecommunication connectivity and ensure network reliability, SimlyX collects specific categories of personal information:
+          </p>
 
-      <!-- Section 4 -->
-      <section class="space-y-3">
-        <h2 class="text-xl font-bold text-slate-900 border-b border-slate-200 pb-2">4. Data Retention & Account Deletion (Right to Erasure)</h2>
-        <p>
-          Under GDPR (Articles 17 & 20) and CCPA regulations, you have the absolute right to request the permanent deletion of your account and all associated personal records. You may initiate account deletion directly within the mobile application settings or by emailing <a href="mailto:support@simlyx.com" class="text-indigo-600 font-bold underline">support@simlyx.com</a>. Upon confirmation, all personal identifiers are permanently purged within 30 days.
-        </p>
-      </section>
+          <div class="space-y-4 mt-3">
+            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+              <h3 class="font-bold text-slate-900 text-base mb-1 flex items-center gap-2">
+                <i class="fa-solid fa-user-circle text-indigo-600"></i>
+                <span>A. Account & Profile Information</span>
+              </h3>
+              <p class="text-sm text-slate-600 leading-relaxed">
+                When you create a SimlyX account, we collect your verified email address, customer identification number (e.g. <code class="bg-slate-200 px-1.5 py-0.5 rounded text-xs text-slate-800">SIM-XXXXXX</code>), and cryptographically hashed authentication tokens. We do not store plain-text passwords.
+              </p>
+            </div>
 
-      <!-- Section 5 -->
-      <section class="space-y-3">
-        <h2 class="text-xl font-bold text-slate-900 border-b border-slate-200 pb-2">5. Third-Party Carrier Disclosures</h2>
-        <p>
-          SimlyX works with licensed Tier-1 telecommunications carriers (such as Telnyx LLC) to interconnect calls and SMS with global public switched telephone networks (PSTN). Transit metadata is shared exclusively as necessary to establish voice connections and route SMS messages according to CTIA standards.
-        </p>
-      </section>
+            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+              <h3 class="font-bold text-slate-900 text-base mb-1 flex items-center gap-2">
+                <i class="fa-solid fa-tower-broadcast text-indigo-600"></i>
+                <span>B. Telecommunications & Call Detail Records (CDRs)</span>
+              </h3>
+              <p class="text-sm text-slate-600 leading-relaxed">
+                As required to route phone calls and SMS messages across the Public Switched Telephone Network (PSTN), our servers automatically record standard telecommunications metadata:
+              </p>
+              <ul class="list-disc pl-5 mt-2 space-y-1 text-xs text-slate-600">
+                <li><b>Call Detail Records:</b> Originating phone number, destination phone number, timestamp of call start/end, call duration, call disposition (answered, busy, failed, voicemail), and transit carrier session identifiers.</li>
+                <li><b>SMS Transit Metadata:</b> Sender and recipient phone numbers, message timestamps, delivery receipts, and character length.</li>
+                <li><b>Media Streams:</b> Live VoIP voice audio is transmitted ephemerally via encrypted WebRTC/SRTP. SimlyX <b>does NOT record, listen to, or archive voice telephone conversations</b>.</li>
+              </ul>
+            </div>
 
-      <!-- Section 6 -->
-      <section class="space-y-3">
-        <h2 class="text-xl font-bold text-slate-900 border-b border-slate-200 pb-2">6. Privacy Inquiries</h2>
-        <p>
-          If you have questions regarding this Privacy Policy or your data protection rights, please contact our team at <a href="mailto:support@simlyx.com" class="text-indigo-600 font-bold underline">support@simlyx.com</a>.
-        </p>
-      </section>
+            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+              <h3 class="font-bold text-slate-900 text-base mb-1 flex items-center gap-2">
+                <i class="fa-solid fa-credit-card text-indigo-600"></i>
+                <span>C. Payment & Transaction Data</span>
+              </h3>
+              <p class="text-sm text-slate-600 leading-relaxed">
+                When you purchase a virtual number subscription or wallet credits, transactions are processed directly by certified Level-1 PCI-DSS payment gateways (Stripe, Apple In-App Purchases, Google Play Billing, Binance Pay). SimlyX stores only transaction reference IDs, top-up amounts, currency, and renewal expiration dates. <b>We never receive or store complete credit card numbers, CVVs, or bank account credentials.</b>
+              </p>
+            </div>
+
+            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+              <h3 class="font-bold text-slate-900 text-base mb-1 flex items-center gap-2">
+                <i class="fa-solid fa-mobile-screen text-indigo-600"></i>
+                <span>D. Device & Network Telemetry</span>
+              </h3>
+              <p class="text-sm text-slate-600 leading-relaxed">
+                To prevent fraud, account takeover, and abusive automated robocalling, we collect hardware model, operating system version, client IP address, mobile network carrier code, and push notification tokens (Apple APNs, Google FCM, OneSignal).
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 3 -->
+        <section id="section-3" class="space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs">SECTION 3</span>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">3. Device Permissions & Address Book Contacts</h2>
+          <p>
+            Our mobile applications require specific system permissions to function as a full-featured telecommunications dialer. We adhere to the strictest app store privacy standards:
+          </p>
+
+          <div class="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-100 space-y-3 text-sm">
+            <div class="font-bold text-indigo-950 flex items-center gap-2">
+              <i class="fa-solid fa-address-book text-indigo-600 text-lg"></i>
+              <span>Device Contacts Permission (Strict Local Access Only)</span>
+            </div>
+            <p class="text-slate-700 leading-relaxed text-xs sm:text-sm">
+              If granted permission, SimlyX accesses your device’s address book <b>strictly locally on your device</b> to display saved contact names in your dialer, call history, and SMS inbox. <b>SimlyX DOES NOT copy, sync, upload, store on remote servers, share, or sell your contacts to any third party.</b> You may revoke contact access at any time in your device settings.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
+            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+              <div class="font-bold text-slate-900 mb-1 flex items-center gap-2">
+                <i class="fa-solid fa-microphone text-rose-500"></i>
+                <span>Microphone Permission</span>
+              </div>
+              <p class="text-slate-600">Used strictly during active, outgoing or incoming VoIP phone calls to capture voice audio. Microphone is never accessed when idle or in background.</p>
+            </div>
+            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+              <div class="font-bold text-slate-900 mb-1 flex items-center gap-2">
+                <i class="fa-solid fa-bell text-amber-500"></i>
+                <span>Push Notifications</span>
+              </div>
+              <p class="text-slate-600">Used to wake the application for incoming voice calls, missed call alerts, voicemail notifications, and incoming SMS 2FA verification codes.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 4 -->
+        <section id="section-4" class="space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs">SECTION 4</span>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">4. Legal Bases for Processing Data (GDPR Article 6)</h2>
+          <p>We process personal data under the following lawful bases established by European and global privacy frameworks:</p>
+          
+          <ul class="list-disc pl-6 space-y-2 text-sm text-slate-700">
+            <li><b>Performance of a Contract:</b> Provisioning dedicated virtual phone numbers, routing VoIP call packets, and delivering SMS verification codes to fulfill our user agreement.</li>
+            <li><b>Legitimate Business Interests:</b> Detecting and mitigating fraudulent robocalling, securing cloud infrastructure, enforcing our Acceptable Use Policy, and maintaining telecommunications quality.</li>
+            <li><b>Legal & Regulatory Obligations:</b> Maintaining transaction ledgers for accounting and taxation, and complying with lawful court orders or telecommunication carrier retention directives.</li>
+            <li><b>Consent:</b> User authorization for optional mobile permissions (push notifications, local contact resolution).</li>
+          </ul>
+        </section>
+
+        <!-- Section 5 -->
+        <section id="section-5" class="space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs">SECTION 5</span>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">5. How We Use Your Information</h2>
+          <p>SimlyX uses collected data exclusively for operational, security, and customer service purposes:</p>
+          <ul class="list-disc pl-6 space-y-2 text-sm text-slate-700">
+            <li>Allocating, activating, and renewing virtual numbers (Direct Inward Dialing / DID) across worldwide carrier networks.</li>
+            <li>Transmitting and receiving real-time SIP/WebRTC voice calls and SMS text messages.</li>
+            <li>Sending real-time push alerts for incoming communications.</li>
+            <li>Verifying account authentication and preventing credential stuffing or unauthorized account takeover.</li>
+            <li>Processing subscription billing, recurring auto-renewals, and balance top-ups.</li>
+            <li>Providing direct customer support via our dedicated email desk (<a href="mailto:support@simlyx.com" class="text-indigo-600 font-bold underline">support@simlyx.com</a>).</li>
+          </ul>
+        </section>
+
+        <!-- Section 6 -->
+        <section id="section-6" class="space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs">SECTION 6</span>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">6. Third-Party Carrier Infrastructure & Processors</h2>
+          <p>
+            To interconnect with the worldwide telecommunications grid, SimlyX partners with licensed Tier-1 carriers and certified cloud service providers:
+          </p>
+
+          <div class="space-y-3 text-sm">
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span class="font-bold text-slate-900">Licensed Telecom Carrier Partners (Telnyx LLC)</span>
+                <p class="text-xs text-slate-500">PSTN voice interconnect, DID number allocation, and CTIA/10DLC SMS transit.</p>
+              </div>
+              <span class="text-xs font-semibold px-2.5 py-1 rounded bg-slate-200 text-slate-800 self-start sm:self-center">Telecom Interconnect</span>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span class="font-bold text-slate-900">Payment Processors (Stripe, Apple, Google, Binance Pay)</span>
+                <p class="text-xs text-slate-500">PCI-DSS compliant payment processing, subscription management, and crypto settlements.</p>
+              </div>
+              <span class="text-xs font-semibold px-2.5 py-1 rounded bg-slate-200 text-slate-800 self-start sm:self-center">Payment Infrastructure</span>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span class="font-bold text-slate-900">Push Notification Services (Apple APNs, Google FCM, OneSignal)</span>
+                <p class="text-xs text-slate-500">Encrypted token-based dispatch of real-time call ringing and SMS delivery notifications.</p>
+              </div>
+              <span class="text-xs font-semibold px-2.5 py-1 rounded bg-slate-200 text-slate-800 self-start sm:self-center">Push Messaging</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 7 -->
+        <section id="section-7" class="space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs">SECTION 7</span>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">7. Data Security & Encryption Architecture</h2>
+          <p>
+            SimlyX deploys enterprise-grade security protocols across every layer of our telecommunications stack:
+          </p>
+          <ul class="list-disc pl-6 space-y-2 text-sm text-slate-700">
+            <li><b>Transport Layer Security (TLS 1.3):</b> All API signaling, user authentication, and web sessions are encrypted in transit.</li>
+            <li><b>SRTP Media Encryption:</b> VoIP voice audio is transmitted using Secure Real-Time Transport Protocol (SRTP) to prevent wiretapping and eavesdropping.</li>
+            <li><b>AES-256 Storage Encryption:</b> User database records, encrypted authentication hashes, and session metadata are encrypted at rest with AES-256 standards.</li>
+            <li><b>Access Controls:</b> Strict role-based access control (RBAC), multi-factor admin verification, and isolated virtual private cloud (VPC) subnets.</li>
+          </ul>
+        </section>
+
+        <!-- Section 8 -->
+        <section id="section-8" class="space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs">SECTION 8</span>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">8. Data Retention & Call Detail Records</h2>
+          <p>
+            We retain personal data only as long as necessary to provide services and fulfill statutory obligations:
+          </p>
+          <ul class="list-disc pl-6 space-y-2 text-sm text-slate-700">
+            <li><b>Active Account Data:</b> Retained while your account remains active and in good standing.</li>
+            <li><b>Call Detail Records (CDRs):</b> Retained for up to 12 months for billing reconciliation, carrier settlement, and fraud investigation, after which records are automatically anonymized or purged.</li>
+            <li><b>Released Numbers:</b> When a virtual number subscription expires or is cancelled, all association with your account is detached and the number enters a carrier quarantine period before release.</li>
+          </ul>
+        </section>
+
+        <!-- Section 9 -->
+        <section id="section-9" class="space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs">SECTION 9</span>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">9. Your Global Privacy Rights (GDPR & CCPA/CPRA)</h2>
+          <p>
+            Regardless of your geographical location, SimlyX extends comprehensive data privacy rights to all registered users:
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
+            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+              <div class="font-bold text-slate-900 mb-1">Right to Access & Portability</div>
+              <p class="text-slate-600">You may request a machine-readable export of all personal data and transaction records linked to your account.</p>
+            </div>
+            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+              <div class="font-bold text-slate-900 mb-1">Right to Rectification</div>
+              <p class="text-slate-600">You may update or correct inaccurate account profile details directly in the app or via support.</p>
+            </div>
+            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+              <div class="font-bold text-slate-900 mb-1">Right to Erasure (Forgotten)</div>
+              <p class="text-slate-600">You have the absolute right to request permanent account deletion and purging of your personal records.</p>
+            </div>
+            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+              <div class="font-bold text-slate-900 mb-1">Non-Discrimination (CCPA)</div>
+              <p class="text-slate-600">We will never deny services, charge different prices, or degrade quality if you exercise your statutory privacy rights.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 10 -->
+        <section id="section-10" class="space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs">SECTION 10</span>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">10. Account & Data Deletion Instructions</h2>
+          <p>
+            In compliance with Google Play Developer Policies, Apple App Store Review Guidelines, and GDPR Article 17, SimlyX provides simple, permanent account deletion:
+          </p>
+
+          <div class="p-6 rounded-3xl bg-slate-50 border border-slate-200 space-y-4 text-sm">
+            <div class="font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-trash-can text-rose-600"></i>
+              <span>How to Permanently Delete Your Account & Associated Data:</span>
+            </div>
+            
+            <div class="space-y-2 text-xs sm:text-sm">
+              <div class="flex items-start gap-3">
+                <span class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">1</span>
+                <span><b>In-App Deletion:</b> Open the SimlyX App → Tap <b>Settings</b> → Tap <b>Account & Security</b> → Select <b>Delete Account</b> → Confirm. Your account and active lines will be immediately terminated.</span>
+              </div>
+              <div class="flex items-start gap-3">
+                <span class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">2</span>
+                <span><b>Email Request:</b> Alternatively, send an email from your registered email address to <a href="mailto:support@simlyx.com" class="text-indigo-600 font-bold underline">support@simlyx.com</a> with the subject line <code>"Account Deletion Request - [Your User ID]"</code>. Our team will verify and complete the data purge within 30 days.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 11 -->
+        <section id="section-11" class="space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs">SECTION 11</span>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">11. Children's Privacy (COPPA & Global Standards)</h2>
+          <p>
+            SimlyX is strictly intended for individuals aged <b>16 and older</b> (or 13 where permitted by local law with parental authorization). We do not knowingly solicit or collect personal information from children. If we discover that a minor under the minimum legal age has created an account without parental consent, we will promptly delete all associated data and terminate the account.
+          </p>
+        </section>
+
+        <!-- Section 12 -->
+        <section id="section-12" class="space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 font-black text-xs">SECTION 12</span>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">12. Emergency Services (911 / 112 / 999 / 000) Limitation Notice</h2>
+          
+          <div class="p-6 rounded-3xl bg-amber-50 border-2 border-amber-200 text-amber-950 space-y-2">
+            <div class="font-bold flex items-center gap-2 text-amber-900 text-base">
+              <i class="fa-solid fa-triangle-exclamation text-amber-600 text-lg"></i>
+              <span>Mandatory Telecommunications Regulatory Notice</span>
+            </div>
+            <p class="text-sm text-slate-700 leading-relaxed">
+              SimlyX is an Over-The-Top (OTT) Voice-over-IP telecommunications service and is <b>NOT a traditional fixed-line or cellular mobile telephone carrier</b>. SimlyX <b>DOES NOT support emergency calling</b> to public emergency response dispatch centers (including 911 in the USA/Canada, 999 in the UK, 112 in the EU, or 000 in Australia). You must maintain traditional cellular or landline service for emergency calls.
+            </p>
+          </div>
+        </section>
+
+        <!-- Section 13 -->
+        <section id="section-13" class="space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs">SECTION 13</span>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">13. Policy Updates & Official Contact Desk</h2>
+          <p>
+            We may periodically update this Privacy Policy to reflect carrier compliance changes, regulatory updates, or software enhancements. When material revisions occur, we will update the "Effective Date" at the top of this document and notify users via in-app banner or registered email.
+          </p>
+
+          <div class="p-6 rounded-3xl bg-slate-50 border border-slate-200 space-y-3">
+            <div class="font-bold text-slate-900 text-base">Contact Our Privacy & Compliance Desk:</div>
+            <p class="text-sm text-slate-600 leading-relaxed">
+              If you have any questions, GDPR/CCPA data requests, or compliance inquiries regarding this Privacy Policy, please contact our dedicated support team:
+            </p>
+            <div class="flex items-center gap-3 text-sm font-bold text-indigo-600">
+              <i class="fa-solid fa-envelope text-lg"></i>
+              <a href="mailto:support@simlyx.com" class="hover:underline">support@simlyx.com</a>
+            </div>
+            <p class="text-xs text-slate-500">
+              Response SLA: All data privacy and compliance requests are reviewed and addressed within 24 to 48 business hours.
+            </p>
+          </div>
+        </section>
+
+      </article>
 
     </div>
   </main>
@@ -154,10 +486,10 @@
         <div class="text-[10px] text-slate-500">Virtual Telecommunications Provider</div>
       </div>
       <div class="flex flex-wrap justify-center sm:justify-start gap-6 font-bold">
-        <a href="/terms" class="hover:text-indigo-600">Terms of Service</a>
-        <a href="/privacy" class="text-indigo-600">Privacy Policy</a>
-        <a href="/acceptable-use" class="hover:text-indigo-600">Acceptable Use</a>
-        <a href="/refund" class="hover:text-indigo-600">Refund Policy</a>
+        <a href="/terms" class="hover:text-indigo-600 transition-colors">Terms of Service</a>
+        <a href="/privacy" class="text-indigo-600 font-extrabold">Privacy Policy</a>
+        <a href="/acceptable-use" class="hover:text-indigo-600 transition-colors">Acceptable Use</a>
+        <a href="/refund" class="hover:text-indigo-600 transition-colors">Refund Policy</a>
       </div>
       <div class="text-[11px] text-slate-500">
         © 2026 SimlyX. All rights reserved.

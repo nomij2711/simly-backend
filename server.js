@@ -256,6 +256,20 @@ app.get('/admin', sendAdminApp);
 app.get('/admin/', sendAdminApp);
 app.get('/admin/{*splat}', sendAdminApp);
 
+// Dedicated Legal & Policy Routes
+app.get(['/privacy', '/privacy-policy'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
+});
+app.get(['/terms', '/terms-and-conditions', '/tos'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
+});
+app.get(['/acceptable-use', '/acceptable-use-policy', '/aup'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'acceptable-use.html'));
+});
+app.get(['/refund', '/refund-policy', '/cancellation'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'refund.html'));
+});
+
 // Root Health Check Route
 app.get('/api/test-email', async (req, res) => {
   const targetEmail = req.query.to || 'nomijutt2711@gmail.com';

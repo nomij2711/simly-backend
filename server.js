@@ -11,8 +11,39 @@ const app = express();
 app.set('trust proxy', true);
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ extended: true, limit: '15mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html', 'htm'] }));
+
+// SEO & Web Crawler Endpoints
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.sendFile(path.join(__dirname, 'public', 'robots.txt'));
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  res.type('application/xml');
+  res.sendFile(path.join(__dirname, 'public', 'sitemap.xml'));
+});
+
+// Legal, Governance & Policy Portal Endpoints
+app.get(['/privacy', '/privacy-policy'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
+});
+
+app.get(['/terms', '/terms-of-service', '/tos'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
+});
+
+app.get(['/acceptable-use', '/aup'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'acceptable-use.html'));
+});
+
+app.get(['/refund', '/refund-policy'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'refund.html'));
+});
+
+app.get(['/delete-account', '/delete-my-account', '/data-deletion'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'delete-account.html'));
+});
 
 // Helper to normalize phone numbers received from query params or bodies
 const normalizePhone = (num) => (num ? num.toString().trim().replace(/^ /, '+') : num);

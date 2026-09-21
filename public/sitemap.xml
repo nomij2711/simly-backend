@@ -24,11 +24,43 @@
     <priority>0.8</priority>
   </url>
 
-  <!-- Blog & Telecom Guides -->
+  <!-- Dedicated Blog & Knowledge Center -->
   <url>
-    <loc>https://simlyx.com/#blog</loc>
+    <loc>https://simlyx.com/blog</loc>
     <lastmod>2026-09-21</lastmod>
     <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Blog Article 1: WhatsApp & 2FA Guide -->
+  <url>
+    <loc>https://simlyx.com/blog/how-to-get-us-virtual-phone-number-for-whatsapp-2fa</loc>
+    <lastmod>2026-09-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Blog Article 2: Freelancers & Business Virtual Line -->
+  <url>
+    <loc>https://simlyx.com/blog/top-5-reasons-freelancers-need-virtual-line</loc>
+    <lastmod>2026-09-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Blog Article 3: 2FA SMS Security Breakdown -->
+  <url>
+    <loc>https://simlyx.com/blog/how-2fa-sms-verification-works-security-breakdown</loc>
+    <lastmod>2026-09-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Blog Article 4: USA vs UK Comparison -->
+  <url>
+    <loc>https://simlyx.com/blog/usa-vs-uk-virtual-numbers-comparison</loc>
+    <lastmod>2026-09-21</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
 

@@ -45,6 +45,27 @@ app.get(['/delete-account', '/delete-my-account', '/data-deletion'], (req, res) 
   res.sendFile(path.join(__dirname, 'public', 'delete-account.html'));
 });
 
+// Telecom Blog & Knowledge Center Routes
+app.get(['/blog', '/blogs', '/articles'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'blog.html'));
+});
+
+app.get(['/blog/how-to-get-us-virtual-phone-number-for-whatsapp-2fa', '/blog/how-to-get-us-virtual-number-whatsapp-2fa', '/blog/whatsapp-2fa'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'blog', 'whatsapp-2fa.html'));
+});
+
+app.get(['/blog/top-5-reasons-freelancers-need-virtual-line', '/blog/freelancers-virtual-line', '/blog/business-virtual-line'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'blog', 'freelancers-virtual-line.html'));
+});
+
+app.get(['/blog/how-2fa-sms-verification-works-security-breakdown', '/blog/2fa-sms-security', '/blog/anti-sim-swap'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'blog', '2fa-sms-security.html'));
+});
+
+app.get(['/blog/usa-vs-uk-virtual-numbers-comparison', '/blog/usa-vs-uk', '/blog/us-vs-uk-virtual-number'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'blog', 'usa-vs-uk.html'));
+});
+
 // Helper to normalize phone numbers received from query params or bodies
 const normalizePhone = (num) => (num ? num.toString().trim().replace(/^ /, '+') : num);
 const geoip = require('geoip-lite');

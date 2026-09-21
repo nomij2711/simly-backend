@@ -269,21 +269,30 @@ app.get('/api/test-email', async (req, res) => {
   res.json({ success: result.success, email: targetEmail, code: testCode, result });
 });
 
-// Public SimlyX Website & Compliance Portal Routes
-const sendPublicWebsite = (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-};
+// Public SimlyX Website & Dedicated Legal Pages
+const sendPublicWebsite = (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html'));
+const sendTermsPage = (req, res) => res.sendFile(path.join(__dirname, 'public', 'terms.html'));
+const sendPrivacyPage = (req, res) => res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
+const sendAupPage = (req, res) => res.sendFile(path.join(__dirname, 'public', 'acceptable-use.html'));
+const sendRefundPage = (req, res) => res.sendFile(path.join(__dirname, 'public', 'refund.html'));
 
 app.get('/', sendPublicWebsite);
-app.get('/terms', sendPublicWebsite);
-app.get('/privacy', sendPublicWebsite);
-app.get('/acceptable-use', sendPublicWebsite);
-app.get('/aup', sendPublicWebsite);
-app.get('/refund', sendPublicWebsite);
 app.get('/rates', sendPublicWebsite);
 app.get('/pricing', sendPublicWebsite);
+app.get('/payments', sendPublicWebsite);
 app.get('/compliance', sendPublicWebsite);
 app.get('/contact', sendPublicWebsite);
+
+// Dedicated Full-Page Policy Routes (Fanytel standard)
+app.get('/terms', sendTermsPage);
+app.get('/terms-and-conditions', sendTermsPage);
+app.get('/privacy', sendPrivacyPage);
+app.get('/privacy-policy', sendPrivacyPage);
+app.get('/acceptable-use', sendAupPage);
+app.get('/acceptable-use-policy', sendAupPage);
+app.get('/aup', sendAupPage);
+app.get('/refund', sendRefundPage);
+app.get('/refund-policy', sendRefundPage);
 
 // API Engine Health Check
 app.get('/api/health', (req, res) => {

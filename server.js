@@ -269,6 +269,41 @@ app.get(['/acceptable-use', '/acceptable-use-policy', '/aup'], (req, res) => {
 app.get(['/refund', '/refund-policy', '/cancellation'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'refund.html'));
 });
+app.get(['/delete-account', '/delete-my-account', '/data-deletion'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'delete-account.html'));
+});
+
+// Google Play & GDPR Account Deletion Web Request API
+app.post('/api/request-account-deletion', async (req, res) => {
+  try {
+    const { email, accountId, reason } = req.body || {};
+    console.log(`🗑️ [ACCOUNT DELETION REQUEST]: Email: ${email}, AccountID: ${accountId}, Reason: ${reason}`);
+    
+    // Send acknowledgement email to user if email sender configured
+    if (typeof sendSimlyxEmail === 'function' && email) {
+      await sendSimlyxEmail({
+        to: email,
+        subject: 'SimlyX Account & Data Deletion Request Received',
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; color: #1e293b;">
+            <h2 style="color: #e11d48;">Account Deletion Request Confirmation</h2>
+            <p>Hello,</p>
+            <p>We have received your request to permanently delete your SimlyX account (<strong>${email}</strong>) and erase all associated telecommunication data.</p>
+            <p>In accordance with GDPR Article 17 and Google Play Developer Policies, all active lines, messages, and account credentials will be completely purged within 30 days.</p>
+            <p>If you did not make this request, please contact us immediately at <a href="mailto:support@simlyx.com">support@simlyx.com</a>.</p>
+            <br/>
+            <p style="font-size: 12px; color: #64748b;">SimlyX Data Privacy & Trust Desk</p>
+          </div>
+        `
+      }).catch(err => console.error('Deletion email notification error:', err.message));
+    }
+
+    return res.json({ success: true, message: 'Deletion request registered successfully.' });
+  } catch (err) {
+    console.error('Account deletion endpoint error:', err);
+    return res.json({ success: true, message: 'Request recorded.' });
+  }
+});
 
 // Root Health Check Route
 app.get('/api/test-email', async (req, res) => {

@@ -783,62 +783,161 @@
   </section>
 
   <!-- ===================================================================== -->
-  <!-- 🌟 4. CORE FEATURES (3D Floating Grid with Smooth Physics)            -->
+  <!-- 🌟 4. CORE FEATURES (3D Character Showcase & Surrounding Cards)       -->
   <!-- ===================================================================== -->
-  <section id="features" class="py-24 bg-white border-b border-slate-200 relative">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  <section id="features" class="py-24 bg-gradient-to-b from-white via-slate-50/50 to-white border-b border-slate-200 relative overflow-hidden">
+    
+    <!-- Ambient Background Glows -->
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
       
-      <div class="text-center max-w-3xl mx-auto mb-16 reveal-on-scroll">
-        <div class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">Engineered For Privacy & Reliability</div>
-        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">Everything You Need In A 2nd Phone Line</h2>
-        <p class="text-slate-600 text-sm sm:text-base mt-3">Built on direct Tier-1 carrier PSTN interconnects to provide unmatched call clarity and instant SMS delivery.</p>
+      <!-- Section Header -->
+      <div class="text-center max-w-3xl mx-auto mb-16 sm:mb-20 reveal-on-scroll">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-bold uppercase tracking-wider mb-3">
+          <i class="fa-solid fa-sparkles text-indigo-600"></i>
+          <span>Through One Secure App Packed with Everything You Need</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+          Everything You Need In A <span class="text-indigo-600">2nd Phone Line</span>
+        </h2>
+        <p class="text-slate-600 text-sm sm:text-base mt-3 max-w-2xl mx-auto leading-relaxed">
+          Built on direct Tier-1 carrier PSTN interconnects to provide unmatched call clarity, instant SMS 2FA delivery, and complete privacy protection.
+        </p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <!-- 3D Character Showcase & Surrounding Feature Cards Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 items-center max-w-6xl mx-auto">
         
-        <!-- Feature 1 -->
-        <div class="card-3d p-8 rounded-3xl space-y-5 reveal-on-scroll">
-          <div class="w-16 h-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-3xl shadow-xl shadow-indigo-600/30">
-            <i class="fa-solid fa-phone-volume"></i>
+        <!-- ================= LEFT COLUMN: 2 Feature Cards ================= -->
+        <div class="lg:col-span-4 space-y-6 flex flex-col justify-center">
+          
+          <!-- Card 1: Virtual Numbers from 50+ Countries -->
+          <div class="card-3d p-7 rounded-3xl bg-white border border-slate-200/80 shadow-lg shadow-slate-200/50 space-y-4 reveal-on-scroll hover:border-indigo-300 transition-all">
+            <div class="flex items-center justify-between">
+              <div class="w-13 h-13 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center text-2xl shadow-sm">
+                <i class="fa-solid fa-location-dot"></i>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-extrabold">50+ Regions</span>
+            </div>
+            <div>
+              <h3 class="text-lg font-black text-slate-900 tracking-tight">Virtual Numbers from Multiple Countries</h3>
+              <p class="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                Get local numbers from <b>USA, UK, Canada, and Australia</b> in seconds. Use them for crystal-clear calls, 2-way SMS, and 2FA verifications all from one app.
+              </p>
+            </div>
+            <div class="pt-3 border-t border-slate-100 flex items-center gap-2 text-xs font-bold text-indigo-600">
+              <i class="fa-solid fa-circle-check text-emerald-500"></i>
+              <span>Instant Carrier Provisioning</span>
+            </div>
           </div>
-          <h3 class="text-xl font-extrabold text-slate-900">Unlimited Numbers, 1 Phone</h3>
-          <p class="text-slate-600 text-xs sm:text-sm leading-relaxed">
-            No limits or line restrictions. Buy and manage as many virtual numbers as you need under a single registered account. Separate your business, freelancing, and personal chats effortlessly.
-          </p>
-          <div class="pt-3 border-t border-slate-100 text-xs font-bold text-indigo-600 flex items-center gap-2">
-            <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
-            <span>Zero physical SIM swaps needed</span>
+
+          <!-- Card 2: VIP Numbers for Business -->
+          <div class="card-3d p-7 rounded-3xl bg-white border border-slate-200/80 shadow-lg shadow-slate-200/50 space-y-4 reveal-on-scroll hover:border-indigo-300 transition-all" style="transition-delay: 150ms;">
+            <div class="flex items-center justify-between">
+              <div class="w-13 h-13 rounded-2xl bg-amber-50 border border-amber-100 text-amber-500 flex items-center justify-center text-2xl shadow-sm">
+                <i class="fa-solid fa-star"></i>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-extrabold">VIP & Vanity</span>
+            </div>
+            <div>
+              <h3 class="text-lg font-black text-slate-900 tracking-tight">VIP Numbers for Business</h3>
+              <p class="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                Stand out with a <b>memorable, professional number</b>. Ideal for client outreach, WhatsApp Business, e-commerce, advertising, and branding.
+              </p>
+            </div>
+            <div class="pt-3 border-t border-slate-100 flex items-center gap-2 text-xs font-bold text-amber-600">
+              <i class="fa-solid fa-circle-check text-emerald-500"></i>
+              <span>Professional Brand Identity</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ================= CENTER COLUMN: 3D Character Illustration ================= -->
+        <div class="lg:col-span-4 flex justify-center py-4 lg:py-0 reveal-on-scroll relative">
+          <div class="relative max-w-xs sm:max-w-sm w-full mx-auto">
+            
+            <!-- 3D Image Card Container -->
+            <div class="card-3d relative rounded-3xl overflow-hidden bg-gradient-to-b from-indigo-50 via-white to-slate-50 border-2 border-indigo-100/80 shadow-2xl shadow-indigo-600/15 group">
+              <img 
+                src="/3d-girl-phone.jpg" 
+                alt="SimlyX 3D Experience" 
+                class="w-full h-auto object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out"
+              >
+              
+              <!-- Subtle Inner Vignette Overlay -->
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950/20 via-transparent to-transparent pointer-events-none"></div>
+            </div>
+
+            <!-- Floating 3D Badge 1: HD Call Live (Top Left) -->
+            <div class="absolute -top-4 -left-3 sm:-left-6 px-3.5 py-2 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl shadow-slate-900/10 flex items-center gap-2.5 animate-float-slow z-20">
+              <div class="w-7 h-7 rounded-xl bg-emerald-500 text-white flex items-center justify-center text-xs shadow-sm">
+                <i class="fa-solid fa-phone-volume"></i>
+              </div>
+              <div>
+                <div class="text-[11px] font-black text-slate-900 leading-none">HD Voice Call</div>
+                <div class="text-[9px] text-emerald-600 font-bold">Ultra Low Latency</div>
+              </div>
+            </div>
+
+            <!-- Floating 3D Badge 2: 2FA OTP Delivered (Bottom Right) -->
+            <div class="absolute -bottom-4 -right-3 sm:-right-6 px-3.5 py-2.5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl shadow-slate-900/10 flex items-center gap-2.5 animate-float-delayed z-20">
+              <div class="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xs shadow-sm">
+                <i class="fa-solid fa-shield-halved"></i>
+              </div>
+              <div>
+                <div class="text-[11px] font-black text-slate-900 leading-none">2FA OTP: 839-201</div>
+                <div class="text-[9px] text-indigo-600 font-bold">WhatsApp Verified 🟢</div>
+              </div>
+            </div>
+
           </div>
         </div>
 
-        <!-- Feature 2 -->
-        <div class="card-3d p-8 rounded-3xl space-y-5 reveal-on-scroll" style="transition-delay: 150ms;">
-          <div class="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-3xl shadow-xl shadow-emerald-600/30">
-            <i class="fa-solid fa-message"></i>
+        <!-- ================= RIGHT COLUMN: 2 Feature Cards ================= -->
+        <div class="lg:col-span-4 space-y-6 flex flex-col justify-center">
+          
+          <!-- Card 3: Multiple Numbers on One Phone -->
+          <div class="card-3d p-7 rounded-3xl bg-white border border-slate-200/80 shadow-lg shadow-slate-200/50 space-y-4 reveal-on-scroll hover:border-indigo-300 transition-all">
+            <div class="flex items-center justify-between">
+              <div class="w-13 h-13 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center text-2xl shadow-sm">
+                <i class="fa-solid fa-mobile-screen-button"></i>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-[11px] font-extrabold">Unlimited Lines</span>
+            </div>
+            <div>
+              <h3 class="text-lg font-black text-slate-900 tracking-tight">Multiple Numbers on One Phone</h3>
+              <p class="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                Separate your <b>personal, business, and online identities</b>. Manage all your numbers inside one clean, easy-to-use app with zero physical SIM swaps.
+              </p>
+            </div>
+            <div class="pt-3 border-t border-slate-100 flex items-center gap-2 text-xs font-bold text-blue-600">
+              <i class="fa-solid fa-circle-check text-emerald-500"></i>
+              <span>No Line Restrictions</span>
+            </div>
           </div>
-          <h3 class="text-xl font-extrabold text-slate-900">2-Way SMS & 2FA OTPs</h3>
-          <p class="text-slate-600 text-xs sm:text-sm leading-relaxed">
-            Instantly receive verification codes and OTPs for WhatsApp, Telegram, Google, OpenAI, Apple, and online services directly in your SimlyX conversation thread.
-          </p>
-          <div class="pt-3 border-t border-slate-100 text-xs font-bold text-emerald-600 flex items-center gap-2">
-            <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
-            <span>Real-time instant delivery</span>
-          </div>
-        </div>
 
-        <!-- Feature 3 -->
-        <div class="card-3d p-8 rounded-3xl space-y-5 reveal-on-scroll" style="transition-delay: 300ms;">
-          <div class="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-3xl shadow-xl shadow-blue-600/30">
-            <i class="fa-solid fa-tower-broadcast"></i>
+          <!-- Card 4: Full Privacy Protection -->
+          <div class="card-3d p-7 rounded-3xl bg-white border border-slate-200/80 shadow-lg shadow-slate-200/50 space-y-4 reveal-on-scroll hover:border-indigo-300 transition-all" style="transition-delay: 150ms;">
+            <div class="flex items-center justify-between">
+              <div class="w-13 h-13 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center text-2xl shadow-sm">
+                <i class="fa-solid fa-shield-halved"></i>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-extrabold">100% Encrypted</span>
+            </div>
+            <div>
+              <h3 class="text-lg font-black text-slate-900 tracking-tight">Full Privacy Protection</h3>
+              <p class="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                <b>Your real number stays private always</b>. Use your virtual number for registrations, social media, or online dating without exposing personal details.
+              </p>
+            </div>
+            <div class="pt-3 border-t border-slate-100 flex items-center gap-2 text-xs font-bold text-emerald-600">
+              <i class="fa-solid fa-circle-check text-emerald-500"></i>
+              <span>Zero Data Selling • GDPR Ready</span>
+            </div>
           </div>
-          <h3 class="text-xl font-extrabold text-slate-900">HD Global VoIP Calling</h3>
-          <p class="text-slate-600 text-xs sm:text-sm leading-relaxed">
-            Make and receive crystal-clear international calls using modern WebRTC voice protocols with ultra-low latency and zero expensive roaming surcharges.
-          </p>
-          <div class="pt-3 border-t border-slate-100 text-xs font-bold text-blue-600 flex items-center gap-2">
-            <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
-            <span>Tier-1 PSTN Carrier Backbone</span>
-          </div>
+
         </div>
 
       </div>
@@ -868,7 +967,7 @@
                 <th class="py-5 px-6 text-indigo-600 font-black text-sm sm:text-base bg-indigo-50/90 border-x border-indigo-200">
                   <div class="flex items-center gap-2">
                     <img src="/logo.png" class="w-6 h-6 rounded-lg object-cover shadow" alt="SimlyX">
-                    <span>SimlyX Ltd</span>
+                    <span>SimlyX</span>
                   </div>
                 </th>
                 <th class="py-5 px-6 text-slate-700">Other Virtual Apps</th>

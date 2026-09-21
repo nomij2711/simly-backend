@@ -3,15 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SimlyX - Unlimited Virtual Phone Numbers from $0.99/mo</title>
-  <meta name="description" content="Get a private virtual phone number in the US, UK, Canada, and 50+ countries from $0.99/mo. Free incoming calls & SMS, instant 2FA verification. No physical SIM needed.">
-  <meta name="keywords" content="virtual phone number, 2nd phone number, SMS verification, OTP receiver, private calling, VoIP phone number, SimlyX Ltd, Fanytel alternative, Vyke alternative">
   
-  <!-- Open Graph / Meta -->
-  <meta property="og:title" content="SimlyX - Unlimited Virtual Phone Numbers & Global Calling">
-  <meta property="og:description" content="Get private US, UK, Canada & international virtual numbers. Free incoming calls & SMS. Instant 2FA verification.">
-  <meta property="og:image" content="/logo.png">
+  <!-- Primary Meta Tags -->
+  <title>SimlyX - Virtual Phone Numbers from $0.99/mo | Calls & SMS 2FA</title>
+  <meta name="title" content="SimlyX - Virtual Phone Numbers from $0.99/mo | Calls & SMS 2FA">
+  <meta name="description" content="Get a private 2nd virtual phone number in the US, UK, Canada, Australia and 50+ countries. Free incoming calls & SMS, instant 2FA OTP verification, zero contracts.">
+  <meta name="keywords" content="virtual phone number, 2nd phone number, SMS verification, OTP receiver, private calling, VoIP phone number, SimlyX Ltd, buy US number, UK virtual number, temporary phone number">
+  <meta name="robots" content="index, follow">
+  <meta name="language" content="English">
+  <meta name="author" content="SimlyX Ltd">
+
+  <!-- Open Graph / Facebook / WhatsApp -->
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://simlyx.com/">
+  <meta property="og:title" content="SimlyX - Virtual Phone Numbers from $0.99/mo">
+  <meta property="og:description" content="Get real private US, UK, Canada & international virtual numbers. Free incoming calls & SMS. Instant 2FA verification.">
+  <meta property="og:image" content="https://simlyx.com/logo.png">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://simlyx.com/">
+  <meta property="twitter:title" content="SimlyX - Virtual Phone Numbers from $0.99/mo">
+  <meta property="twitter:description" content="Get real private US, UK, Canada & international virtual numbers. Free incoming calls & SMS. Instant 2FA verification.">
+  <meta property="twitter:image" content="https://simlyx.com/logo.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/logo.png">
+  <link rel="apple-touch-icon" href="/logo.png">
 
   <!-- Tailwind CSS & FontAwesome & Google Fonts -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -19,6 +37,67 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Schema.org Structured Data for Google Ranking -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "name": "SimlyX Ltd",
+        "url": "https://simlyx.com/",
+        "logo": "https://simlyx.com/logo.png",
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "email": "support@simlyx.com",
+          "contactType": "Customer Support"
+        }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "SimlyX",
+        "operatingSystem": "iOS, Android, Web",
+        "applicationCategory": "CommunicationApplication",
+        "offers": {
+          "@type": "Offer",
+          "price": "0.99",
+          "priceCurrency": "USD"
+        },
+        "description": "Virtual phone numbers and global VoIP calling app for private communications and SMS 2FA verification."
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is SimlyX?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "SimlyX is a virtual phone number provider by SimlyX Ltd that lets you get private telephone numbers in the US, UK, Canada, Australia, and 50+ countries for voice calls and SMS 2FA verification without a physical SIM card."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How much does a virtual number cost?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Virtual phone number plans start from just $0.99/month for US numbers and $1.99/month for UK and Canada. All plans include free incoming calls and unlimited incoming SMS."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I receive SMS 2FA verification codes?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. SimlyX numbers are connected directly to Tier-1 carrier PSTN networks to reliably receive SMS verification codes for WhatsApp, Telegram, Google, OpenAI, Apple, and online services."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 
   <script>
     tailwind.config = {
@@ -47,14 +126,14 @@
   </script>
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    .hero-gradient {
-      background: radial-gradient(120% 120% at 50% 0%, #ffffff 40%, #eef2ff 80%, #e0e7ff 100%);
+    .hero-bg {
+      background: radial-gradient(100% 100% at 50% 0%, #f8faff 0%, #edf2fe 60%, #e2e8fd 100%);
     }
-    .card-shadow {
-      box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.05), 0 0 0 1px rgba(226, 232, 240, 0.8);
+    .custom-shadow {
+      box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.06), 0 0 0 1px rgba(226, 232, 240, 0.9);
     }
-    .card-shadow:hover {
-      box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.12), 0 0 0 1px rgba(99, 102, 241, 0.4);
+    .custom-shadow:hover {
+      box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.15), 0 0 0 1px rgba(99, 102, 241, 0.4);
     }
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -62,31 +141,31 @@
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   </style>
 </head>
-<body class="bg-white text-slate-900 antialiased selection:bg-indigo-500 selection:text-white relative overflow-x-hidden">
+<body class="bg-white text-slate-900 antialiased selection:bg-indigo-600 selection:text-white relative overflow-x-hidden">
 
   <!-- ===================================================================== -->
   <!-- 🧭 1. NAVIGATION HEADER                                                -->
   <!-- ===================================================================== -->
-  <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 transition-all">
+  <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 transition-all">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
       
       <!-- Brand Logo -->
       <a href="/" class="flex items-center gap-3 group">
         <div class="relative">
           <img src="/logo.png" alt="SimlyX Logo" class="w-10 h-10 rounded-2xl shadow-md object-cover group-hover:scale-105 transition-transform">
-          <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full animate-pulse" title="Carrier Interconnect Active"></span>
+          <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full animate-pulse" title="Carrier PSTN Network Online"></span>
         </div>
         <div>
           <div class="font-black text-xl text-slate-900 tracking-tight flex items-center gap-1.5">
             <span>SimlyX</span>
             <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-200">LTD</span>
           </div>
-          <div class="text-[10px] text-slate-500 font-semibold tracking-wider uppercase">Virtual Phone Numbers</div>
+          <div class="text-[10px] text-slate-500 font-bold tracking-wider uppercase">Virtual Phone Numbers</div>
         </div>
       </a>
 
-      <!-- Desktop Nav Links -->
-      <nav class="hidden lg:flex items-center gap-8 text-sm font-bold text-slate-600">
+      <!-- Navigation Links -->
+      <nav class="hidden md:flex items-center gap-8 text-sm font-bold text-slate-700">
         <a href="#rates" class="hover:text-indigo-600 transition-colors">Pricing & Rates</a>
         <a href="#features" class="hover:text-indigo-600 transition-colors">Features</a>
         <a href="#comparison" class="hover:text-indigo-600 transition-colors">Why SimlyX?</a>
@@ -95,15 +174,11 @@
         <a href="#faqs" class="hover:text-indigo-600 transition-colors">FAQs</a>
       </nav>
 
-      <!-- Action Buttons -->
+      <!-- Action Button -->
       <div class="flex items-center gap-3">
-        <a href="/admin/" class="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all">
-          <i class="fa-solid fa-lock text-indigo-600 text-xs"></i>
-          <span>Staff Login</span>
-        </a>
-        <a href="#download" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 shadow-lg shadow-indigo-600/20 transition-all flex items-center gap-2">
+        <a href="#download" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 shadow-md shadow-indigo-600/20 transition-all flex items-center gap-2">
           <i class="fa-solid fa-mobile-screen"></i>
-          <span>Get SimlyX</span>
+          <span>Get App</span>
         </a>
       </div>
     </div>
@@ -112,21 +187,21 @@
   <!-- ===================================================================== -->
   <!-- 🚀 2. HERO SECTION                                                    -->
   <!-- ===================================================================== -->
-  <section class="hero-gradient pt-16 pb-20 px-4 sm:px-6 lg:px-8 border-b border-slate-200/60">
+  <section class="hero-bg pt-16 pb-20 px-4 sm:px-6 lg:px-8 border-b border-slate-200">
     <div class="max-w-7xl mx-auto">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
         
         <!-- Left Hero Content -->
         <div class="lg:col-span-7 text-center lg:text-left space-y-6">
           
-          <!-- Carrier Badge -->
-          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-bold shadow-sm">
+          <!-- Badge -->
+          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-indigo-100 text-indigo-700 text-xs font-bold shadow-sm">
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-            <span>Virtual Phone Numbers starting from $0.99/month</span>
+            <span>Virtual Phone Numbers from $0.99/month • 50+ Countries</span>
           </div>
 
-          <!-- Headline -->
-          <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.12]">
+          <!-- Main Title -->
+          <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.15]">
             Virtual Phone Numbers. <br/>
             <span class="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 bg-clip-text text-transparent">
               Calls, Texts & 2FA SMS.
@@ -135,13 +210,13 @@
 
           <!-- Description -->
           <p class="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
-            Get reliable <b>USA, UK, Canada & international virtual numbers</b> in seconds. Receive 2FA verification codes, make crystal-clear VoIP calls, and manage unlimited phone lines on 1 device with zero physical SIM cards required.
+            Get reliable <b>USA, UK, Canada & International virtual phone numbers</b> in seconds. Protect your personal privacy, receive 2FA verification codes, and manage unlimited phone lines on 1 smartphone with zero physical SIM cards.
           </p>
 
-          <!-- Store Badges CTA -->
+          <!-- App Store & Google Play CTA Badges -->
           <div id="download" class="pt-2 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
             <!-- Apple App Store -->
-            <button onclick="showDownloadToast('iOS App Store')" class="w-full sm:w-auto px-6 py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl flex items-center justify-center gap-3 transition-all hover:scale-105 shadow-xl group">
+            <button onclick="showDownloadToast('Apple App Store')" class="w-full sm:w-auto px-6 py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl flex items-center justify-center gap-3 transition-all hover:scale-105 shadow-xl group">
               <i class="fa-brands fa-apple text-3xl text-white group-hover:text-indigo-300 transition-colors"></i>
               <div class="text-left">
                 <div class="text-[10px] text-slate-400 uppercase font-semibold">Download on the</div>
@@ -159,21 +234,21 @@
             </button>
           </div>
 
-          <!-- Trust Highlights -->
+          <!-- 4 Micro Highlights -->
           <div class="pt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
-            <div class="p-3.5 rounded-2xl bg-white card-shadow">
+            <div class="p-3.5 rounded-2xl bg-white custom-shadow">
               <div class="text-xl font-black text-indigo-600">Unlimited</div>
-              <div class="text-xs text-slate-500 mt-0.5">Lines on 1 Device</div>
+              <div class="text-xs text-slate-500 mt-0.5">Lines on 1 Phone</div>
             </div>
-            <div class="p-3.5 rounded-2xl bg-white card-shadow">
+            <div class="p-3.5 rounded-2xl bg-white custom-shadow">
               <div class="text-xl font-black text-emerald-600">100% Free</div>
               <div class="text-xs text-slate-500 mt-0.5">Incoming Calls & SMS</div>
             </div>
-            <div class="p-3.5 rounded-2xl bg-white card-shadow">
+            <div class="p-3.5 rounded-2xl bg-white custom-shadow">
               <div class="text-xl font-black text-blue-600">Instant</div>
-              <div class="text-xs text-slate-500 mt-0.5">5-Second Activation</div>
+              <div class="text-xs text-slate-500 mt-0.5">5-Sec Activation</div>
             </div>
-            <div class="p-3.5 rounded-2xl bg-white card-shadow">
+            <div class="p-3.5 rounded-2xl bg-white custom-shadow">
               <div class="text-xl font-black text-slate-800">No Contract</div>
               <div class="text-xs text-slate-500 mt-0.5">Cancel Anytime</div>
             </div>
@@ -183,25 +258,25 @@
 
         <!-- Right Hero Visual / Interactive Phone Card -->
         <div class="lg:col-span-5 flex justify-center">
-          <div class="w-full max-w-sm bg-white rounded-3xl p-6 card-shadow border border-slate-200 relative overflow-hidden space-y-5">
+          <div class="w-full max-w-sm bg-white rounded-3xl p-6 custom-shadow border border-slate-200 relative overflow-hidden space-y-5">
             <div class="flex items-center justify-between border-b border-slate-100 pb-4">
               <div class="flex items-center gap-3">
                 <img src="/logo.png" alt="SimlyX" class="w-10 h-10 rounded-xl object-cover shadow">
                 <div>
                   <div class="font-extrabold text-sm text-slate-900">SimlyX Line Active</div>
-                  <div class="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Direct Tier-1 Interconnect
+                  <div class="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Tier-1 PSTN Interconnect
                   </div>
                 </div>
               </div>
-              <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-600">USA (+1)</span>
+              <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">🇺🇸 USA (+1)</span>
             </div>
 
             <!-- Virtual Number Display -->
             <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-1">
-              <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Your Virtual Number</div>
+              <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Your Active Number</div>
               <div class="text-2xl font-black text-slate-900 tracking-wider font-mono">+1 (415) 890-3245</div>
-              <div class="text-[11px] text-indigo-600 font-bold">● San Francisco, California</div>
+              <div class="text-[11px] text-indigo-600 font-bold">● San Francisco, CA</div>
             </div>
 
             <!-- Simulated SMS OTP Inbox Card -->
@@ -220,20 +295,20 @@
               </div>
             </div>
 
-            <!-- Quick Action Bar -->
-            <div class="grid grid-cols-2 gap-3 pt-2">
+            <!-- Quick Summary Bar -->
+            <div class="grid grid-cols-2 gap-3 pt-1">
               <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
                 <div class="text-xs font-bold text-slate-900">Incoming Calls</div>
-                <div class="text-[11px] text-emerald-600 font-bold">FREE 🟢</div>
+                <div class="text-[11px] text-emerald-600 font-bold">100% FREE</div>
               </div>
               <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
                 <div class="text-xs font-bold text-slate-900">Incoming SMS</div>
-                <div class="text-[11px] text-emerald-600 font-bold">FREE 🟢</div>
+                <div class="text-[11px] text-emerald-600 font-bold">100% FREE</div>
               </div>
             </div>
 
             <a href="#rates" class="block w-full py-3 text-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all">
-              Choose Your Country Number <i class="fa-solid fa-arrow-right ml-1"></i>
+              Choose Country Number <i class="fa-solid fa-arrow-right ml-1"></i>
             </a>
 
           </div>
@@ -244,15 +319,15 @@
   </section>
 
   <!-- ===================================================================== -->
-  <!-- 🏷️ 3. MONTHLY VIRTUAL NUMBER RATES (Fanytel Clean Cards Grid)         -->
+  <!-- 🏷️ 3. MONTHLY VIRTUAL NUMBER RATES (Fanytel Exact Pricing & Flags)    -->
   <!-- ===================================================================== -->
-  <section id="rates" class="py-20 bg-slate-50/60 border-b border-slate-200/80">
+  <section id="rates" class="py-20 bg-slate-50/80 border-b border-slate-200">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
       <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
         <div>
-          <div class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1.5">Transparent & Affordable</div>
-          <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Virtual Number Monthly Pricing</h2>
+          <div class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1.5">Transparent & Simple</div>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Virtual Number Monthly Rates</h2>
           <p class="text-slate-600 text-sm mt-2 max-w-xl">
             Select your country destination. All virtual numbers include free incoming calls, free 2-way SMS verification, and instant activation.
           </p>
@@ -261,23 +336,23 @@
         <!-- Search Bar -->
         <div class="relative w-full md:w-80">
           <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
-          <input type="text" id="countrySearchInput" oninput="filterCountryRates(this.value)" placeholder="Search country (e.g. USA, UK, Canada)..." class="w-full bg-white border border-slate-300 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all card-shadow">
+          <input type="text" id="countrySearchInput" oninput="filterCountryRates(this.value)" placeholder="Search country (e.g. USA, UK, Canada)..." class="w-full bg-white border border-slate-300 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all custom-shadow">
         </div>
       </div>
 
-      <!-- Country Rates Grid (Fanytel style) -->
+      <!-- Country Rates Grid (Fanytel Exact Flag & Monthly Cards) -->
       <div id="countryRatesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <!-- JS dynamically renders cards here -->
       </div>
 
       <!-- Footnote -->
-      <div class="mt-10 p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100 flex items-center justify-between flex-wrap gap-4 text-xs text-indigo-900 font-semibold">
+      <div class="mt-10 p-5 rounded-2xl bg-white border border-slate-200 custom-shadow flex items-center justify-between flex-wrap gap-4 text-xs text-slate-700 font-medium">
         <div class="flex items-center gap-2">
-          <i class="fa-solid fa-circle-check text-indigo-600 text-base"></i>
-          <span>No contracts or hidden setup fees. Renew or cancel anytime directly from your dashboard.</span>
+          <i class="fa-solid fa-circle-check text-emerald-500 text-base"></i>
+          <span>No setup fees, no contracts, cancel anytime. Real virtual numbers backed by direct carrier interconnects.</span>
         </div>
         <a href="#download" class="text-indigo-600 hover:text-indigo-800 font-extrabold flex items-center gap-1">
-          <span>Get Your Number Now</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>
+          <span>Get Started Now</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>
         </a>
       </div>
 
@@ -287,58 +362,58 @@
   <!-- ===================================================================== -->
   <!-- 🌟 4. CORE FEATURES & PILLARS                                         -->
   <!-- ===================================================================== -->
-  <section id="features" class="py-20 bg-white border-b border-slate-200/80">
+  <section id="features" class="py-20 bg-white border-b border-slate-200">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
       <div class="text-center max-w-3xl mx-auto mb-16">
-        <div class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1.5">Engineered For Total Privacy</div>
+        <div class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1.5">Engineered For Privacy & Reliability</div>
         <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Everything You Need In A 2nd Phone Line</h2>
-        <p class="text-slate-600 text-sm mt-3">Built on direct Tier-1 carrier PSTN interconnects to deliver maximum call clarity and 100% reliable 2FA verification.</p>
+        <p class="text-slate-600 text-sm mt-3">Built on direct Tier-1 carrier PSTN interconnects to provide unmatched call clarity and instant SMS delivery.</p>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
         
         <!-- Feature 1 -->
-        <div class="p-8 rounded-3xl bg-slate-50 border border-slate-200/80 card-shadow space-y-4">
+        <div class="p-8 rounded-3xl bg-slate-50 border border-slate-200 custom-shadow space-y-4">
           <div class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-2xl shadow-lg shadow-indigo-600/20">
             <i class="fa-solid fa-phone-volume"></i>
           </div>
           <h3 class="text-xl font-bold text-slate-900">Unlimited Numbers, 1 Phone</h3>
           <p class="text-slate-600 text-xs leading-relaxed">
-            No limits or line restrictions. Buy and manage as many virtual numbers as you need under a single account. Separate your business, freelancing, and personal chats effortlessly.
+            No limits or line restrictions. Buy and manage as many virtual numbers as you need under a single registered account. Separate your business, freelancing, and personal chats effortlessly.
           </p>
           <div class="pt-2 text-xs font-bold text-indigo-600 flex items-center gap-1.5">
-            <i class="fa-solid fa-circle-check"></i>
-            <span>Zero physical SIM swaps</span>
+            <i class="fa-solid fa-circle-check text-emerald-500"></i>
+            <span>Zero physical SIM swaps needed</span>
           </div>
         </div>
 
         <!-- Feature 2 -->
-        <div class="p-8 rounded-3xl bg-slate-50 border border-slate-200/80 card-shadow space-y-4">
+        <div class="p-8 rounded-3xl bg-slate-50 border border-slate-200 custom-shadow space-y-4">
           <div class="w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl shadow-lg shadow-emerald-600/20">
             <i class="fa-solid fa-message"></i>
           </div>
           <h3 class="text-xl font-bold text-slate-900">2-Way SMS & 2FA OTPs</h3>
           <p class="text-slate-600 text-xs leading-relaxed">
-            Instantly receive verification codes for WhatsApp, Telegram, Google, OpenAI, Apple, and online services directly in your SimlyX messaging inbox.
+            Instantly receive verification codes and OTPs for WhatsApp, Telegram, Google, OpenAI, Apple, and online services directly in your SimlyX conversation thread.
           </p>
           <div class="pt-2 text-xs font-bold text-emerald-600 flex items-center gap-1.5">
-            <i class="fa-solid fa-circle-check"></i>
+            <i class="fa-solid fa-circle-check text-emerald-500"></i>
             <span>Real-time instant delivery</span>
           </div>
         </div>
 
         <!-- Feature 3 -->
-        <div class="p-8 rounded-3xl bg-slate-50 border border-slate-200/80 card-shadow space-y-4">
+        <div class="p-8 rounded-3xl bg-slate-50 border border-slate-200 custom-shadow space-y-4">
           <div class="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl shadow-lg shadow-blue-600/20">
             <i class="fa-solid fa-tower-broadcast"></i>
           </div>
           <h3 class="text-xl font-bold text-slate-900">HD Global VoIP Calling</h3>
           <p class="text-slate-600 text-xs leading-relaxed">
-            Make and receive crystal-clear international calls using modern WebRTC technology with ultra-low latency and zero expensive roaming surcharges.
+            Make and receive crystal-clear international calls using modern WebRTC voice protocols with ultra-low latency and zero expensive roaming surcharges.
           </p>
           <div class="pt-2 text-xs font-bold text-blue-600 flex items-center gap-1.5">
-            <i class="fa-solid fa-circle-check"></i>
+            <i class="fa-solid fa-circle-check text-emerald-500"></i>
             <span>Tier-1 PSTN Carrier Backbone</span>
           </div>
         </div>
@@ -349,33 +424,32 @@
   </section>
 
   <!-- ===================================================================== -->
-  <!-- ⚖️ 5. COMPETITOR BENCHMARK TABLE                                      -->
+  <!-- ⚖️ 5. COMPETITOR BENCHMARK TABLE (Clean - No Competitor Names)        -->
   <!-- ===================================================================== -->
-  <section id="comparison" class="py-20 bg-slate-50/60 border-b border-slate-200/80">
+  <section id="comparison" class="py-20 bg-slate-50/80 border-b border-slate-200">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
       <div class="text-center max-w-3xl mx-auto mb-14">
-        <div class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1.5">Market Comparison</div>
-        <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Why Choose SimlyX Over Competitors?</h2>
-        <p class="text-slate-600 text-sm mt-3">We eliminate unnecessary markups, strict line caps, and hidden contracts to give you maximum telecom freedom.</p>
+        <div class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1.5">Market Benchmark</div>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Why Choose SimlyX?</h2>
+        <p class="text-slate-600 text-sm mt-3">We eliminate artificial line caps, high markups, and restrictive contracts to give you total telecom flexibility.</p>
       </div>
 
-      <!-- Table Container -->
-      <div class="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xl">
+      <!-- Table Container (Clean Light Style - No Brand Names) -->
+      <div class="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xl max-w-5xl mx-auto">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs sm:text-sm">
             <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px] tracking-wider">
               <tr>
                 <th class="py-4 px-6">Feature / Capability</th>
-                <th class="py-4 px-6 text-indigo-600 font-black text-sm bg-indigo-50/70 border-x border-indigo-200">
+                <th class="py-4 px-6 text-indigo-600 font-black text-sm bg-indigo-50/80 border-x border-indigo-200">
                   <div class="flex items-center gap-2">
                     <img src="/logo.png" class="w-5 h-5 rounded object-cover shadow" alt="SimlyX">
                     <span>SimlyX Ltd</span>
                   </div>
                 </th>
-                <th class="py-4 px-6 text-slate-700">FanyTel</th>
-                <th class="py-4 px-6 text-slate-700">Vyke</th>
-                <th class="py-4 px-6 text-slate-700">Traditional Telcos</th>
+                <th class="py-4 px-6 text-slate-700">Other Virtual Apps</th>
+                <th class="py-4 px-6 text-slate-700">Traditional Mobile Telcos</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 text-slate-700 font-medium">
@@ -383,11 +457,10 @@
               <tr class="hover:bg-slate-50/50 transition-colors">
                 <td class="py-4 px-6 font-bold text-slate-900">Monthly Virtual Line Rental</td>
                 <td class="py-4 px-6 font-extrabold text-emerald-600 bg-indigo-50/40 border-x border-indigo-100">
-                  From $0.99 - $1.49/mo 🟢
+                  From $0.99 / month 🟢
                 </td>
-                <td class="py-4 px-6">$2.00 - $3.00/mo</td>
-                <td class="py-4 px-6">$2.50 - $4.00/mo</td>
-                <td class="py-4 px-6 text-rose-500 font-semibold">$20.00 - $45.00/mo</td>
+                <td class="py-4 px-6">$2.00 - $4.50 / month</td>
+                <td class="py-4 px-6 text-rose-500 font-semibold">$20.00 - $45.00 / month</td>
               </tr>
               <!-- Row 2: Allowed Numbers -->
               <tr class="hover:bg-slate-50/50 transition-colors">
@@ -395,9 +468,8 @@
                 <td class="py-4 px-6 font-extrabold text-indigo-600 bg-indigo-50/40 border-x border-indigo-100">
                   Unlimited Numbers 🚀
                 </td>
-                <td class="py-4 px-6">Limited Numbers</td>
-                <td class="py-4 px-6">Max 4 Numbers</td>
-                <td class="py-4 px-6 text-rose-500">1 Number per SIM</td>
+                <td class="py-4 px-6">1 to 4 Lines Cap</td>
+                <td class="py-4 px-6 text-rose-500">1 Number per Physical SIM</td>
               </tr>
               <!-- Row 3: Inbound Calls & SMS -->
               <tr class="hover:bg-slate-50/50 transition-colors">
@@ -405,18 +477,16 @@
                 <td class="py-4 px-6 font-extrabold text-emerald-600 bg-indigo-50/40 border-x border-indigo-100">
                   100% Free (Unlimited)
                 </td>
-                <td class="py-4 px-6">Free Inbound</td>
-                <td class="py-4 px-6">Free Inbound</td>
-                <td class="py-4 px-6 text-rose-500">Roaming Surcharges</td>
+                <td class="py-4 px-6">Free Incoming</td>
+                <td class="py-4 px-6 text-rose-500">Roaming Charges Apply</td>
               </tr>
               <!-- Row 4: SMS 2FA Delivery -->
               <tr class="hover:bg-slate-50/50 transition-colors">
                 <td class="py-4 px-6 font-bold text-slate-900">SMS 2FA / OTP Verification</td>
                 <td class="py-4 px-6 font-extrabold text-emerald-600 bg-indigo-50/40 border-x border-indigo-100">
-                  Tier-1 Direct Carrier Delivery
+                  Direct Tier-1 Carrier Delivery
                 </td>
-                <td class="py-4 px-6">Supported</td>
-                <td class="py-4 px-6">Supported</td>
+                <td class="py-4 px-6">Standard Routing</td>
                 <td class="py-4 px-6 text-slate-500">Requires Physical SIM</td>
               </tr>
               <!-- Row 5: Contracts -->
@@ -425,17 +495,15 @@
                 <td class="py-4 px-6 font-extrabold text-emerald-600 bg-indigo-50/40 border-x border-indigo-100">
                   Zero (Cancel Anytime)
                 </td>
-                <td class="py-4 px-6">No Contract</td>
-                <td class="py-4 px-6">No Contract</td>
+                <td class="py-4 px-6">Monthly / Annual</td>
                 <td class="py-4 px-6 text-rose-500">12 - 24 Month Lock-in</td>
               </tr>
               <!-- Row 6: Provisioning Speed -->
               <tr class="hover:bg-slate-50/50 transition-colors">
-                <td class="py-4 px-6 font-bold text-slate-900">Activation Time</td>
+                <td class="py-4 px-6 font-bold text-slate-900">Line Activation Time</td>
                 <td class="py-4 px-6 font-extrabold text-blue-600 bg-indigo-50/40 border-x border-indigo-100">
                   Instant (< 5 Seconds)
                 </td>
-                <td class="py-4 px-6">1 - 5 Minutes</td>
                 <td class="py-4 px-6">1 - 5 Minutes</td>
                 <td class="py-4 px-6 text-rose-500">2 - 5 Business Days</td>
               </tr>
@@ -450,41 +518,41 @@
   <!-- ===================================================================== -->
   <!-- 🛠️ 6. HOW IT WORKS (3 SIMPLE STEPS)                                   -->
   <!-- ===================================================================== -->
-  <section id="how-it-works" class="py-20 bg-white border-b border-slate-200/80">
+  <section id="how-it-works" class="py-20 bg-white border-b border-slate-200">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
       <div class="text-center max-w-3xl mx-auto mb-16">
-        <div class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1.5">Quick & Easy</div>
+        <div class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1.5">Easy & Fast</div>
         <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">How SimlyX Works in 3 Simple Steps</h2>
-        <p class="text-slate-600 text-sm mt-3">Get your brand-new virtual phone number up and running in under 60 seconds.</p>
+        <p class="text-slate-600 text-sm mt-3">Get your private virtual phone line live and verified in under 60 seconds.</p>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
         
         <!-- Step 1 -->
-        <div class="p-8 rounded-3xl bg-slate-50 border border-slate-200 card-shadow space-y-4">
+        <div class="p-8 rounded-3xl bg-slate-50 border border-slate-200 custom-shadow space-y-4">
           <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 font-black text-xl flex items-center justify-center mx-auto border border-indigo-200">1</div>
-          <h3 class="text-lg font-bold text-slate-900">Select Your Country</h3>
+          <h3 class="text-lg font-bold text-slate-900">Choose Your Country</h3>
           <p class="text-slate-600 text-xs leading-relaxed">
-            Choose from the USA, UK, Canada, Australia, or 50+ countries. Pick your preferred area code or clean number.
+            Select from the USA, UK, Canada, Australia, or 50+ countries. Pick your preferred area code or clean number.
           </p>
         </div>
 
         <!-- Step 2 -->
-        <div class="p-8 rounded-3xl bg-slate-50 border border-slate-200 card-shadow space-y-4">
+        <div class="p-8 rounded-3xl bg-slate-50 border border-slate-200 custom-shadow space-y-4">
           <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 font-black text-xl flex items-center justify-center mx-auto border border-blue-200">2</div>
           <h3 class="text-lg font-bold text-slate-900">Instant Line Activation</h3>
           <p class="text-slate-600 text-xs leading-relaxed">
-            No physical SIM card or paperwork needed. Your virtual number is provisioned immediately on our carrier network.
+            No physical SIM card or paperwork required. Your virtual line is provisioned immediately on our Tier-1 network.
           </p>
         </div>
 
         <!-- Step 3 -->
-        <div class="p-8 rounded-3xl bg-slate-50 border border-slate-200 card-shadow space-y-4">
+        <div class="p-8 rounded-3xl bg-slate-50 border border-slate-200 custom-shadow space-y-4">
           <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 font-black text-xl flex items-center justify-center mx-auto border border-emerald-200">3</div>
           <h3 class="text-lg font-bold text-slate-900">Call, Text & Verify 2FA</h3>
           <p class="text-slate-600 text-xs leading-relaxed">
-            Receive incoming calls and 2FA verification codes instantly. Enjoy clear outgoing VoIP calls globally.
+            Receive incoming calls and 2FA verification codes instantly. Enjoy clear outgoing VoIP calls worldwide.
           </p>
         </div>
 
@@ -496,13 +564,13 @@
   <!-- ===================================================================== -->
   <!-- 🛡️ 7. CARRIER COMPLIANCE & 911 DISCLAIMER (Telnyx & Governance)      -->
   <!-- ===================================================================== -->
-  <section id="compliance" class="py-20 bg-slate-50/60 border-b border-slate-200/80">
+  <section id="compliance" class="py-20 bg-slate-50/80 border-b border-slate-200">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
       <div class="text-center max-w-3xl mx-auto mb-14">
         <div class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1.5">Carrier Governance</div>
         <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Regulatory Compliance & Standards</h2>
-        <p class="text-slate-600 text-sm mt-3"><b>SimlyX Ltd</b> complies with international telecommunication standards, CTIA 10DLC anti-spam frameworks, GDPR privacy rules, and FCC emergency services disclaimers.</p>
+        <p class="text-slate-600 text-sm mt-3"><b>SimlyX Ltd</b> operates in strict adherence to global telecommunications frameworks, CTIA 10DLC anti-spam guidelines, GDPR privacy laws, and FCC emergency services disclaimers.</p>
       </div>
 
       <!-- 🚨 911 / 112 / 999 Emergency Services Limitation Warning -->
@@ -520,7 +588,7 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         <!-- Card 1 -->
-        <div class="p-6 rounded-3xl bg-white border border-slate-200 card-shadow space-y-3">
+        <div class="p-6 rounded-3xl bg-white border border-slate-200 custom-shadow space-y-3">
           <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg">
             <i class="fa-solid fa-file-contract"></i>
           </div>
@@ -534,7 +602,7 @@
         </div>
 
         <!-- Card 2 -->
-        <div class="p-6 rounded-3xl bg-white border border-slate-200 card-shadow space-y-3">
+        <div class="p-6 rounded-3xl bg-white border border-slate-200 custom-shadow space-y-3">
           <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">
             <i class="fa-solid fa-user-shield"></i>
           </div>
@@ -548,7 +616,7 @@
         </div>
 
         <!-- Card 3 -->
-        <div class="p-6 rounded-3xl bg-white border border-slate-200 card-shadow space-y-3">
+        <div class="p-6 rounded-3xl bg-white border border-slate-200 custom-shadow space-y-3">
           <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg">
             <i class="fa-solid fa-shield-cat"></i>
           </div>
@@ -569,38 +637,38 @@
   <!-- ===================================================================== -->
   <!-- ❓ 8. FREQUENTLY ASKED QUESTIONS (FAQs)                               -->
   <!-- ===================================================================== -->
-  <section id="faqs" class="py-20 bg-white border-b border-slate-200/80">
+  <section id="faqs" class="py-20 bg-white border-b border-slate-200">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
       
       <div class="text-center space-y-2">
-        <div class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Help Center</div>
+        <div class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Help & Information</div>
         <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Frequently Asked Questions</h2>
         <p class="text-slate-600 text-sm">Everything you need to know about SimlyX virtual numbers and service.</p>
       </div>
 
       <div class="space-y-4">
         
-        <details class="group p-5 rounded-2xl bg-slate-50 border border-slate-200 card-shadow open:bg-white transition-all">
+        <details class="group p-5 rounded-2xl bg-slate-50 border border-slate-200 custom-shadow open:bg-white transition-all">
           <summary class="font-bold text-sm text-slate-900 cursor-pointer flex items-center justify-between list-none">
             <span>What is SimlyX and how does it work?</span>
             <i class="fa-solid fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition-transform"></i>
           </summary>
           <p class="mt-3 text-xs text-slate-600 leading-relaxed">
-            SimlyX is a virtual telephone number provider by <b>SimlyX Ltd</b>. It provides you with real private US, UK, Canada, and international phone numbers that operate over your internet connection (Wi-Fi or Mobile Data). You don't need a physical SIM card or additional phone hardware.
+            SimlyX is a virtual telephone number service provided by <b>SimlyX Ltd</b>. It provides real private telephone numbers in the US, UK, Canada, Australia, and 50+ countries that work over your internet connection (Wi-Fi or mobile data). You do not need a physical SIM card or extra hardware.
           </p>
         </details>
 
-        <details class="group p-5 rounded-2xl bg-slate-50 border border-slate-200 card-shadow open:bg-white transition-all">
+        <details class="group p-5 rounded-2xl bg-slate-50 border border-slate-200 custom-shadow open:bg-white transition-all">
           <summary class="font-bold text-sm text-slate-900 cursor-pointer flex items-center justify-between list-none">
             <span>Can I use SimlyX numbers for SMS 2FA verifications?</span>
             <i class="fa-solid fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition-transform"></i>
           </summary>
           <p class="mt-3 text-xs text-slate-600 leading-relaxed">
-            Yes! SimlyX numbers are connected directly to Tier-1 carrier PSTN interconnects to receive incoming SMS verification codes and 2FA OTPs for services like WhatsApp, Telegram, Google, OpenAI, Apple, and social platforms.
+            Yes! SimlyX numbers are connected directly to Tier-1 carrier PSTN networks to reliably receive SMS verification codes and 2FA OTPs for services like WhatsApp, Telegram, Google, OpenAI, Apple, and social platforms.
           </p>
         </details>
 
-        <details class="group p-5 rounded-2xl bg-slate-50 border border-slate-200 card-shadow open:bg-white transition-all">
+        <details class="group p-5 rounded-2xl bg-slate-50 border border-slate-200 custom-shadow open:bg-white transition-all">
           <summary class="font-bold text-sm text-slate-900 cursor-pointer flex items-center justify-between list-none">
             <span>How many numbers can I have on one device?</span>
             <i class="fa-solid fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition-transform"></i>
@@ -610,7 +678,7 @@
           </p>
         </details>
 
-        <details class="group p-5 rounded-2xl bg-slate-50 border border-slate-200 card-shadow open:bg-white transition-all">
+        <details class="group p-5 rounded-2xl bg-slate-50 border border-slate-200 custom-shadow open:bg-white transition-all">
           <summary class="font-bold text-sm text-slate-900 cursor-pointer flex items-center justify-between list-none">
             <span>Are incoming calls and text messages free?</span>
             <i class="fa-solid fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition-transform"></i>
@@ -620,13 +688,13 @@
           </p>
         </details>
 
-        <details class="group p-5 rounded-2xl bg-slate-50 border border-slate-200 card-shadow open:bg-white transition-all">
+        <details class="group p-5 rounded-2xl bg-slate-50 border border-slate-200 custom-shadow open:bg-white transition-all">
           <summary class="font-bold text-sm text-slate-900 cursor-pointer flex items-center justify-between list-none">
             <span>Can I cancel my subscription anytime?</span>
             <i class="fa-solid fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition-transform"></i>
           </summary>
           <p class="mt-3 text-xs text-slate-600 leading-relaxed">
-            Yes, there are no long-term contracts. You can choose to renew your number monthly or release it at any time directly through the app dashboard.
+            Yes, there are zero long-term contracts. You can renew your number monthly or cancel at any time directly through the app dashboard.
           </p>
         </details>
 
@@ -636,30 +704,30 @@
   </section>
 
   <!-- ===================================================================== -->
-  <!-- 📞 9. 24/7 SUPPORT & CONTACT DESK                                     -->
+  <!-- 📞 9. 24/7 SUPPORT & CONTACT DESK (Email Only - Clean)               -->
   <!-- ===================================================================== -->
-  <section id="contact" class="py-20 bg-slate-50/60 border-b border-slate-200/80">
+  <section id="contact" class="py-20 bg-slate-50/80 border-b border-slate-200">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
       <div class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-2xl mx-auto shadow-lg shadow-indigo-600/20">
-        <i class="fa-solid fa-headset"></i>
+        <i class="fa-solid fa-envelope"></i>
       </div>
-      <h3 class="text-3xl font-extrabold text-slate-900 tracking-tight">Need Assistance? We're Here 24/7</h3>
+      <h3 class="text-3xl font-extrabold text-slate-900 tracking-tight">Need Assistance? Contact Our Team</h3>
       <p class="text-slate-600 text-sm max-w-xl mx-auto">
-        Have questions about virtual numbers, carrier provisioning, or business account integration? Our team is always ready to assist.
+        Have questions about virtual numbers, carrier provisioning, or business account inquiries? Our dedicated team is available via email.
       </p>
 
       <div class="flex flex-wrap items-center justify-center gap-4 pt-2">
-        <a href="mailto:support@simlyx.com" class="px-5 py-3 rounded-2xl bg-white border border-slate-200 hover:border-indigo-600 text-xs font-bold text-slate-900 flex items-center gap-2 transition-all card-shadow">
-          <i class="fa-solid fa-envelope text-indigo-600"></i>
+        <a href="mailto:support@simlyx.com" class="px-6 py-3.5 rounded-2xl bg-white border border-slate-200 hover:border-indigo-600 text-xs font-bold text-slate-900 flex items-center gap-2.5 transition-all custom-shadow">
+          <i class="fa-solid fa-envelope text-indigo-600 text-sm"></i>
           <span>support@simlyx.com</span>
         </a>
-        <a href="mailto:legal@simlyx.com" class="px-5 py-3 rounded-2xl bg-white border border-slate-200 hover:border-blue-600 text-xs font-bold text-slate-900 flex items-center gap-2 transition-all card-shadow">
-          <i class="fa-solid fa-scale-balanced text-blue-600"></i>
+        <a href="mailto:legal@simlyx.com" class="px-6 py-3.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-600 text-xs font-bold text-slate-900 flex items-center gap-2.5 transition-all custom-shadow">
+          <i class="fa-solid fa-scale-balanced text-blue-600 text-sm"></i>
           <span>legal@simlyx.com</span>
         </a>
-        <a href="/admin/" class="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white flex items-center gap-2 transition-all shadow-md">
-          <i class="fa-solid fa-comments"></i>
-          <span>Open Staff Helpdesk</span>
+        <a href="mailto:privacy@simlyx.com" class="px-6 py-3.5 rounded-2xl bg-white border border-slate-200 hover:border-emerald-600 text-xs font-bold text-slate-900 flex items-center gap-2.5 transition-all custom-shadow">
+          <i class="fa-solid fa-user-shield text-emerald-600 text-sm"></i>
+          <span>privacy@simlyx.com</span>
         </a>
       </div>
     </div>
@@ -683,9 +751,8 @@
         <div class="flex flex-wrap items-center gap-6 text-slate-600 font-bold">
           <button onclick="openLegalModal('terms')" class="hover:text-indigo-600 transition-colors">Terms of Service</button>
           <button onclick="openLegalModal('privacy')" class="hover:text-indigo-600 transition-colors">Privacy Policy</button>
-          <button onclick="openLegalModal('aup')" class="hover:text-indigo-600 transition-colors">Acceptable Use</button>
+          <button onclick="openLegalModal('aup')" class="hover:text-indigo-600 transition-colors">Acceptable Use Policy</button>
           <button onclick="openLegalModal('refund')" class="hover:text-indigo-600 transition-colors">Refund Policy</button>
-          <a href="/admin/" class="hover:text-indigo-600 transition-colors">Staff Login</a>
         </div>
       </div>
 
@@ -706,19 +773,19 @@
   <!-- 📜 MODAL: LEGAL & COMPLIANCE VIEWER                                   -->
   <!-- ===================================================================== -->
   <div id="legalModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden p-6 space-y-4 max-h-[85vh] flex flex-col">
+    <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden p-6 sm:p-8 space-y-4 max-h-[85vh] flex flex-col">
       <div class="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
         <div>
-          <h3 id="legalModalTitle" class="text-base font-bold text-slate-900 flex items-center gap-2">Legal Document</h3>
-          <p class="text-[11px] text-slate-500">SimlyX Ltd Compliance & Governance Framework</p>
+          <h3 id="legalModalTitle" class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">Legal Document</h3>
+          <p class="text-[11px] text-slate-500">SimlyX Ltd Regulatory & Compliance Framework</p>
         </div>
-        <button onclick="closeLegalModal()" class="text-slate-400 hover:text-slate-700 text-lg p-1">
+        <button onclick="closeLegalModal()" class="text-slate-400 hover:text-slate-700 text-xl p-1">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 
-      <div id="legalModalBody" class="flex-1 overflow-y-auto custom-scrollbar pr-2 text-xs text-slate-700 space-y-4 leading-relaxed">
-        <!-- Content injected dynamically -->
+      <div id="legalModalBody" class="flex-1 overflow-y-auto custom-scrollbar pr-2 text-xs sm:text-sm text-slate-700 space-y-4 leading-relaxed">
+        <!-- Injected dynamically -->
       </div>
 
       <div class="flex items-center justify-end pt-3 border-t border-slate-200 shrink-0">
@@ -731,27 +798,27 @@
   <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
 
   <!-- ===================================================================== -->
-  <!-- ⚙️ JAVASCRIPT LOGIC & COUNTRY RATES                                   -->
+  <!-- ⚙️ JAVASCRIPT LOGIC & FANYTEL-EXACT MONTHLY RATES                    -->
   <!-- ===================================================================== -->
   <script>
-    // Pure Monthly Virtual Number Rates (Fanytel style)
+    // Exact Fanytel-style Virtual Number Monthly Rates with Flags
     const COUNTRY_RATES = [
       { code: 'US', name: 'United States', flag: '🇺🇸', dial: '+1', monthly: 0.99, popular: true },
-      { code: 'GB', name: 'United Kingdom', flag: '🇬🇧', dial: '+44', monthly: 1.49, popular: true },
-      { code: 'CA', name: 'Canada', flag: '🇨🇦', dial: '+1', monthly: 1.49, popular: true },
-      { code: 'AU', name: 'Australia', flag: '🇦🇺', dial: '+61', monthly: 2.99, popular: false },
-      { code: 'DE', name: 'Germany', flag: '🇩🇪', dial: '+49', monthly: 1.99, popular: false },
-      { code: 'FR', name: 'France', flag: '🇫🇷', dial: '+33', monthly: 1.99, popular: false },
-      { code: 'NL', name: 'Netherlands', flag: '🇳🇱', dial: '+31', monthly: 1.99, popular: false },
-      { code: 'ES', name: 'Spain', flag: '🇪🇸', dial: '+34', monthly: 1.99, popular: false },
-      { code: 'SE', name: 'Sweden', flag: '🇸🇪', dial: '+46', monthly: 2.49, popular: false },
-      { code: 'TR', name: 'Turkey', flag: '🇹🇷', dial: '+90', monthly: 2.49, popular: false },
-      { code: 'BR', name: 'Brazil', flag: '🇧🇷', dial: '+55', monthly: 2.49, popular: false },
-      { code: 'MX', name: 'Mexico', flag: '🇲🇽', dial: '+52', monthly: 2.49, popular: false },
-      { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪', dial: '+971', monthly: 3.49, popular: false },
-      { code: 'SA', name: 'Saudi Arabia', flag: '🇸🇦', dial: '+966', monthly: 3.49, popular: false },
-      { code: 'PK', name: 'Pakistan', flag: '🇵🇰', dial: '+92', monthly: 2.99, popular: false },
-      { code: 'IN', name: 'India', flag: '🇮🇳', dial: '+91', monthly: 2.49, popular: false }
+      { code: 'GB', name: 'United Kingdom', flag: '🇬🇧', dial: '+44', monthly: 1.99, popular: true },
+      { code: 'CA', name: 'Canada', flag: '🇨🇦', dial: '+1', monthly: 1.99, popular: true },
+      { code: 'AU', name: 'Australia', flag: '🇦🇺', dial: '+61', monthly: 6.99, popular: true },
+      { code: 'DE', name: 'Germany', flag: '🇩🇪', dial: '+49', monthly: 2.49, popular: false },
+      { code: 'FR', name: 'France', flag: '🇫🇷', dial: '+33', monthly: 2.49, popular: false },
+      { code: 'NL', name: 'Netherlands', flag: '🇳🇱', dial: '+31', monthly: 2.49, popular: false },
+      { code: 'ES', name: 'Spain', flag: '🇪🇸', dial: '+34', monthly: 2.49, popular: false },
+      { code: 'SE', name: 'Sweden', flag: '🇸🇪', dial: '+46', monthly: 2.99, popular: false },
+      { code: 'TR', name: 'Turkey', flag: '🇹🇷', dial: '+90', monthly: 2.99, popular: false },
+      { code: 'BR', name: 'Brazil', flag: '🇧🇷', dial: '+55', monthly: 2.99, popular: false },
+      { code: 'MX', name: 'Mexico', flag: '🇲🇽', dial: '+52', monthly: 2.99, popular: false },
+      { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪', dial: '+971', monthly: 4.99, popular: false },
+      { code: 'SA', name: 'Saudi Arabia', flag: '🇸🇦', dial: '+966', monthly: 4.99, popular: false },
+      { code: 'PK', name: 'Pakistan', flag: '🇵🇰', dial: '+92', monthly: 3.49, popular: false },
+      { code: 'IN', name: 'India', flag: '🇮🇳', dial: '+91', monthly: 2.99, popular: false }
     ];
 
     function renderCountryRates(list) {
@@ -759,16 +826,16 @@
       if (!grid) return;
 
       if (list.length === 0) {
-        grid.innerHTML = `<div class="col-span-full py-12 text-center text-slate-400 text-xs">No matching countries found. Try searching USA, UK, or Canada.</div>`;
+        grid.innerHTML = `<div class="col-span-full py-12 text-center text-slate-400 text-xs">No matching countries found. Try searching USA, UK, Canada or Australia.</div>`;
         return;
       }
 
       grid.innerHTML = list.map(c => `
-        <div class="bg-white rounded-3xl p-6 border border-slate-200 card-shadow flex flex-col justify-between space-y-5 transition-all relative">
-          ${c.popular ? `<span class="absolute -top-3 right-6 px-3 py-1 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-extrabold text-[10px] rounded-full uppercase tracking-wider shadow-md">Most Popular</span>` : ''}
+        <div class="bg-white rounded-3xl p-6 border border-slate-200 custom-shadow flex flex-col justify-between space-y-5 transition-all relative">
+          ${c.popular ? `<span class="absolute -top-3 right-6 px-3 py-1 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-black text-[10px] rounded-full uppercase tracking-wider shadow-md">Popular Plan</span>` : ''}
           
           <div class="space-y-4">
-            <!-- Header -->
+            <!-- Header with Big Flag & Dial Code -->
             <div class="flex items-center gap-3">
               <span class="text-3xl">${c.flag}</span>
               <div>
@@ -777,39 +844,41 @@
               </div>
             </div>
 
-            <!-- Price -->
+            <!-- Clean Monthly Price -->
             <div class="pt-2 border-t border-slate-100">
               <div class="flex items-baseline gap-1">
                 <span class="text-3xl font-black text-slate-900 font-mono">$${c.monthly.toFixed(2)}</span>
                 <span class="text-xs text-slate-500 font-bold">/ month</span>
               </div>
-              <div class="text-[11px] text-emerald-600 font-bold mt-1">● Direct Tier-1 Carrier Allocation</div>
+              <div class="text-[11px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Direct Tier-1 Carrier Line
+              </div>
             </div>
 
-            <!-- Feature Bullets (Fanytel style) -->
+            <!-- Feature Checklist (Fanytel style) -->
             <div class="space-y-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
               <div class="flex items-center gap-2">
                 <i class="fa-solid fa-circle-check text-emerald-500 text-xs"></i>
-                <span>Free Incoming Calls & SMS</span>
+                <span class="font-medium">Free Incoming Calls & SMS</span>
               </div>
               <div class="flex items-center gap-2">
                 <i class="fa-solid fa-circle-check text-emerald-500 text-xs"></i>
-                <span>SMS 2FA & OTP Verification</span>
+                <span class="font-medium">SMS 2FA & OTP Verification</span>
               </div>
               <div class="flex items-center gap-2">
                 <i class="fa-solid fa-circle-check text-emerald-500 text-xs"></i>
-                <span>Instant Setup (< 5 seconds)</span>
+                <span class="font-medium">Instant Setup (< 5 seconds)</span>
               </div>
               <div class="flex items-center gap-2">
                 <i class="fa-solid fa-circle-check text-emerald-500 text-xs"></i>
-                <span>No Contract — Cancel Anytime</span>
+                <span class="font-medium">No Contract — Cancel Anytime</span>
               </div>
             </div>
           </div>
 
-          <!-- CTA Button -->
-          <button onclick="showDownloadToast('${c.name} Number')" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white font-bold text-xs shadow-md transition-colors flex items-center justify-center gap-2">
-            <span>Get ${c.name} Line</span>
+          <!-- Action Button -->
+          <button onclick="showDownloadToast('${c.name} Virtual Number')" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white font-bold text-xs shadow-md transition-colors flex items-center justify-center gap-2">
+            <span>Get ${c.name} Number</span>
             <i class="fa-solid fa-arrow-right text-[10px]"></i>
           </button>
         </div>
@@ -828,8 +897,8 @@
 
     renderCountryRates(COUNTRY_RATES);
 
-    function showDownloadToast(platform) {
-      showToast(`🚀 SimlyX for ${platform} is launching in Q4 2026! Pre-registration open.`, 'info');
+    function showDownloadToast(item) {
+      showToast(`🚀 SimlyX for ${item} is launching in Q4 2026! Pre-registration open.`, 'info');
     }
 
     function showToast(msg, type = 'info') {
@@ -848,13 +917,16 @@
         <p>This Terms of Service agreement is entered into by and between <b>SimlyX Ltd</b> ("Company", "we", "our", or "us") and the user ("Customer" or "you"). SimlyX Ltd provides digital Over-The-Top (OTT) Voice over IP (VoIP) telecommunications, virtual telephone number subscriptions, and SMS transit routing services.</p>
         
         <h4 class="text-sm font-bold text-slate-900 mt-4">2. Digital Consumables & Provisioning Policy</h4>
-        <p>Virtual phone numbers and calling minutes are digital telecommunication services provisioned immediately through licensed tier-1 carrier networks (including Telnyx LLC). Upon allocation of a virtual phone number or consumption of voice/SMS transit, services are considered fully provisioned and non-refundable, except in verified cases of technical provisioning failure acknowledged by our carrier partners.</p>
+        <p>Virtual phone numbers and calling minutes are digital telecommunication services provisioned immediately through licensed Tier-1 carrier networks (including Telnyx LLC). Upon allocation of a virtual phone number or consumption of voice/SMS transit, services are considered fully provisioned and non-refundable, except in verified cases of technical provisioning failure acknowledged by our carrier partners.</p>
 
         <h4 class="text-sm font-bold text-slate-900 mt-4">3. Unlimited Numbers Capability</h4>
         <p>Customers are permitted to purchase and manage unlimited virtual phone numbers under a single registered account, provided all lines are maintained in full compliance with this agreement and applicable telecommunication laws.</p>
 
         <h4 class="text-sm font-bold text-slate-900 mt-4">4. 911 / Emergency Calling Prohibition</h4>
-        <p><b>CRITICAL:</b> SimlyX is strictly an OTT VoIP application and DOES NOT support calls to emergency services (including 911 in the USA/Canada, 112 in the EU, or 999 in the UK). You explicitly acknowledge that alternative telephone equipment must be used for emergency communications.</p>
+        <p><b>CRITICAL NOTICE:</b> SimlyX is strictly an OTT VoIP application and DOES NOT support calls to emergency services (including 911 in the USA/Canada, 112 in the EU, or 999 in the UK). You explicitly acknowledge that alternative telephone equipment must be used for emergency communications.</p>
+
+        <h4 class="text-sm font-bold text-slate-900 mt-4">5. Governing Law</h4>
+        <p>These terms are governed by and construed in accordance with applicable laws governing digital communications and software service provisioning.</p>
       `,
       privacy: `
         <h4 class="text-sm font-bold text-slate-900">1. Privacy Commitment & GDPR Compliance</h4>
@@ -864,7 +936,7 @@
         <p>All signaling and media streams are encrypted using Transport Layer Security (TLS 1.3) and Secure Real-Time Transport Protocol (SRTP). Stored database records are protected with AES-256 encryption at rest.</p>
 
         <h4 class="text-sm font-bold text-slate-900 mt-4">3. Account Deletion & Right to Erasure</h4>
-        <p>Under GDPR and CCPA regulations, users possess the unreserved right to request the permanent deletion of their account profile and associated personal data via the application settings or by contacting <a href="mailto:privacy@simlyx.com" class="text-indigo-600 underline">privacy@simlyx.com</a>.</p>
+        <p>Under GDPR, CCPA, and global privacy standards, users possess the unreserved right to request the permanent deletion of their account profile and associated personal data by contacting <a href="mailto:privacy@simlyx.com" class="text-indigo-600 underline font-bold">privacy@simlyx.com</a>.</p>
       `,
       aup: `
         <h4 class="text-sm font-bold text-slate-900">1. Acceptable Use Policy (AUP) & 10DLC Standards</h4>
@@ -884,7 +956,7 @@
         <p>Due to the real-time wholesale costs incurred when provisioning private telephone lines on global carrier PSTN networks, virtual number subscription fees are non-refundable once line activation is confirmed.</p>
 
         <h4 class="text-sm font-bold text-slate-900 mt-4">2. Wallet Balance Top-Ups</h4>
-        <p>Unused wallet balance top-ups may be reviewed for refund requests within 14 days of purchase if no calls or SMS messages have been dispatched. Contact <a href="mailto:support@simlyx.com" class="text-indigo-600 underline">support@simlyx.com</a> for review.</p>
+        <p>Unused wallet balance top-ups may be reviewed for refund requests within 14 days of purchase if no calls or SMS messages have been dispatched. Contact <a href="mailto:support@simlyx.com" class="text-indigo-600 underline font-bold">support@simlyx.com</a> for review.</p>
       `
     };
 
@@ -896,7 +968,7 @@
 
       const titles = {
         terms: 'Terms of Service (SimlyX Ltd)',
-        privacy: 'Privacy Policy & Data Protection',
+        privacy: 'Privacy Policy & Data Protection (GDPR / CCPA)',
         aup: 'Acceptable Use Policy & Anti-Spam (10DLC)',
         refund: 'Refund & Provisioning Policy'
       };
@@ -909,6 +981,15 @@
     function closeLegalModal() {
       document.getElementById('legalModal')?.classList.add('hidden');
     }
+
+    // Auto-open legal modal if URL matches route (/terms, /privacy, /acceptable-use, /refund)
+    window.addEventListener('DOMContentLoaded', () => {
+      const p = window.location.pathname.toLowerCase();
+      if (p.includes('terms')) openLegalModal('terms');
+      else if (p.includes('privacy')) openLegalModal('privacy');
+      else if (p.includes('acceptable') || p.includes('aup')) openLegalModal('aup');
+      else if (p.includes('refund')) openLegalModal('refund');
+    });
   </script>
 </body>
 </html>

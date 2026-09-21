@@ -98,10 +98,70 @@
         <a href="/#faqs" class="hover:text-indigo-600 transition-colors">FAQs</a>
       </nav>
 
-      <div class="flex items-center gap-3">
-        <a href="/#download" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:scale-105 shadow-lg shadow-indigo-600/25 transition-all flex items-center gap-2">
+      <div class="flex items-center gap-2 sm:gap-3">
+        <a href="/#download" class="px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:scale-105 shadow-lg shadow-indigo-600/25 transition-all flex items-center gap-1.5 sm:gap-2">
           <i class="fa-solid fa-mobile-screen-button text-sm"></i>
           <span>Get SimlyX</span>
+        </a>
+
+        <!-- Mobile Menu Toggle Button -->
+        <button id="mobileMenuBtn" onclick="toggleMobileMenu()" aria-label="Toggle navigation menu" class="md:hidden w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center justify-center text-base focus:outline-none transition-colors">
+          <i id="mobileMenuIcon" class="fa-solid fa-bars"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 📱 Mobile Navigation Drawer -->
+    <div id="mobileMenuDrawer" class="hidden md:hidden bg-white/95 backdrop-blur-2xl border-b border-slate-200 px-4 py-6 space-y-4 shadow-2xl transition-all duration-300">
+      <nav class="flex flex-col space-y-3 text-sm font-bold text-slate-800">
+        <a href="/" class="flex items-center justify-between p-3 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-house text-indigo-500 w-5"></i>
+            <span>Main Home</span>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+        </a>
+        <a href="/#rates" class="flex items-center justify-between p-3 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-tags text-indigo-500 w-5"></i>
+            <span>Pricing & Rates</span>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+        </a>
+        <a href="/#features" class="flex items-center justify-between p-3 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-star text-amber-500 w-5"></i>
+            <span>Core Features</span>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+        </a>
+        <a href="/#how-it-works" class="flex items-center justify-between p-3 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-circle-nodes text-emerald-500 w-5"></i>
+            <span>How It Works</span>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+        </a>
+        <a href="/blog" class="flex items-center justify-between p-3 rounded-xl bg-indigo-50 text-indigo-700 font-extrabold transition-colors">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-book-open text-indigo-600 w-5"></i>
+            <span>Telecom Blog & Guides</span>
+          </div>
+          <i class="fa-solid fa-check text-xs text-indigo-600"></i>
+        </a>
+        <a href="/#faqs" class="flex items-center justify-between p-3 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-circle-question text-slate-500 w-5"></i>
+            <span>Frequently Asked Questions</span>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+        </a>
+      </nav>
+
+      <div class="pt-3 border-t border-slate-200">
+        <a href="/#download" class="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg">
+          <i class="fa-solid fa-download text-sm text-indigo-400"></i>
+          <span>Download SimlyX Mobile App</span>
         </a>
       </div>
     </div>
@@ -331,6 +391,30 @@
         </div>
       </div>
     </div>
-  </footer>
+  <script>
+    function toggleMobileMenu() {
+      const drawer = document.getElementById('mobileMenuDrawer');
+      const icon = document.getElementById('mobileMenuIcon');
+      if (!drawer) return;
+      const isHidden = drawer.classList.contains('hidden');
+      if (isHidden) {
+        drawer.classList.remove('hidden');
+        icon?.classList.remove('fa-bars');
+        icon?.classList.add('fa-xmark');
+      } else {
+        drawer.classList.add('hidden');
+        icon?.classList.remove('fa-xmark');
+        icon?.classList.add('fa-bars');
+      }
+    }
+
+    function closeMobileMenu() {
+      const drawer = document.getElementById('mobileMenuDrawer');
+      const icon = document.getElementById('mobileMenuIcon');
+      drawer?.classList.add('hidden');
+      icon?.classList.remove('fa-xmark');
+      icon?.classList.add('fa-bars');
+    }
+  </script>
 </body>
 </html>

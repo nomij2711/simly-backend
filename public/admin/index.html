@@ -4303,9 +4303,10 @@
       }
     }
 
-    async function loadOverview() {
+    async function loadOverview(carrier = currentDashboardCarrier) {
       try {
-        const data = await adminFetch('/api/admin/stats');
+        const targetCarrier = carrier || currentDashboardCarrier || 'all';
+        const data = await adminFetch('/api/admin/stats?carrier=' + encodeURIComponent(targetCarrier));
         if (!data.success) return;
 
         const stats = data.data;
@@ -4316,7 +4317,7 @@
         if (npEl) npEl.innerText = formatUSD8(fin.netProfit !== undefined ? fin.netProfit : stats.netProfit);
 
         const mpEl = document.getElementById('kpiMarginPercent');
-        if (mpEl) mpEl.innerText = (fin.marginPercent !== undefined ? fin.marginPercent.toFixed(4) : '0.0000') + '% Margin';
+        if (mpEl) mpEl.innerText = (fin.marginPercent !== undefined ? Number(fin.marginPercent).toFixed(4) : '0.0000') + '% Margin';
 
         const wcEl = document.getElementById('kpiWholesaleCost');
         if (wcEl) wcEl.innerText = formatUSD8(fin.totalWholesaleCost !== undefined ? fin.totalWholesaleCost : stats.totalWholesaleCost);
@@ -4416,8 +4417,9 @@
       if (!ctx) return;
       if (countryChartInstance) countryChartInstance.destroy();
 
-      const labels = Object.keys(dist).length ? Object.keys(dist) : ['US', 'GB', 'CA'];
-      const data = Object.keys(dist).length ? Object.values(dist) : [10, 6, 3];
+      const hasDist = dist && Object.keys(dist).length > 0;
+      const labels = hasDist ? Object.keys(dist) : ['No Active Lines'];
+      const data = hasDist ? Object.values(dist) : [0];
 
       countryChartInstance = new Chart(ctx, {
         type: 'doughnut',
@@ -4425,7 +4427,7 @@
           labels: labels,
           datasets: [{
             data: data,
-            backgroundColor: ['#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ec4899'],
+            backgroundColor: hasDist ? ['#6366f1', '#a855f7', '#06b6d4', '#10b981', '#f59e0b', '#ec4899'] : ['#334155'],
             borderWidth: 0
           }]
         },
@@ -10156,7 +10158,7 @@
 let currentDashboardCarrier = 'all';
 
 function setDashboardCarrierFilter(carrier) {
-  currentDashboardCarrier = carrier;
+  currentDashboardCarrier = carrier || 'all';
   
   const btnAll = document.getElementById('btnCarrierFilterAll');
   const btnTwilio = document.getElementById('btnCarrierFilterTwilio');
@@ -10168,16 +10170,18 @@ function setDashboardCarrierFilter(carrier) {
     }
   });
 
-  if (carrier === 'all' && btnAll) {
+  if (currentDashboardCarrier === 'all' && btnAll) {
     btnAll.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-indigo-600 text-white shadow-md shadow-indigo-600/30';
-  } else if (carrier === 'twilio' && btnTwilio) {
+  } else if (currentDashboardCarrier === 'twilio' && btnTwilio) {
     btnTwilio.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-purple-600 text-white shadow-md shadow-purple-600/30 flex items-center gap-1.5';
-  } else if (carrier === 'telnyx' && btnTelnyx) {
+  } else if (currentDashboardCarrier === 'telnyx' && btnTelnyx) {
     btnTelnyx.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-emerald-600 text-white shadow-md shadow-emerald-600/30 flex items-center gap-1.5';
   }
 
-  showToast(`Dashboard filtered by: ${carrier === 'all' ? 'All Carriers' : carrier === 'twilio' ? 'Twilio UK (🇬🇧)' : 'Telnyx'}`, 'info');
-  fetchFinanceMargins();
+  const carrierLabel = currentDashboardCarrier === 'all' ? 'All Carriers' : currentDashboardCarrier === 'twilio' ? 'Twilio UK (🇬🇧)' : 'Telnyx';
+  showToast(`Dashboard filtered by: ${carrierLabel}`, 'info');
+  loadOverview(currentDashboardCarrier);
+  fetchFinanceMargins(currentDashboardCarrier);
 }
 
 async function fetchCarrierHealth() {
@@ -10225,16 +10229,17 @@ async function fetchCarrierHealth() {
   }
 }
 
-async function fetchFinanceMargins() {
+async function fetchFinanceMargins(carrier = currentDashboardCarrier) {
   try {
-    const data = await adminFetch('/api/admin/finance/margins');
+    const targetCarrier = carrier || currentDashboardCarrier || 'all';
+    const data = await adminFetch('/api/admin/finance/margins?carrier=' + encodeURIComponent(targetCarrier));
     if (data && data.success && data.data) {
       const fin = data.data;
       const npEl = document.getElementById('kpiNetProfit');
       if (npEl) npEl.innerText = formatUSD8(fin.netProfit);
 
       const mpEl = document.getElementById('kpiMarginPercent');
-      if (mpEl) mpEl.innerText = (fin.marginPercent !== undefined ? fin.marginPercent.toFixed(4) : '0.0000') + '% Margin';
+      if (mpEl) mpEl.innerText = (fin.marginPercent !== undefined ? Number(fin.marginPercent).toFixed(4) : '0.0000') + '% Margin';
 
       const wcEl = document.getElementById('kpiWholesaleCost');
       if (wcEl) wcEl.innerText = formatUSD8(fin.totalWholesaleCost);
@@ -10756,7 +10761,7 @@ function exportData(type) {
       if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading live breakdown data...</td></tr>';
 
       try {
-        const res = await adminFetch('/api/admin/financials/breakdown');
+        const res = await adminFetch('/api/admin/financials/breakdown?carrier=' + encodeURIComponent(currentDashboardCarrier || 'all'));
         if (!res || !res.success) {
           if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-rose-400">Failed to load breakdown: ' + (res?.error || 'Server error') + '</td></tr>';
           return;
@@ -11485,11 +11490,9 @@ function exportData(type) {
         showToast(`⏳ Generating ${type.replace('_', ' ').toUpperCase()} PDF report...`, 'info');
 
         // Ensure breakdown data is available
-        if (!kpiBreakdownDataCache) {
-          const res = await adminFetch('/api/admin/financials/breakdown');
-          if (res && res.success) {
-            kpiBreakdownDataCache = res;
-          }
+        const res = await adminFetch('/api/admin/financials/breakdown?carrier=' + encodeURIComponent(currentDashboardCarrier || 'all'));
+        if (res && res.success) {
+          kpiBreakdownDataCache = res;
         }
 
         const data = kpiBreakdownDataCache || {};

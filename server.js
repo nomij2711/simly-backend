@@ -4597,8 +4597,14 @@ function parseLineTxDetails(t, userMap = {}) {
   };
 }
 
-async function calculateMasterFinancials() {
+async function calculateMasterFinancials(carrier = 'all') {
   await refreshDynamicCaches();
+  const cleanCarrier = (carrier || 'all').toLowerCase();
+
+  const isTwilioItem = (text, cc, phone) => {
+    const s = `${text || ''} ${cc || ''} ${phone || ''}`.toLowerCase();
+    return s.includes('+44') || s.includes('gb') || s.includes('united kingdom') || s.includes('uk') || s.includes('twilio');
+  };
 
   // 1. Total Customer Deposits (All-time topups/deposits loaded into prepaid wallets)
   const depositTx = await prisma.transaction.findMany({
@@ -4638,17 +4644,28 @@ async function calculateMasterFinancials() {
   // A. Number subscriptions & renewals (All line transactions)
   let retailLineRevenue = 0;
   let wholesaleNumberCost = 0;
+  let lineCount = 0;
   lineTx.forEach(t => {
     const item = parseLineTxDetails(t);
+    const isTwilio = isTwilioItem(t.description, item.countryCode, item.phoneNumber);
+    if (cleanCarrier === 'twilio' && !isTwilio) return;
+    if (cleanCarrier === 'telnyx' && isTwilio) return;
+
     retailLineRevenue += item.retailCharge;
     wholesaleNumberCost += item.wholesaleCost;
+    lineCount++;
   });
 
   // B. Outbound Calls (100% Dynamic Destination Rate Deck)
   let retailCallRevenue = 0;
   let wholesaleCallCost = 0;
   let totalCallSeconds = 0;
+  let callCount = 0;
   allCalls.forEach((c, i) => {
+    const isTwilio = (c.myNumber && c.myNumber.startsWith('+44')) || (c.contactNumber && c.contactNumber.startsWith('+44'));
+    if (cleanCarrier === 'twilio' && !isTwilio) return;
+    if (cleanCarrier === 'telnyx' && isTwilio) return;
+
     const durSec = c.durationSeconds || 0;
     totalCallSeconds += durSec;
     const dest = getRateForDestinationNumber(c.contactNumber);
@@ -4660,13 +4677,19 @@ async function calculateMasterFinancials() {
     const retailRate = Number(dest.callSellPricePerMin || dest.callRatePerMin || 0.05);
     const retail = (callTx[i] && i < callTx.length) ? Math.abs(callTx[i].amount) : (minutes * retailRate);
     retailCallRevenue += retail;
+    callCount++;
   });
   const totalCallMinutes = totalCallSeconds / 60;
 
   // C. Outbound SMS (100% Dynamic Destination Rate Deck)
   let retailSmsRevenue = 0;
   let wholesaleSmsCost = 0;
+  let smsCount = 0;
   allSmsOutbound.forEach((m, i) => {
+    const isTwilio = (m.fromNumber && m.fromNumber.startsWith('+44')) || (m.toNumber && m.toNumber.startsWith('+44'));
+    if (cleanCarrier === 'twilio' && !isTwilio) return;
+    if (cleanCarrier === 'telnyx' && isTwilio) return;
+
     const dest = getRateForDestinationNumber(m.toNumber);
     const wholesaleRate = Number(dest.smsWholesaleCost != null ? dest.smsWholesaleCost : ((dest.smsSellPrice || dest.smsRate || 0.05) / NUMBER_RETAIL_MULTIPLIER));
     wholesaleSmsCost += wholesaleRate;
@@ -4674,6 +4697,7 @@ async function calculateMasterFinancials() {
     const matchedTx = (smsTx[i] && i < smsTx.length) ? smsTx[i] : smsTx.find(t => t.description && t.description.includes(m.toNumber));
     const retail = matchedTx ? Math.abs(matchedTx.amount) : Number(dest.smsSellPrice || dest.smsRate || 0.05);
     retailSmsRevenue += retail;
+    smsCount++;
   });
 
   const totalRetailRevenue = retailLineRevenue + retailCallRevenue + retailSmsRevenue;
@@ -4681,9 +4705,30 @@ async function calculateMasterFinancials() {
   const netProfit = totalRetailRevenue - totalWholesaleCost;
   const marginPercent = totalRetailRevenue > 0 ? ((netProfit / totalRetailRevenue) * 100) : 0.0;
 
-  const activeNumbersCount = await prisma.purchasedNumber.count({ where: { status: 'active' } });
+  let activeNumbersWhere = { status: 'active' };
+  if (cleanCarrier === 'twilio') {
+    activeNumbersWhere = {
+      status: 'active',
+      OR: [
+        { carrier: 'TWILIO' },
+        { countryCode: 'GB' },
+        { phoneNumber: { startsWith: '+44' } }
+      ]
+    };
+  } else if (cleanCarrier === 'telnyx') {
+    activeNumbersWhere = {
+      status: 'active',
+      AND: [
+        { carrier: { not: 'TWILIO' } },
+        { countryCode: { not: 'GB' } },
+        { NOT: { phoneNumber: { startsWith: '+44' } } }
+      ]
+    };
+  }
+  const activeNumbersCount = await prisma.purchasedNumber.count({ where: activeNumbersWhere });
 
   return {
+    carrier: cleanCarrier,
     netProfit: parseFloat(netProfit.toFixed(8)),
     netProfitStr: netProfit.toFixed(8),
     marginPercent: parseFloat(marginPercent.toFixed(4)),
@@ -4710,7 +4755,8 @@ async function calculateMasterFinancials() {
     totalUserBalanceStr: totalUserBalance.toFixed(8),
     totalCallSeconds,
     totalCallMinutes: parseFloat(totalCallMinutes.toFixed(4)),
-    totalSmsSent: allSmsOutbound.length,
+    totalCallCount: callCount,
+    totalSmsSent: smsCount,
     activeNumbers: activeNumbersCount
   };
 }
@@ -4720,7 +4766,13 @@ async function calculateMasterFinancials() {
 app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
   try {
     await refreshDynamicCaches();
-    const fin = await calculateMasterFinancials();
+    const carrier = (req.query.carrier || 'all').toLowerCase();
+    const fin = await calculateMasterFinancials(carrier);
+
+    const isTwilioItem = (text, cc, phone) => {
+      const s = `${text || ''} ${cc || ''} ${phone || ''}`.toLowerCase();
+      return s.includes('+44') || s.includes('gb') || s.includes('united kingdom') || s.includes('uk') || s.includes('twilio');
+    };
 
     const [lineTx, callTx, smsTx, allCalls, allSmsOutbound, deposits, retailCharges, allUsers] = await Promise.all([
       prisma.transaction.findMany({
@@ -4764,11 +4816,24 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
       if (u.email) userMap[u.email.toLowerCase()] = u;
     });
 
-    // 1. Line purchases & renewals (All itemized financial records)
-    const numbersDetailed = lineTx.map(t => parseLineTxDetails(t, userMap));
+    // 1. Line purchases & renewals (Itemized financial records filtered by carrier)
+    let filteredLineTx = lineTx;
+    if (carrier === 'twilio') {
+      filteredLineTx = lineTx.filter(t => isTwilioItem(t.description));
+    } else if (carrier === 'telnyx') {
+      filteredLineTx = lineTx.filter(t => !isTwilioItem(t.description));
+    }
+    const numbersDetailed = filteredLineTx.map(t => parseLineTxDetails(t, userMap));
 
-    // 2. Outbound Calls
-    const callsDetailed = allCalls.map((c, i) => {
+    // 2. Outbound Calls (Filtered by carrier)
+    let filteredCalls = allCalls;
+    if (carrier === 'twilio') {
+      filteredCalls = allCalls.filter(c => (c.myNumber && c.myNumber.startsWith('+44')) || (c.contactNumber && c.contactNumber.startsWith('+44')));
+    } else if (carrier === 'telnyx') {
+      filteredCalls = allCalls.filter(c => (!c.myNumber || !c.myNumber.startsWith('+44')) && (!c.contactNumber || !c.contactNumber.startsWith('+44')));
+    }
+
+    const callsDetailed = filteredCalls.map((c, i) => {
       const durSec = c.durationSeconds || 0;
       const dest = getRateForDestinationNumber(c.contactNumber);
       const minutes = durSec > 0 ? Math.ceil(durSec / 60) : (c.status === 'completed' ? 1 : 0);
@@ -4802,8 +4867,15 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
       };
     }).reverse();
 
-    // 3. Outbound SMS
-    const smsDetailed = allSmsOutbound.map((m, i) => {
+    // 3. Outbound SMS (Filtered by carrier)
+    let filteredSms = allSmsOutbound;
+    if (carrier === 'twilio') {
+      filteredSms = allSmsOutbound.filter(m => (m.fromNumber && m.fromNumber.startsWith('+44')) || (m.toNumber && m.toNumber.startsWith('+44')));
+    } else if (carrier === 'telnyx') {
+      filteredSms = allSmsOutbound.filter(m => (!m.fromNumber || !m.fromNumber.startsWith('+44')) && (!m.toNumber || !m.toNumber.startsWith('+44')));
+    }
+
+    const smsDetailed = filteredSms.map((m, i) => {
       const dest = getRateForDestinationNumber(m.toNumber);
       const wholesaleRate = Number(dest.smsWholesaleCost != null ? dest.smsWholesaleCost : ((dest.smsSellPrice || dest.smsRate || 0.05) / NUMBER_RETAIL_MULTIPLIER));
       const wholesale = wholesaleRate;
@@ -4849,7 +4921,14 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
     });
 
     // 5. Retail Usage / Purchase Transactions Detailed
-    const retailDetailed = retailCharges.map(r => {
+    let filteredRetailCharges = retailCharges;
+    if (carrier === 'twilio') {
+      filteredRetailCharges = retailCharges.filter(r => isTwilioItem(r.description));
+    } else if (carrier === 'telnyx') {
+      filteredRetailCharges = retailCharges.filter(r => !isTwilioItem(r.description));
+    }
+
+    const retailDetailed = filteredRetailCharges.map(r => {
       const u = userMap[r.userId] || { name: 'Customer', email: r.userId };
       return {
         id: r.id,
@@ -4865,6 +4944,7 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
 
     res.json({
       success: true,
+      carrier,
       financials: fin,
       numbers: numbersDetailed,
       calls: callsDetailed,
@@ -4878,16 +4958,99 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
   }
 });
 
+// 2c. Direct Finance Margins & Carrier Profitability Endpoint
+app.get('/api/admin/finance/margins', requireAdmin, async (req, res) => {
+  try {
+    const carrier = (req.query.carrier || 'all').toLowerCase();
+    const fin = await calculateMasterFinancials(carrier);
+    res.json({
+      success: true,
+      carrier,
+      data: fin
+    });
+  } catch (error) {
+    console.error('[ADMIN FINANCE MARGINS ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 2. Master Dashboard KPI Stats
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   try {
+    const carrier = (req.query.carrier || 'all').toLowerCase();
     const totalUsers = await prisma.user.count();
-    const activeNumbers = await prisma.purchasedNumber.count({ where: { status: 'active' } });
-    const totalCalls = await prisma.callLog.count();
-    const totalMessages = await prisma.message.count({ where: { direction: 'outbound' } });
     
-    // Master financials calculation with 8-decimal precision
-    const fin = await calculateMasterFinancials();
+    // Master financials calculation with 8-decimal precision & carrier filter
+    const fin = await calculateMasterFinancials(carrier);
+
+    let activeNumbersWhere = { status: 'active' };
+    let callsWhere = {};
+    let messagesWhere = { direction: 'outbound' };
+    let numbersWhere = {};
+
+    if (carrier === 'twilio') {
+      activeNumbersWhere = {
+        status: 'active',
+        OR: [
+          { carrier: 'TWILIO' },
+          { countryCode: 'GB' },
+          { phoneNumber: { startsWith: '+44' } }
+        ]
+      };
+      callsWhere = {
+        OR: [
+          { myNumber: { startsWith: '+44' } },
+          { contactNumber: { startsWith: '+44' } }
+        ]
+      };
+      messagesWhere = {
+        direction: 'outbound',
+        OR: [
+          { fromNumber: { startsWith: '+44' } },
+          { toNumber: { startsWith: '+44' } }
+        ]
+      };
+      numbersWhere = {
+        OR: [
+          { carrier: 'TWILIO' },
+          { countryCode: 'GB' },
+          { phoneNumber: { startsWith: '+44' } }
+        ]
+      };
+    } else if (carrier === 'telnyx') {
+      activeNumbersWhere = {
+        status: 'active',
+        AND: [
+          { carrier: { not: 'TWILIO' } },
+          { countryCode: { not: 'GB' } },
+          { NOT: { phoneNumber: { startsWith: '+44' } } }
+        ]
+      };
+      callsWhere = {
+        AND: [
+          { NOT: { myNumber: { startsWith: '+44' } } },
+          { NOT: { contactNumber: { startsWith: '+44' } } }
+        ]
+      };
+      messagesWhere = {
+        direction: 'outbound',
+        AND: [
+          { NOT: { fromNumber: { startsWith: '+44' } } },
+          { NOT: { toNumber: { startsWith: '+44' } } }
+        ]
+      };
+      numbersWhere = {
+        AND: [
+          { carrier: { not: 'TWILIO' } },
+          { countryCode: { not: 'GB' } },
+          { NOT: { phoneNumber: { startsWith: '+44' } } }
+        ]
+      };
+    }
+
+    const activeNumbers = await prisma.purchasedNumber.count({ where: activeNumbersWhere });
+    const totalCalls = await prisma.callLog.count({ where: callsWhere });
+    const totalMessages = await prisma.message.count({ where: messagesWhere });
 
     // Recent 5 users
     const recentUsers = await prisma.user.findMany({
@@ -4901,8 +5064,11 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Active numbers country distribution
-    const allNumbers = await prisma.purchasedNumber.findMany({ select: { countryCode: true } });
+    // Active numbers country distribution filtered by carrier
+    const allNumbers = await prisma.purchasedNumber.findMany({ 
+      where: numbersWhere,
+      select: { countryCode: true } 
+    });
     const countryDistribution = {};
     allNumbers.forEach(n => {
       const cc = (n.countryCode || 'US').toUpperCase();
@@ -4911,6 +5077,7 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
 
     res.json({
       success: true,
+      carrier,
       data: {
         totalUsers,
         activeNumbers,

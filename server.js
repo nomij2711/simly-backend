@@ -9936,14 +9936,47 @@ app.post('/api/admin/telecom/test-connection', requireAdmin, async (req, res) =>
       if (!sid || !token) {
         return res.status(400).json({ success: false, error: 'Twilio Account SID and Auth Token are required.' });
       }
-      const twilio = require('twilio')(sid, token);
-      const balanceRes = await twilio.balance.fetch();
+
+      // Native HTTPS Twilio Handshake (Zero External Dependency Risk)
+      const https = require('https');
+      const authHeader = 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64');
+
+      const balanceData = await new Promise((resolve, reject) => {
+        const twilioReq = https.request({
+          hostname: 'api.twilio.com',
+          port: 443,
+          path: `/2010-04-01/Accounts/${sid}/Balance.json`,
+          method: 'GET',
+          headers: {
+            'Authorization': authHeader,
+            'Accept': 'application/json'
+          }
+        }, (resTwilio) => {
+          let body = '';
+          resTwilio.on('data', chunk => body += chunk);
+          resTwilio.on('end', () => {
+            try {
+              const parsed = JSON.parse(body);
+              if (resTwilio.statusCode >= 200 && resTwilio.statusCode < 300) {
+                resolve(parsed);
+              } else {
+                reject(new Error(parsed.message || `Twilio Error (${resTwilio.statusCode})`));
+              }
+            } catch (err) {
+              reject(new Error(`Failed to parse Twilio response: ${body}`));
+            }
+          });
+        });
+        twilioReq.on('error', (err) => reject(err));
+        twilioReq.end();
+      });
+
       return res.json({
         success: true,
         carrier: 'TWILIO',
-        message: `Twilio API Connected Successfully! Live Account Balance: ${balanceRes.currency} ${balanceRes.balance}`,
-        balance: parseFloat(balanceRes.balance),
-        currency: balanceRes.currency
+        message: `Twilio API Connected Successfully! Live Account Balance: ${balanceData.currency || 'GBP'} ${balanceData.balance || '0.00'}`,
+        balance: parseFloat(balanceData.balance || 0),
+        currency: balanceData.currency || 'GBP'
       });
     }
 

@@ -2333,151 +2333,22 @@
                 <i class="fa-solid fa-tower-broadcast text-purple-400"></i>
                 <span>Telecom Carriers & API Integrations</span>
               </h2>
-              <p class="text-xs text-slate-400 mt-0.5">Manage wholesale carrier API credentials, live balance health, API handshakes & permanent lifetime audit ledger.</p>
+              <p class="text-xs text-slate-400 mt-0.5">Add wholesale carriers, edit API credentials, live balance health & manage permanent zero data-loss routing.</p>
             </div>
-            <div class="flex items-center gap-2">
-              <button onclick="loadCarriersTab()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
+            <div class="flex items-center gap-2 flex-wrap">
+              <button type="button" onclick="openCarrierModal()" class="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-purple-600/30 transition-all cursor-pointer">
+                <i class="fa-solid fa-plus text-amber-300"></i> <span>Add New Carrier API</span>
+              </button>
+              <button type="button" onclick="loadCarriersTab()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer">
                 <i class="fa-solid fa-rotate-right"></i> <span>Sync Status</span>
               </button>
             </div>
           </div>
 
-          <!-- 1. Live Carriers Connectivity Cards Grid -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-            
-            <!-- Twilio Telecom Card -->
-            <div class="bg-slate-900 border border-purple-500/30 rounded-3xl p-5 space-y-4 shadow-xl relative overflow-hidden flex flex-col justify-between">
-              <div class="absolute -top-10 -right-10 w-28 h-28 bg-purple-500/10 rounded-full blur-2xl pointer-events-none"></div>
-              <div class="space-y-3">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2.5">
-                    <div class="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center text-lg">
-                      <i class="fa-solid fa-tower-broadcast"></i>
-                    </div>
-                    <div>
-                      <h3 class="text-sm font-bold text-white">Twilio Telecom</h3>
-                      <p class="text-[10px] text-purple-300">Tier-1 Direct Carrier Hub</p>
-                    </div>
-                  </div>
-                  <span id="twilioLiveStatusBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">CONNECTED 🟢</span>
-                </div>
-
-                <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
-                  <div class="flex items-center justify-between text-[11px]">
-                    <span class="text-slate-400">Account SID:</span>
-                    <span id="carrierTwilioSidDisplay" class="font-mono font-bold text-white">AC••••••••••</span>
-                  </div>
-                  <div class="flex items-center justify-between text-[11px]">
-                    <span class="text-slate-400">Live Balance:</span>
-                    <span id="carrierTwilioBalanceDisplay" class="font-mono font-bold text-purple-300">£0.00 / $0.00</span>
-                  </div>
-                  <div class="flex items-center justify-between text-[11px]">
-                    <span class="text-slate-400">Active Lines:</span>
-                    <span id="carrierTwilioLinesDisplay" class="font-bold text-emerald-400">0 Active Lines</span>
-                  </div>
-                  <div class="flex items-center justify-between text-[11px]">
-                    <span class="text-slate-400">Assigned Hub:</span>
-                    <span class="font-bold text-amber-300">🇬🇧 United Kingdom (+44)</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="pt-2">
-                <button type="button" onclick="testCarrierConnection('TWILIO')" class="w-full py-2.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-300 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm">
-                  <i class="fa-solid fa-bolt text-amber-400"></i>
-                  <span>Test Twilio API Handshake</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Telnyx Telecom Card -->
-            <div class="bg-slate-900 border border-emerald-500/30 rounded-3xl p-5 space-y-4 shadow-xl relative overflow-hidden flex flex-col justify-between">
-              <div class="absolute -top-10 -right-10 w-28 h-28 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
-              <div class="space-y-3">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2.5">
-                    <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center text-lg">
-                      <i class="fa-solid fa-network-wired"></i>
-                    </div>
-                    <div>
-                      <h3 class="text-sm font-bold text-white">Telnyx LLC</h3>
-                      <p class="text-[10px] text-emerald-300">Wholesale Global Network</p>
-                    </div>
-                  </div>
-                  <span id="telnyxLiveStatusBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">CONNECTED 🟢</span>
-                </div>
-
-                <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
-                  <div class="flex items-center justify-between text-[11px]">
-                    <span class="text-slate-400">API Key:</span>
-                    <span id="carrierTelnyxKeyDisplay" class="font-mono font-bold text-white">KEY•••••••••</span>
-                  </div>
-                  <div class="flex items-center justify-between text-[11px]">
-                    <span class="text-slate-400">Live Balance:</span>
-                    <span id="carrierTelnyxBalanceDisplay" class="font-mono font-bold text-emerald-400">$10.00 USD</span>
-                  </div>
-                  <div class="flex items-center justify-between text-[11px]">
-                    <span class="text-slate-400">Active Lines:</span>
-                    <span id="carrierTelnyxLinesDisplay" class="font-bold text-emerald-400">26 Active Lines</span>
-                  </div>
-                  <div class="flex items-center justify-between text-[11px]">
-                    <span class="text-slate-400">Assigned Hub:</span>
-                    <span class="font-bold text-cyan-300">🇺🇸 USA, 🇨🇦 Canada & Worldwide</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="pt-2">
-                <button type="button" onclick="testCarrierConnection('TELNYX')" class="w-full py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm">
-                  <i class="fa-solid fa-bolt text-amber-400"></i>
-                  <span>Test Telnyx API Handshake</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- DIDWW Global Card -->
-            <div class="bg-slate-900 border border-blue-500/30 rounded-3xl p-5 space-y-4 shadow-xl relative overflow-hidden flex flex-col justify-between">
-              <div class="absolute -top-10 -right-10 w-28 h-28 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
-              <div class="space-y-3">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2.5">
-                    <div class="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center justify-center text-lg">
-                      <i class="fa-solid fa-globe"></i>
-                    </div>
-                    <div>
-                      <h3 class="text-sm font-bold text-white">DIDWW Global</h3>
-                      <p class="text-[10px] text-blue-300">International Virtual Numbers</p>
-                    </div>
-                  </div>
-                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/30">READY 🔵</span>
-                </div>
-
-                <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
-                  <div class="flex items-center justify-between text-[11px]">
-                    <span class="text-slate-400">API Status:</span>
-                    <span class="font-bold text-blue-300">Engine Configured</span>
-                  </div>
-                  <div class="flex items-center justify-between text-[11px]">
-                    <span class="text-slate-400">Supported DIDs:</span>
-                    <span class="font-bold text-white">80+ Countries</span>
-                  </div>
-                  <div class="flex items-center justify-between text-[11px]">
-                    <span class="text-slate-400">Active Lines:</span>
-                    <span id="carrierDidwwLinesDisplay" class="font-bold text-slate-400">0 Active Lines</span>
-                  </div>
-                  <div class="flex items-center justify-between text-[11px]">
-                    <span class="text-slate-400">Pricing Deck:</span>
-                    <span class="font-bold text-blue-300">Wholesale Ready</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="pt-2">
-                <button type="button" onclick="testCarrierConnection('DIDWW')" class="w-full py-2.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm">
-                  <i class="fa-solid fa-bolt text-amber-400"></i>
-                  <span>Test DIDWW Handshake</span>
-                </button>
-              </div>
+          <!-- 1. Live Carriers Connectivity Cards Grid (Dynamically Populated) -->
+          <div id="carrierCardsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div class="col-span-full py-8 text-center text-slate-500 text-xs">
+              <i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading carrier connections...
             </div>
           </div>
 
@@ -2520,14 +2391,125 @@
                     <th class="py-3 px-4">Lifetime Billed ($)</th>
                     <th class="py-3 px-4">Wholesale Cost ($)</th>
                     <th class="py-3 px-4">Net Realized Profit</th>
-                    <th class="py-3 px-4 text-right">Assigned Routes</th>
+                    <th class="py-3 px-4">Assigned Routes</th>
+                    <th class="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="carrierLedgerTableBody" class="divide-y divide-slate-800/60">
-                  <tr><td colspan="8" class="py-6 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading carrier ledger...</td></tr>
+                  <tr><td colspan="9" class="py-6 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading carrier ledger...</td></tr>
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+
+        <!-- 📡 CARRIER API CREDENTIALS & INTEGRATION MODAL -->
+        <div id="carrierModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4" onclick="if(event.target === this) closeCarrierModal()">
+          <div class="relative w-full max-w-xl bg-slate-900 border border-slate-700/90 rounded-3xl shadow-2xl overflow-hidden animate-fade-in" onclick="event.stopPropagation()">
+            <!-- Modal Header -->
+            <div class="p-5 bg-slate-950/90 border-b border-slate-800 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center text-lg">
+                  <i class="fa-solid fa-tower-broadcast"></i>
+                </div>
+                <div>
+                  <h3 id="carrierModalTitle" class="text-base font-bold text-white">Add New Carrier API</h3>
+                  <p class="text-xs text-slate-400">Configure wholesale telecom API keys & balance connection</p>
+                </div>
+              </div>
+              <button type="button" onclick="closeCarrierModal()" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 flex items-center justify-center transition-all cursor-pointer">
+                <i class="fa-solid fa-xmark text-sm"></i>
+              </button>
+            </div>
+
+            <!-- Modal Body -->
+            <form id="carrierForm" onsubmit="event.preventDefault(); saveCarrierIntegration();" class="p-5 space-y-4 text-xs">
+              
+              <!-- Preset Provider Selector -->
+              <div>
+                <label class="block text-slate-400 font-semibold mb-1.5">Preset Telecom Carrier Template:</label>
+                <select id="carrierFormPreset" onchange="applyCarrierPreset(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500">
+                  <option value="CUSTOM">⚡ Custom / Generic Telecom API</option>
+                  <option value="TWILIO">🟣 Twilio Telecom (Account SID + Auth Token)</option>
+                  <option value="TELNYX">🟢 Telnyx LLC (API Key)</option>
+                  <option value="DIDWW">🔵 DIDWW Global (API Key)</option>
+                  <option value="VONAGE">🟠 Vonage / Nexmo (API Key + Secret)</option>
+                  <option value="BANDWIDTH">🔷 Bandwidth Inc (Account ID + API Token)</option>
+                  <option value="PLIVO">🟣 Plivo Telecom (Auth ID + Auth Token)</option>
+                  <option value="SINCH">🔴 Sinch Global (Service Plan ID + API Token)</option>
+                </select>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-slate-400 font-semibold mb-1">Carrier Name:</label>
+                  <input type="text" id="carrierFormName" placeholder="e.g. Vonage Telecom" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500" />
+                </div>
+                <div>
+                  <label class="block text-slate-400 font-semibold mb-1">Unique Carrier Code / ID:</label>
+                  <input type="text" id="carrierFormCode" placeholder="e.g. VONAGE" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono uppercase text-xs focus:outline-none focus:border-purple-500" />
+                </div>
+              </div>
+
+              <!-- Credential Fields -->
+              <div>
+                <label id="carrierFormSidLabel" class="block text-slate-400 font-semibold mb-1">Account SID / API Key / Client ID:</label>
+                <input type="text" id="carrierFormSid" placeholder="Enter API Key or Account SID" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-purple-500" />
+              </div>
+
+              <div>
+                <label id="carrierFormTokenLabel" class="block text-slate-400 font-semibold mb-1">Auth Token / API Secret / Password:</label>
+                <div class="relative">
+                  <input type="password" id="carrierFormToken" placeholder="Enter Auth Token or Secret" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-purple-500 pr-10" />
+                  <button type="button" onclick="toggleCarrierPasswordVisibility()" class="absolute right-2.5 top-2.5 text-slate-400 hover:text-white cursor-pointer">
+                    <i id="carrierEyeIcon" class="fa-solid fa-eye text-xs"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-slate-400 font-semibold mb-1">Billing Currency:</label>
+                  <select id="carrierFormCurrency" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500">
+                    <option value="USD">USD ($)</option>
+                    <option value="GBP">GBP (£)</option>
+                    <option value="EUR">EUR (€)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-slate-400 font-semibold mb-1">Theme Color:</label>
+                  <select id="carrierFormColor" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500">
+                    <option value="purple">🟣 Purple (Twilio / Premium)</option>
+                    <option value="emerald">🟢 Emerald (Telnyx / Default)</option>
+                    <option value="blue">🔵 Blue (DIDWW / International)</option>
+                    <option value="amber">🟠 Amber (Vonage / Regional)</option>
+                    <option value="rose">🔴 Rose (Sinch / High-Volume)</option>
+                    <option value="cyan">🔷 Cyan (Bandwidth / Enterprise)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Explanatory Safety Notice -->
+              <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 text-[11px] text-slate-400 flex items-start gap-2.5">
+                <i class="fa-solid fa-shield-halved text-emerald-400 text-sm mt-0.5"></i>
+                <span><b>Zero Data Loss:</b> Editing or removing this carrier will never delete past phone numbers or transaction CDR logs.</span>
+              </div>
+
+              <!-- Modal Footer Actions -->
+              <div class="pt-3 border-t border-slate-800 flex items-center justify-between gap-3">
+                <button type="button" onclick="testModalCarrierConnection()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
+                  <i class="fa-solid fa-bolt text-amber-400"></i>
+                  <span>Test Handshake</span>
+                </button>
+                <div class="flex items-center gap-2">
+                  <button type="button" onclick="closeCarrierModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold cursor-pointer">Cancel</button>
+                  <button type="submit" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-600/30 flex items-center gap-1.5 cursor-pointer">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Save Carrier API</span>
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
   
@@ -9882,71 +9864,139 @@
     // ============================================================
     // 📡 TELECOM CARRIERS & API INTEGRATIONS CONTROLLER
     // ============================================================
+    let cachedCarriersData = [];
+    let cachedRawCarriers = [];
+
     async function loadCarriersTab() {
       try {
+        const cardsContainer = document.getElementById('carrierCardsContainer');
         const tbody = document.getElementById('carrierLedgerTableBody');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="py-6 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading carrier ledger & balances...</td></tr>';
+
+        if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="py-6 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading carrier ledger & balances...</td></tr>';
+        if (cardsContainer) cardsContainer.innerHTML = '<div class="col-span-full py-8 text-center text-slate-500 text-xs"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Syncing wholesale carriers...</div>';
 
         const res = await adminFetch('/api/admin/telecom/carriers-config');
         if (!res || !res.success) {
-          if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="py-6 text-center text-rose-400">Failed to load carriers config.</td></tr>';
+          if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="py-6 text-center text-rose-400">Failed to load carriers config.</td></tr>';
+          if (cardsContainer) cardsContainer.innerHTML = '<div class="col-span-full py-8 text-center text-rose-400 text-xs">Failed to load carrier cards.</div>';
           return;
         }
 
-        const carriers = res.carriers || [];
-        
-        // 1. Twilio Card
-        const twilio = carriers.find(c => c.id === 'TWILIO');
-        if (twilio) {
-          const sidEl = document.getElementById('carrierTwilioSidDisplay');
-          if (sidEl) sidEl.innerText = twilio.accountSid || 'Not Configured';
-          const balEl = document.getElementById('carrierTwilioBalanceDisplay');
-          if (balEl) balEl.innerText = `${twilio.currency === 'GBP' ? '£' : '$'}${Number(twilio.balance || 0).toFixed(2)} (${formatUSD8(twilio.balance || 0)})`;
-          const linesEl = document.getElementById('carrierTwilioLinesDisplay');
-          if (linesEl) linesEl.innerText = `${twilio.activeLines || 0} Active Lines`;
-          const badgeEl = document.getElementById('twilioLiveStatusBadge');
-          if (badgeEl) {
-            badgeEl.className = twilio.status === 'CONNECTED' 
-              ? 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-              : 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30';
-            badgeEl.innerText = twilio.status === 'CONNECTED' ? 'CONNECTED 🟢' : 'CONFIGURED 🟡';
+        cachedCarriersData = res.carriers || [];
+        cachedRawCarriers = res.rawCarriers || [];
+
+        // 1. Render Dynamic Carrier Connectivity Cards
+        if (cardsContainer) {
+          if (cachedCarriersData.length === 0) {
+            cardsContainer.innerHTML = `
+              <div class="col-span-full p-8 text-center bg-slate-900 border border-slate-800 rounded-3xl space-y-3">
+                <i class="fa-solid fa-tower-broadcast text-3xl text-slate-600"></i>
+                <div class="text-sm font-bold text-white">No Carriers Configured</div>
+                <button onclick="openCarrierModal()" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs">
+                  <i class="fa-solid fa-plus mr-1"></i> Add Your First Carrier API
+                </button>
+              </div>
+            `;
+          } else {
+            cardsContainer.innerHTML = cachedCarriersData.map(c => {
+              const color = c.color || 'indigo';
+              const isTwilio = c.code === 'TWILIO';
+              const isTelnyx = c.code === 'TELNYX';
+              const isDidww = c.code === 'DIDWW';
+
+              const statusBadgeClass = c.status === 'CONNECTED' 
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
+                : (c.status === 'CONFIGURED' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-slate-800 text-slate-400 border-slate-700');
+
+              const statusIcon = c.status === 'CONNECTED' ? '🟢' : (c.status === 'CONFIGURED' ? '🟡' : '⚪');
+
+              const credLabel = (isTwilio || c.accountSid) ? 'Account SID:' : 'API Key:';
+              const credValue = c.accountSidMasked || c.apiKeyMasked || (c.accountSid ? 'AC••••••••••' : (c.apiKey ? 'KEY•••••••••' : 'Configured'));
+
+              const balanceFormatted = c.currency === 'GBP' 
+                ? `£${Number(c.balance || 0).toFixed(2)}` 
+                : (c.currency === 'EUR' ? `€${Number(c.balance || 0).toFixed(2)}` : `$${Number(c.balance || 0).toFixed(2)} USD`);
+
+              const routesSummary = (c.assignedRoutes && c.assignedRoutes.length > 0)
+                ? c.assignedRoutes.slice(0, 3).join(', ') + (c.assignedRoutes.length > 3 ? ` +${c.assignedRoutes.length - 3} more` : '')
+                : 'No routes assigned yet';
+
+              return `
+                <div class="bg-slate-900 border border-${color}-500/30 rounded-3xl p-5 space-y-4 shadow-xl relative overflow-hidden flex flex-col justify-between group hover:border-${color}-500/60 transition-all">
+                  <div class="absolute -top-10 -right-10 w-28 h-28 bg-${color}-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                  
+                  <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2.5">
+                        <div class="w-10 h-10 rounded-2xl bg-${color}-500/10 text-${color}-400 border border-${color}-500/20 flex items-center justify-center text-lg shadow-inner">
+                          <i class="fa-solid ${c.icon || 'fa-tower-broadcast'}"></i>
+                        </div>
+                        <div>
+                          <h3 class="text-sm font-bold text-white flex items-center gap-1.5">
+                            <span>${escapeHtml(c.name)}</span>
+                          </h3>
+                          <p class="text-[10px] text-${color}-300 font-mono">${escapeHtml(c.code)}</p>
+                        </div>
+                      </div>
+                      <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${statusBadgeClass}">
+                        ${c.status} ${statusIcon}
+                      </span>
+                    </div>
+
+                    <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
+                      <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400">${credLabel}</span>
+                        <span class="font-mono font-bold text-white">${escapeHtml(credValue)}</span>
+                      </div>
+                      <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400">Live Balance:</span>
+                        <span class="font-mono font-bold text-${color}-300">${balanceFormatted}</span>
+                      </div>
+                      <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400">Active Lines:</span>
+                        <span class="font-bold text-emerald-400">${c.activeLines || 0} Active (${c.totalLines || 0} Lifetime)</span>
+                      </div>
+                      <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400">Assigned Hubs:</span>
+                        <span class="font-bold text-amber-300 truncate max-w-[140px]" title="${c.assignedRoutes?.join(', ')}">${routesSummary}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="pt-2 space-y-2">
+                    <button type="button" onclick="testCarrierConnection('${c.code}')" class="w-full py-2 bg-${color}-600/20 hover:bg-${color}-600/30 border border-${color}-500/40 text-${color}-300 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer">
+                      <i class="fa-solid fa-bolt text-amber-400"></i>
+                      <span>Test Handshake</span>
+                    </button>
+                    
+                    <div class="flex items-center gap-2">
+                      <button type="button" onclick="openCarrierModal('${c.code}')" class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+                        <i class="fa-solid fa-gear text-[11px]"></i>
+                        <span>Edit API</span>
+                      </button>
+                      
+                      ${!c.isDefault ? `
+                        <button type="button" onclick="deleteCarrierIntegration('${c.code}')" title="Remove Carrier" class="p-1.5 px-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-semibold transition-all cursor-pointer">
+                          <i class="fa-solid fa-trash"></i>
+                        </button>
+                      ` : ''}
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('');
           }
         }
 
-        // 2. Telnyx Card
-        const telnyx = carriers.find(c => c.id === 'TELNYX');
-        if (telnyx) {
-          const keyEl = document.getElementById('carrierTelnyxKeyDisplay');
-          if (keyEl) keyEl.innerText = telnyx.apiKey || 'Not Configured';
-          const balEl = document.getElementById('carrierTelnyxBalanceDisplay');
-          if (balEl) balEl.innerText = `$${Number(telnyx.balance || 0).toFixed(2)} USD`;
-          const linesEl = document.getElementById('carrierTelnyxLinesDisplay');
-          if (linesEl) linesEl.innerText = `${telnyx.activeLines || 0} Active Lines`;
-          const badgeEl = document.getElementById('telnyxLiveStatusBadge');
-          if (badgeEl) {
-            badgeEl.className = telnyx.status === 'CONNECTED' 
-              ? 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-              : 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30';
-            badgeEl.innerText = telnyx.status === 'CONNECTED' ? 'CONNECTED 🟢' : 'CONFIGURED 🟡';
-          }
-        }
-
-        // 3. DIDWW Card
-        const didww = carriers.find(c => c.id === 'DIDWW');
-        if (didww) {
-          const linesEl = document.getElementById('carrierDidwwLinesDisplay');
-          if (linesEl) linesEl.innerText = `${didww.activeLines || 0} Active Lines`;
-        }
-
-        // 4. Permanent Lifetime Audit Ledger Table
+        // 2. Render Permanent Lifetime Audit Ledger Table
         if (tbody) {
-          tbody.innerHTML = carriers.map(c => {
+          tbody.innerHTML = cachedCarriersData.map(c => {
             const routesHtml = (c.assignedRoutes && c.assignedRoutes.length > 0)
               ? c.assignedRoutes.map(r => `<span class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-slate-200 text-[10px]">${r}</span>`).join(' ')
               : '<span class="text-slate-500 italic text-[11px]">No active routes</span>';
 
             const statusColor = c.status === 'CONNECTED' 
-              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
               : (c.status === 'CONFIGURED' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-blue-500/20 text-blue-300 border-blue-500/30');
 
             return `
@@ -9961,7 +10011,7 @@
                         <span>${escapeHtml(c.name)}</span>
                         <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${statusColor}">${c.status}</span>
                       </div>
-                      <div class="text-[10px] text-slate-400 font-mono mt-0.5">Key: ${c.accountSid || c.apiKey || 'Direct Carrier Engine'}</div>
+                      <div class="text-[10px] text-slate-400 font-mono mt-0.5">${c.code} • Key: ${c.accountSidMasked || c.apiKeyMasked || 'Built-in Engine'}</div>
                     </div>
                   </div>
                 </td>
@@ -9974,8 +10024,21 @@
                   <div class="font-mono font-bold ${(c.netProfit || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'} text-xs">${formatUSD8(c.netProfit || 0)}</div>
                   <div class="text-[9px] text-slate-400 font-mono">${Number(c.marginPercent || 0).toFixed(2)}% margin</div>
                 </td>
-                <td class="py-3.5 px-4 text-right space-x-1 whitespace-nowrap">
+                <td class="py-3.5 px-4 whitespace-nowrap">
                   ${routesHtml}
+                </td>
+                <td class="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
+                  <button type="button" onclick="testCarrierConnection('${c.code}')" title="Test Handshake" class="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg text-xs transition-all cursor-pointer">
+                    <i class="fa-solid fa-bolt"></i>
+                  </button>
+                  <button type="button" onclick="openCarrierModal('${c.code}')" title="Edit Carrier Credentials" class="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-xs transition-all cursor-pointer">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                  </button>
+                  ${!c.isDefault ? `
+                    <button type="button" onclick="deleteCarrierIntegration('${c.code}')" title="Delete Carrier" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs transition-all cursor-pointer">
+                      <i class="fa-solid fa-trash"></i>
+                    </button>
+                  ` : ''}
                 </td>
               </tr>
             `;
@@ -10001,6 +10064,232 @@
         } else {
           showLiveToast(`❌ ${carrier} Failed`, res?.error || 'Connection handshake failed', 'circle-exclamation', 'rose');
           alert(`❌ Connection Handshake Error:\n\n${res?.error || 'Unknown error'}`);
+        }
+      } catch (err) {
+        alert(`❌ Network Error: ${err.message}`);
+      }
+    }
+
+    function openCarrierModal(carrierCode = null) {
+      const modal = document.getElementById('carrierModal');
+      if (!modal) return;
+
+      const titleEl = document.getElementById('carrierModalTitle');
+      const presetEl = document.getElementById('carrierFormPreset');
+      const nameEl = document.getElementById('carrierFormName');
+      const codeEl = document.getElementById('carrierFormCode');
+      const sidEl = document.getElementById('carrierFormSid');
+      const tokenEl = document.getElementById('carrierFormToken');
+      const currEl = document.getElementById('carrierFormCurrency');
+      const colorEl = document.getElementById('carrierFormColor');
+
+      if (carrierCode) {
+        const carrier = cachedRawCarriers.find(c => c.code === carrierCode) || cachedCarriersData.find(c => c.code === carrierCode);
+        if (titleEl) titleEl.innerText = `Edit ${carrier ? carrier.name : carrierCode} API`;
+        if (presetEl) presetEl.value = carrier?.code || 'CUSTOM';
+        if (nameEl) nameEl.value = carrier?.name || '';
+        if (codeEl) {
+          codeEl.value = carrier?.code || carrierCode;
+          codeEl.disabled = carrier?.isDefault;
+        }
+        if (sidEl) sidEl.value = carrier?.accountSid || carrier?.apiKey || '';
+        if (tokenEl) tokenEl.value = carrier?.authToken || '';
+        if (currEl) currEl.value = carrier?.currency || 'USD';
+        if (colorEl) colorEl.value = carrier?.color || 'indigo';
+      } else {
+        if (titleEl) titleEl.innerText = 'Add New Wholesale Carrier API';
+        if (presetEl) presetEl.value = 'CUSTOM';
+        if (nameEl) nameEl.value = '';
+        if (codeEl) {
+          codeEl.value = '';
+          codeEl.disabled = false;
+        }
+        if (sidEl) sidEl.value = '';
+        if (tokenEl) tokenEl.value = '';
+        if (currEl) currEl.value = 'USD';
+        if (colorEl) colorEl.value = 'purple';
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeCarrierModal() {
+      const modal = document.getElementById('carrierModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function applyCarrierPreset(preset) {
+      const nameEl = document.getElementById('carrierFormName');
+      const codeEl = document.getElementById('carrierFormCode');
+      const currEl = document.getElementById('carrierFormCurrency');
+      const colorEl = document.getElementById('carrierFormColor');
+      const sidLabel = document.getElementById('carrierFormSidLabel');
+      const tokenLabel = document.getElementById('carrierFormTokenLabel');
+
+      if (preset === 'TWILIO') {
+        if (nameEl) nameEl.value = 'Twilio Telecom';
+        if (codeEl) codeEl.value = 'TWILIO';
+        if (currEl) currEl.value = 'GBP';
+        if (colorEl) colorEl.value = 'purple';
+        if (sidLabel) sidLabel.innerText = 'Twilio Account SID:';
+        if (tokenLabel) tokenLabel.innerText = 'Twilio Auth Token:';
+      } else if (preset === 'TELNYX') {
+        if (nameEl) nameEl.value = 'Telnyx Wholesale';
+        if (codeEl) codeEl.value = 'TELNYX';
+        if (currEl) currEl.value = 'USD';
+        if (colorEl) colorEl.value = 'emerald';
+        if (sidLabel) sidLabel.innerText = 'Telnyx API Key (v2):';
+        if (tokenLabel) tokenLabel.innerText = 'Optional Auth Secret:';
+      } else if (preset === 'DIDWW') {
+        if (nameEl) nameEl.value = 'DIDWW Global';
+        if (codeEl) codeEl.value = 'DIDWW';
+        if (currEl) currEl.value = 'USD';
+        if (colorEl) colorEl.value = 'blue';
+        if (sidLabel) sidLabel.innerText = 'DIDWW API Key:';
+        if (tokenLabel) tokenLabel.innerText = 'DIDWW API Secret / Token:';
+      } else if (preset === 'VONAGE') {
+        if (nameEl) nameEl.value = 'Vonage / Nexmo';
+        if (codeEl) codeEl.value = 'VONAGE';
+        if (currEl) currEl.value = 'USD';
+        if (colorEl) colorEl.value = 'amber';
+        if (sidLabel) sidLabel.innerText = 'Vonage API Key:';
+        if (tokenLabel) tokenLabel.innerText = 'Vonage API Secret:';
+      } else if (preset === 'BANDWIDTH') {
+        if (nameEl) nameEl.value = 'Bandwidth Inc';
+        if (codeEl) codeEl.value = 'BANDWIDTH';
+        if (currEl) currEl.value = 'USD';
+        if (colorEl) colorEl.value = 'cyan';
+        if (sidLabel) sidLabel.innerText = 'Bandwidth Account ID:';
+        if (tokenLabel) tokenLabel.innerText = 'Bandwidth API Token & Secret:';
+      } else if (preset === 'PLIVO') {
+        if (nameEl) nameEl.value = 'Plivo Telecom';
+        if (codeEl) codeEl.value = 'PLIVO';
+        if (currEl) currEl.value = 'USD';
+        if (colorEl) colorEl.value = 'purple';
+        if (sidLabel) sidLabel.innerText = 'Plivo Auth ID:';
+        if (tokenLabel) tokenLabel.innerText = 'Plivo Auth Token:';
+      } else if (preset === 'SINCH') {
+        if (nameEl) nameEl.value = 'Sinch Global';
+        if (codeEl) codeEl.value = 'SINCH';
+        if (currEl) currEl.value = 'USD';
+        if (colorEl) colorEl.value = 'rose';
+        if (sidLabel) sidLabel.innerText = 'Sinch Service Plan ID / Key:';
+        if (tokenLabel) tokenLabel.innerText = 'Sinch API Token:';
+      } else {
+        if (sidLabel) sidLabel.innerText = 'Account SID / API Key / Client ID:';
+        if (tokenLabel) tokenLabel.innerText = 'Auth Token / API Secret / Password:';
+      }
+    }
+
+    function toggleCarrierPasswordVisibility() {
+      const input = document.getElementById('carrierFormToken');
+      const icon = document.getElementById('carrierEyeIcon');
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        if (icon) icon.className = 'fa-solid fa-eye-slash text-xs';
+      } else {
+        input.type = 'password';
+        if (icon) icon.className = 'fa-solid fa-eye text-xs';
+      }
+    }
+
+    async function testModalCarrierConnection() {
+      const carrier = document.getElementById('carrierFormCode')?.value?.trim().toUpperCase();
+      const sid = document.getElementById('carrierFormSid')?.value?.trim();
+      const token = document.getElementById('carrierFormToken')?.value?.trim();
+
+      if (!carrier) {
+        alert('Please specify a Carrier Code first.');
+        return;
+      }
+
+      showLiveToast('Testing Credentials...', `Validating handshake for ${carrier}...`, 'bolt', 'indigo');
+      try {
+        const res = await adminFetch('/api/admin/telecom/test-connection', {
+          method: 'POST',
+          body: JSON.stringify({
+            carrier,
+            accountSid: sid,
+            authToken: token,
+            apiKey: sid
+          })
+        });
+
+        if (res && res.success) {
+          alert(`✅ Handshake Verified Successfully!\n\n${res.message}`);
+          showLiveToast('✅ Handshake Verified', res.message, 'circle-check', 'emerald');
+        } else {
+          alert(`❌ Connection Failed:\n\n${res?.error || 'Invalid credentials'}`);
+          showLiveToast('❌ Test Failed', res?.error || 'Handshake failed', 'circle-exclamation', 'rose');
+        }
+      } catch (err) {
+        alert(`❌ Network Error: ${err.message}`);
+      }
+    }
+
+    async function saveCarrierIntegration() {
+      const name = document.getElementById('carrierFormName')?.value?.trim();
+      const code = document.getElementById('carrierFormCode')?.value?.trim().toUpperCase();
+      const sid = document.getElementById('carrierFormSid')?.value?.trim();
+      const token = document.getElementById('carrierFormToken')?.value?.trim();
+      const currency = document.getElementById('carrierFormCurrency')?.value;
+      const color = document.getElementById('carrierFormColor')?.value;
+
+      if (!name || !code) {
+        alert('Carrier Name and Code are required.');
+        return;
+      }
+
+      try {
+        showLiveToast('Saving Carrier...', `Updating ${name} (${code})...`, 'spinner', 'indigo');
+        const res = await adminFetch('/api/admin/telecom/carriers', {
+          method: 'POST',
+          body: JSON.stringify({
+            name,
+            code,
+            accountSid: sid,
+            authToken: token,
+            apiKey: sid,
+            currency,
+            color
+          })
+        });
+
+        if (res && res.success) {
+          showLiveToast('✅ Carrier Saved', res.message, 'circle-check', 'emerald');
+          alert(`✅ ${res.message}`);
+          closeCarrierModal();
+          await loadCarriersTab();
+        } else {
+          alert(`❌ Failed to save carrier: ${res?.error || 'Unknown error'}`);
+        }
+      } catch (err) {
+        alert(`❌ Network Error: ${err.message}`);
+      }
+    }
+
+    async function deleteCarrierIntegration(carrierCode) {
+      if (!confirm(`Are you sure you want to remove carrier "${carrierCode}"?\n\nNote: All active and expired phone numbers leased under this carrier will remain 100% safe in historical records.`)) {
+        return;
+      }
+
+      try {
+        showLiveToast('Removing Carrier...', `Deactivating ${carrierCode}...`, 'trash', 'rose');
+        const res = await adminFetch(`/api/admin/telecom/carriers/${encodeURIComponent(carrierCode)}`, {
+          method: 'DELETE'
+        });
+
+        if (res && res.success) {
+          showLiveToast('✅ Carrier Removed', res.message, 'circle-check', 'emerald');
+          alert(`✅ ${res.message}`);
+          await loadCarriersTab();
+        } else {
+          alert(`❌ Failed to remove carrier: ${res?.error || 'Unknown error'}`);
         }
       } catch (err) {
         alert(`❌ Network Error: ${err.message}`);

@@ -246,18 +246,10 @@
             </div>
             
             <div class="flex items-center gap-2 flex-wrap">
-              <!-- 🎛️ Dynamic Multi-Carrier Filter Bar -->
-              <div class="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm">
-                <button onclick="setDashboardCarrierFilter('all')" id="btnCarrierFilterAll" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-indigo-600 text-white shadow-md shadow-indigo-600/30">
+              <!-- 🎛️ Dynamic Multi-Carrier Filter Bar (Auto-populated from active carriers in DB) -->
+              <div id="dynamicCarrierFilterContainer" class="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm flex-wrap">
+                <button onclick="setDashboardCarrierFilter('all')" id="btnCarrierFilter_ALL" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-indigo-600 text-white shadow-md shadow-indigo-600/30">
                   🌐 All Data
-                </button>
-                <button onclick="setDashboardCarrierFilter('twilio')" id="btnCarrierFilterTwilio" class="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-                  <span>🟣 Twilio UK (🇬🇧)</span>
-                </button>
-                <button onclick="setDashboardCarrierFilter('telnyx')" id="btnCarrierFilterTelnyx" class="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  <span>🟢 Telnyx</span>
                 </button>
               </div>
 
@@ -7155,8 +7147,14 @@
       const inSmsEl = document.getElementById('rateInboundSmsPolicy');
       if (inSmsEl) inSmsEl.value = (rate.inboundSmsPolicy || 'FREE').toUpperCase();
 
+      const inSmsCostEl = document.getElementById('rateInboundSmsCost');
+      if (inSmsCostEl) inSmsCostEl.value = (rate.inboundSmsCost !== undefined && rate.inboundSmsCost !== null) ? rate.inboundSmsCost : 0.0075;
+
       const inCallEl = document.getElementById('rateInboundCallPolicy');
       if (inCallEl) inCallEl.value = (rate.inboundCallPolicy || 'FREE').toUpperCase();
+
+      const inCallCostEl = document.getElementById('rateInboundCallCost');
+      if (inCallCostEl) inCallCostEl.value = (rate.inboundCallCost !== undefined && rate.inboundCallCost !== null) ? rate.inboundCallCost : 0.0100;
 
       document.getElementById('rateIsActive').checked = rate.isActive;
       document.getElementById('rateAllowCalls').checked = rate.allowOutboundCalls;
@@ -7237,8 +7235,14 @@
       const inSmsEl = document.getElementById('rateInboundSmsPolicy');
       if (inSmsEl) inSmsEl.value = 'FREE';
 
+      const inSmsCostEl = document.getElementById('rateInboundSmsCost');
+      if (inSmsCostEl) inSmsCostEl.value = '0.0075';
+
       const inCallEl = document.getElementById('rateInboundCallPolicy');
       if (inCallEl) inCallEl.value = 'FREE';
+
+      const inCallCostEl = document.getElementById('rateInboundCallCost');
+      if (inCallCostEl) inCallCostEl.value = '0.0100';
 
       document.getElementById('rateIsActive').checked = true;
       document.getElementById('rateAllowCalls').checked = true;
@@ -7280,6 +7284,8 @@
           if (r.numberWholesaleCost !== undefined) document.getElementById('rateNumWholesale').value = Number(r.numberWholesaleCost).toFixed(2);
           if (r.callWholesaleCostPerMin !== undefined) document.getElementById('rateCallWholesale').value = Number(r.callWholesaleCostPerMin).toFixed(4);
           if (r.smsWholesaleCost !== undefined) document.getElementById('rateSmsWholesale').value = Number(r.smsWholesaleCost).toFixed(4);
+          if (r.inboundSmsCost !== undefined && document.getElementById('rateInboundSmsCost')) document.getElementById('rateInboundSmsCost').value = Number(r.inboundSmsCost).toFixed(4);
+          if (r.inboundCallCost !== undefined && document.getElementById('rateInboundCallCost')) document.getElementById('rateInboundCallCost').value = Number(r.inboundCallCost).toFixed(4);
           
           calculateModalMargins();
           showToast(`✅ Live ${carrier} wholesale rates fetched for ${cc}!`, 'success');
@@ -7363,6 +7369,8 @@
         smsWholesaleCost: parseFloat(document.getElementById('rateSmsWholesale').value),
         inboundSmsPolicy: (document.getElementById('rateInboundSmsPolicy')?.value || 'FREE').toUpperCase(),
         inboundCallPolicy: (document.getElementById('rateInboundCallPolicy')?.value || 'FREE').toUpperCase(),
+        inboundSmsCost: parseFloat(document.getElementById('rateInboundSmsCost')?.value) || 0.0075,
+        inboundCallCost: parseFloat(document.getElementById('rateInboundCallCost')?.value) || 0.0100,
         customPlanPrices: customMap,
         isActive: document.getElementById('rateIsActive').checked,
         allowOutboundCalls: document.getElementById('rateAllowCalls').checked,
@@ -10156,29 +10164,82 @@
 // 📡 TELECOM CARRIER HEALTH & NET PROFIT
 // ==========================================
 let currentDashboardCarrier = 'all';
+let cachedPlatformCarriers = [];
+
+async function renderDynamicCarrierFilterBar() {
+  const container = document.getElementById('dynamicCarrierFilterContainer');
+  if (!container) return;
+
+  try {
+    const res = await adminFetch('/api/admin/carriers');
+    if (res && res.success && Array.isArray(res.carriers)) {
+      cachedPlatformCarriers = res.carriers;
+      
+      const current = (currentDashboardCarrier || 'all').toUpperCase();
+      
+      let html = `
+        <button onclick="setDashboardCarrierFilter('all')" id="btnCarrierFilter_ALL" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${current === 'ALL' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
+          🌐 All Data
+        </button>
+      `;
+
+      res.carriers.forEach(c => {
+        const code = (c.code || '').toUpperCase();
+        const isSelected = current === code;
+        let activeClass = 'text-slate-400 hover:text-white hover:bg-slate-800 font-semibold';
+        let dotColor = 'bg-cyan-400';
+
+        if (code === 'TWILIO') {
+          dotColor = 'bg-purple-400';
+          if (isSelected) activeClass = 'bg-purple-600 text-white shadow-md shadow-purple-600/30 font-bold';
+        } else if (code === 'TELNYX') {
+          dotColor = 'bg-emerald-400';
+          if (isSelected) activeClass = 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 font-bold';
+        } else if (code === 'DIDWW') {
+          dotColor = 'bg-blue-400';
+          if (isSelected) activeClass = 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold';
+        } else {
+          if (isSelected) activeClass = 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30 font-bold';
+        }
+
+        html += `
+          <button onclick="setDashboardCarrierFilter('${code.toLowerCase()}')" id="btnCarrierFilter_${code}" class="px-3.5 py-1.5 rounded-xl text-xs transition-all flex items-center gap-1.5 ${activeClass}">
+            <span class="w-1.5 h-1.5 rounded-full ${dotColor}"></span>
+            <span>${escapeHtml(c.badge || c.name)}</span>
+            ${c.activeLines > 0 ? `<span class="text-[9px] px-1.5 py-0.2 rounded-full bg-slate-950/60 text-slate-300 font-mono">${c.activeLines}</span>` : ''}
+          </button>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+  } catch (err) {
+    console.warn('Failed to load dynamic carriers:', err);
+  }
+}
 
 function setDashboardCarrierFilter(carrier) {
   currentDashboardCarrier = carrier || 'all';
+  const target = currentDashboardCarrier.toUpperCase();
   
-  const btnAll = document.getElementById('btnCarrierFilterAll');
-  const btnTwilio = document.getElementById('btnCarrierFilterTwilio');
-  const btnTelnyx = document.getElementById('btnCarrierFilterTelnyx');
-
-  [btnAll, btnTwilio, btnTelnyx].forEach(b => {
-    if (b) {
-      b.className = 'px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-1.5';
-    }
+  document.querySelectorAll('#dynamicCarrierFilterContainer button').forEach(b => {
+    b.className = 'px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-1.5';
   });
 
-  if (currentDashboardCarrier === 'all' && btnAll) {
-    btnAll.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-indigo-600 text-white shadow-md shadow-indigo-600/30';
-  } else if (currentDashboardCarrier === 'twilio' && btnTwilio) {
-    btnTwilio.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-purple-600 text-white shadow-md shadow-purple-600/30 flex items-center gap-1.5';
-  } else if (currentDashboardCarrier === 'telnyx' && btnTelnyx) {
-    btnTelnyx.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-emerald-600 text-white shadow-md shadow-emerald-600/30 flex items-center gap-1.5';
+  const activeBtn = document.getElementById(target === 'ALL' ? 'btnCarrierFilter_ALL' : `btnCarrierFilter_${target}`);
+  if (activeBtn) {
+    if (target === 'ALL') {
+      activeBtn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-indigo-600 text-white shadow-md shadow-indigo-600/30';
+    } else if (target === 'TWILIO') {
+      activeBtn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-purple-600 text-white shadow-md shadow-purple-600/30 flex items-center gap-1.5';
+    } else if (target === 'TELNYX') {
+      activeBtn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-emerald-600 text-white shadow-md shadow-emerald-600/30 flex items-center gap-1.5';
+    } else {
+      activeBtn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-cyan-600 text-white shadow-md shadow-cyan-600/30 flex items-center gap-1.5';
+    }
   }
 
-  const carrierLabel = currentDashboardCarrier === 'all' ? 'All Carriers' : currentDashboardCarrier === 'twilio' ? 'Twilio UK (🇬🇧)' : 'Telnyx';
+  const carrierLabel = target === 'ALL' ? 'All Carriers' : target === 'TWILIO' ? 'Twilio UK (🇬🇧)' : target === 'TELNYX' ? 'Telnyx' : target;
   showToast(`Dashboard filtered by: ${carrierLabel}`, 'info');
   loadOverview(currentDashboardCarrier);
   fetchFinanceMargins(currentDashboardCarrier);
@@ -10186,6 +10247,7 @@ function setDashboardCarrierFilter(carrier) {
 
 async function fetchCarrierHealth() {
   try {
+    renderDynamicCarrierFilterBar();
     const data = await adminFetch('/api/admin/telecom/carrier-health');
     if (data && data.success) {
       // 1. Populate Twilio UK Header Pill
@@ -13051,11 +13113,11 @@ setInterval(() => {
           </div>
         </div>
 
-        <!-- 4. Inbound Policy Controls -->
+        <!-- 4. Inbound Policy Controls & Carrier Costs -->
         <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800/80 space-y-2.5">
-          <div class="font-bold text-slate-300 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-            <i class="fa-solid fa-inbox text-emerald-400"></i>
-            <span>Inbound (Incoming Traffic) Customer Billing Policy</span>
+          <div class="font-bold text-slate-300 text-[11px] uppercase tracking-wider flex items-center justify-between">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-inbox text-emerald-400"></i> Inbound Traffic Policy & Carrier Costs</span>
+            <span class="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">Configurable</span>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -13066,11 +13128,21 @@ setInterval(() => {
               </select>
             </div>
             <div>
+              <label class="block text-slate-400 text-[10px] mb-1">Carrier Inbound SMS Wholesale Cost ($)</label>
+              <input type="number" step="0.0001" id="rateInboundSmsCost" value="0.0075" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-emerald-500">
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-800/50">
+            <div>
               <label class="block text-slate-400 text-[10px] mb-1">Inbound Call Customer Policy</label>
               <select id="rateInboundCallPolicy" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-semibold focus:outline-none focus:border-emerald-500">
                 <option value="FREE">🟢 Free for Customer ($0.00)</option>
                 <option value="PAID">🟡 Paid (Deduct from Customer Wallet)</option>
               </select>
+            </div>
+            <div>
+              <label class="block text-slate-400 text-[10px] mb-1">Carrier Inbound Call Wholesale Cost ($/min)</label>
+              <input type="number" step="0.0001" id="rateInboundCallCost" value="0.0100" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-emerald-500">
             </div>
           </div>
         </div>

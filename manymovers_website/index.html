@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ManyMovers Ltd — Cloud Communications & Enterprise Digital Solutions</title>
+  <meta name="description" content="ManyMovers Ltd provides enterprise-grade cloud communication infrastructure, voice & SMS verification systems, and smart business software solutions in the United Kingdom.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --secondary: #0f172a;
+      --accent: #38bdf8;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #334155;
+      --text-dark: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 12px;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    
+    /* Navbar */
+    header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 76px;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 1.35rem;
+      color: var(--secondary);
+    }
+    .logo-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+    }
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      align-items: center;
+      list-style: none;
+    }
+    .nav-links a {
+      font-weight: 600;
+      color: var(--text);
+      transition: color 0.2s;
+    }
+    .nav-links a:hover {
+      color: var(--primary);
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white !important;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: background 0.2s, transform 0.1s;
+      display: inline-block;
+    }
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+
+    /* Hero */
+    .hero {
+      padding: 90px 0 70px;
+      text-align: center;
+      background: radial-gradient(circle at 50% 20%, rgba(37, 99, 235, 0.08) 0%, transparent 60%);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #eff6ff;
+      color: var(--primary);
+      padding: 6px 16px;
+      border-radius: 9999px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+      border: 1px solid #dbeafe;
+    }
+    .hero h1 {
+      font-size: 3.2rem;
+      font-weight: 800;
+      color: var(--text-dark);
+      line-height: 1.2;
+      max-width: 860px;
+      margin: 0 auto 24px;
+      letter-spacing: -0.02em;
+    }
+    .hero p {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0 auto 36px;
+    }
+    .hero-btns {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+    }
+    .btn-secondary {
+      background: white;
+      color: var(--text-dark);
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover {
+      background: #f1f5f9;
+    }
+
+    /* Stats */
+    .stats {
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: white;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      text-align: center;
+    }
+    .stat-item h3 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+    .stat-item p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Section Styling */
+    section {
+      padding: 80px 0;
+    }
+    .section-title {
+      text-align: center;
+      max-width: 650px;
+      margin: 0 auto 50px;
+    }
+    .section-title h2 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--text-dark);
+      margin-bottom: 14px;
+    }
+    .section-title p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    /* Services Grid */
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+    }
+    .service-card {
+      background: var(--card-bg);
+      padding: 36px 28px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .service-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.05);
+    }
+    .service-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: #eff6ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      margin-bottom: 20px;
+      font-size: 1.4rem;
+    }
+    .service-card h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 12px;
+    }
+    .service-card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* About Section */
+    .about-wrap {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 50px;
+      align-items: center;
+    }
+    .about-text h2 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--text-dark);
+      margin-bottom: 20px;
+    }
+    .about-text p {
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      font-size: 1.05rem;
+    }
+    .badge-box {
+      background: white;
+      padding: 24px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      margin-top: 24px;
+    }
+    .badge-box ul {
+      list-style: none;
+    }
+    .badge-box li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+    .badge-box li span {
+      color: #16a34a;
+    }
+
+    /* Contact Box */
+    .contact-box {
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: white;
+      border-radius: 20px;
+      padding: 60px 48px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+    }
+    .contact-box h2 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+    .contact-box p {
+      color: #94a3b8;
+      font-size: 1.05rem;
+      margin-bottom: 24px;
+    }
+    .info-list {
+      list-style: none;
+    }
+    .info-list li {
+      margin-bottom: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      color: #cbd5e1;
+    }
+    .contact-form input, .contact-form textarea {
+      width: 100%;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: white;
+      font-family: inherit;
+    }
+    .contact-form button {
+      width: 100%;
+      padding: 14px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.2s;
+    }
+    .contact-form button:hover {
+      background: var(--primary-dark);
+    }
+
+    /* Footer */
+    footer {
+      background: white;
+      border-top: 1px solid var(--border);
+      padding: 50px 0 30px;
+    }
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+    .footer-col h4 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 18px;
+    }
+    .footer-col ul {
+      list-style: none;
+    }
+    .footer-col li {
+      margin-bottom: 10px;
+    }
+    .footer-col a {
+      color: var(--text-muted);
+      transition: color 0.2s;
+    }
+    .footer-col a:hover {
+      color: var(--primary);
+    }
+    .footer-bottom {
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 900px) {
+      .hero h1 { font-size: 2.3rem; }
+      .services-grid, .stats-grid, .about-wrap, .contact-box, .footer-grid {
+        grid-template-columns: 1fr;
+      }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="container nav-wrap">
+      <a href="/" class="logo">
+        <div class="logo-icon">M</div>
+        <span>ManyMovers Ltd</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#about">About</a></li>
+        <li><a href="#services">Services</a></li>
+        <li><a href="#solutions">Solutions</a></li>
+        <li><a href="#contact">Contact</a></li>
+        <li><a href="mailto:support@manymoversltd.cfd" class="btn-primary">Get In Touch</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="badge">
+        <span>🇬🇧</span> UK Registered Business Solutions
+      </div>
+      <h1>Intelligent Cloud Communications & Digital Infrastructure</h1>
+      <p>ManyMovers Ltd powers enterprise workflows with high-availability cloud telecom APIs, secure 2FA messaging delivery, and modern digital logistics solutions.</p>
+      <div class="hero-btns">
+        <a href="#services" class="btn-primary">Explore Services</a>
+        <a href="#contact" class="btn-secondary">Corporate Inquiry</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-item">
+          <h3>99.99%</h3>
+          <p>API Service Uptime</p>
+        </div>
+        <div class="stat-item">
+          <h3>100+</h3>
+          <p>Global Carrier Routes</p>
+        </div>
+        <div class="stat-item">
+          <h3>24/7</h3>
+          <p>Technical Monitoring</p>
+        </div>
+        <div class="stat-item">
+          <h3>UK LTD</h3>
+          <p>Registered Entity</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Services -->
+  <section id="services">
+    <div class="container">
+      <div class="section-title">
+        <h2>Enterprise Services & Capabilities</h2>
+        <p>Reliable, scalable, and secure technologies engineered for business communications and digital operations.</p>
+      </div>
+
+      <div class="services-grid">
+        <div class="service-card">
+          <div class="service-icon">📲</div>
+          <h3>A2P SMS & Verification Gateways</h3>
+          <p>High-throughput transactional messaging, one-time passcode (OTP) routing, and two-factor authentication infrastructure with Tier-1 delivery speed.</p>
+        </div>
+
+        <div class="service-card">
+          <div class="service-icon">📞</div>
+          <h3>Cloud Voice & SIP Telephony</h3>
+          <p>Programmable voice solutions, automated IVR, SIP trunking integration, and WebRTC streaming for multi-channel business phone lines.</p>
+        </div>
+
+        <div class="service-card">
+          <div class="service-icon">🌐</div>
+          <h3>Global Virtual Numbers (DIDs)</h3>
+          <p>On-demand virtual local and mobile phone number provisioning across North America, the UK, and international markets for OTT apps.</p>
+        </div>
+
+        <div class="service-card">
+          <div class="service-icon">⚡</div>
+          <h3>Custom API Integrations</h3>
+          <p>Robust RESTful APIs, real-time Webhook subscribers, and websocket bridges for seamless synchronization between business databases and apps.</p>
+        </div>
+
+        <div class="service-card">
+          <div class="service-icon">🛡️</div>
+          <h3>Compliance & Security Engine</h3>
+          <p>End-to-end data encryption, anti-fraud rate limiting, and regulatory compliance adhering to UK GDPR and global telecom standards.</p>
+        </div>
+
+        <div class="service-card">
+          <div class="service-icon">📊</div>
+          <h3>Analytics & Real-Time Monitoring</h3>
+          <p>Comprehensive telemetry dashboards, latency monitoring, cost management, and detailed CDR reporting for business intelligence.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About Section -->
+  <section id="about" style="background: white;">
+    <div class="container">
+      <div class="about-wrap">
+        <div class="about-text">
+          <h2>About ManyMovers Ltd</h2>
+          <p>ManyMovers Ltd is a private limited company incorporated in the United Kingdom. We specialize in digital infrastructure, cloud communications engineering, and software solutions designed to support modern enterprise platforms.</p>
+          <p>Our mission is to provide businesses with dependable connectivity, robust API integrations, and scalable telecommunication workflows that ensure frictionless customer engagement worldwide.</p>
+          
+          <div class="badge-box">
+            <ul>
+              <li><span>✓</span> Registered Office in Birmingham, United Kingdom</li>
+              <li><span>✓</span> Compliant with UK Telecom & Privacy Regulations</li>
+              <li><span>✓</span> Dedicated B2B & Software Infrastructure Support</li>
+            </ul>
+          </div>
+        </div>
+
+        <div style="background: #f1f5f9; border-radius: 16px; padding: 40px; border: 1px solid var(--border);">
+          <h3 style="font-size: 1.4rem; color: var(--text-dark); margin-bottom: 16px;">Corporate Profile</h3>
+          <p style="color: var(--text-muted); margin-bottom: 20px;">Official company registration and contact point for corporate partners, carriers, and clients.</p>
+          <div style="font-size: 0.95rem; line-height: 1.8; color: var(--text);">
+            <strong>Company Name:</strong> ManyMovers Ltd<br>
+            <strong>Nature of Business:</strong> Software Development & Cloud Communication Services<br>
+            <strong>Registered Office:</strong> 11 Manor Farm Road, Birmingham, B11 2HT, United Kingdom<br>
+            <strong>Contact Email:</strong> support@manymoversltd.cfd<br>
+            <strong>Operating Website:</strong> https://manymoversltd.cfd
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Section -->
+  <section id="contact">
+    <div class="container">
+      <div class="contact-box">
+        <div>
+          <h2>Get in Touch</h2>
+          <p>Have inquiries regarding our cloud communications architecture, carrier integrations, or enterprise solutions? Reach out to our team.</p>
+          <ul class="info-list">
+            <li>
+              <span>📍</span>
+              <div>
+                <strong>Registered Office:</strong><br>
+                11 Manor Farm Road, Birmingham, B11 2HT, United Kingdom
+              </div>
+            </li>
+            <li>
+              <span>✉️</span>
+              <div>
+                <strong>Official Email:</strong><br>
+                support@manymoversltd.cfd
+              </div>
+            </li>
+            <li>
+              <span>🕒</span>
+              <div>
+                <strong>Operating Hours:</strong><br>
+                Monday – Friday: 09:00 – 18:00 GMT
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <form class="contact-form" onsubmit="event.preventDefault(); alert('Thank you for contacting ManyMovers Ltd. Your message has been received.');">
+            <input type="text" placeholder="Your Name" required>
+            <input type="email" placeholder="Business Email" required>
+            <input type="text" placeholder="Company / Organization">
+            <textarea rows="4" placeholder="How can we assist your business?" required></textarea>
+            <button type="submit">Send Message</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <div class="logo" style="margin-bottom: 14px;">
+            <div class="logo-icon">M</div>
+            <span>ManyMovers Ltd</span>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 380px;">
+            ManyMovers Ltd is a registered company in England and Wales. Providing scalable cloud communications and business software infrastructure.
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Navigation</h4>
+          <ul>
+            <li><a href="#about">About Us</a></li>
+            <li><a href="#services">Services</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Legal & Policies</h4>
+          <ul>
+            <li><a href="privacy.html">Privacy Policy</a></li>
+            <li><a href="terms.html">Terms of Service</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>© 2026 ManyMovers Ltd. All rights reserved.</div>
+        <div>Registered in England & Wales | 11 Manor Farm Road, Birmingham, B11 2HT, UK</div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

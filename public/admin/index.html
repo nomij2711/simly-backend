@@ -188,8 +188,16 @@
 
         <!-- Right Header Items -->
         <div class="flex items-center gap-2 sm:gap-3 ml-auto">
-          <!-- Carrier Health & Balance -->
-          <div id="carrierHealthPill" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+          <!-- Twilio UK Live Balance Pill -->
+          <div id="carrierHealthTwilioPill" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-950/40 border border-purple-500/30 text-xs shadow-sm" title="Twilio UK Carrier Live Account Balance">
+            <span id="twilioHealthDot" class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+            <span class="text-purple-300 font-semibold">Twilio:</span>
+            <span id="twilioBalanceHeader" class="text-white font-bold">£0.00</span>
+            <span id="twilioStatusBadge" class="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-semibold uppercase">Live 🇬🇧</span>
+          </div>
+
+          <!-- Telnyx Carrier Health & Balance -->
+          <div id="carrierHealthPill" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs" title="Telnyx Wholesale Carrier Balance">
             <span id="carrierHealthDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span class="text-slate-400 font-medium">Telnyx:</span>
             <span id="carrierBalanceHeader" class="text-white font-bold">$0.00</span>
@@ -231,14 +239,32 @@
         <!-- 📊 TAB 1: OVERVIEW DASHBOARD -->
         <!-- ============================================================ -->
         <div id="tab-view-overview" class="tab-view space-y-6">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 class="text-xl font-bold text-white tracking-tight">System Overview</h2>
               <p class="text-xs text-slate-400">Real-time metrics, active lines, and platform earnings.</p>
             </div>
-            <div class="inline-flex items-center gap-2 text-xs text-slate-400 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
-              <i class="fa-regular fa-clock text-indigo-400"></i>
-              <span id="liveClock">Loading...</span>
+            
+            <div class="flex items-center gap-2 flex-wrap">
+              <!-- 🎛️ Dynamic Multi-Carrier Filter Bar -->
+              <div class="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm">
+                <button onclick="setDashboardCarrierFilter('all')" id="btnCarrierFilterAll" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-indigo-600 text-white shadow-md shadow-indigo-600/30">
+                  🌐 All Data
+                </button>
+                <button onclick="setDashboardCarrierFilter('twilio')" id="btnCarrierFilterTwilio" class="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                  <span>🟣 Twilio UK (🇬🇧)</span>
+                </button>
+                <button onclick="setDashboardCarrierFilter('telnyx')" id="btnCarrierFilterTelnyx" class="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span>🟢 Telnyx</span>
+                </button>
+              </div>
+
+              <div class="inline-flex items-center gap-2 text-xs text-slate-400 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
+                <i class="fa-regular fa-clock text-indigo-400"></i>
+                <span id="liveClock">Loading...</span>
+              </div>
             </div>
           </div>
 
@@ -6881,11 +6907,19 @@
               <div class="flex items-center gap-2.5">
                 <span class="text-2xl">${r.flagEmoji || '🌐'}</span>
                 <div>
-                  <div class="font-bold text-white text-xs flex items-center gap-1.5">
+                  <div class="font-bold text-white text-xs flex items-center gap-1.5 flex-wrap">
                     <span>${escapeHtml(r.countryName)}</span>
                     <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">${r.countryCode}</span>
+                    <span class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded font-mono font-bold ${(r.carrier || 'TWILIO') === 'TWILIO' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}">
+                      <span class="w-1 h-1 rounded-full ${(r.carrier || 'TWILIO') === 'TWILIO' ? 'bg-purple-400' : 'bg-emerald-400'}"></span>
+                      ${escapeHtml(r.carrier || 'TWILIO')}
+                    </span>
                   </div>
-                  <div class="text-[11px] text-pink-400 font-mono font-semibold">${escapeHtml(r.dialCode)}</div>
+                  <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span class="text-[11px] text-pink-400 font-mono font-semibold">${escapeHtml(r.dialCode)}</span>
+                    ${(r.setupFee && r.setupFee > 0) ? `<span class="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">+$${Number(r.setupFee).toFixed(2)} Setup</span>` : ''}
+                    <span class="text-[9px] text-slate-500 font-medium">Inbound: <span class="${(r.inboundSmsPolicy || 'FREE') === 'FREE' ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}">${r.inboundSmsPolicy || 'FREE'}</span></span>
+                  </div>
                 </div>
               </div>
             </td>
@@ -7099,21 +7133,36 @@
       document.getElementById('rateCountryName').value = rate.countryName;
       document.getElementById('rateFlagEmoji').value = rate.flagEmoji || '🌐';
       document.getElementById('rateDialCode').value = rate.dialCode;
+      
+      const carrierEl = document.getElementById('rateCarrier');
+      if (carrierEl) carrierEl.value = (rate.carrier || 'TWILIO').toUpperCase();
+
       document.getElementById('rateNumMonthly').value = rate.numberMonthlySellPrice;
       document.getElementById('rateNumYearly').value = rate.numberYearlySellPrice;
       document.getElementById('rateNum7Day').value = rate.number7DaySellPrice;
       document.getElementById('rateNumWholesale').value = rate.numberWholesaleCost;
+      
+      const setupFeeEl = document.getElementById('rateSetupFee');
+      if (setupFeeEl) setupFeeEl.value = (rate.setupFee !== undefined && rate.setupFee !== null) ? rate.setupFee : (rate.countryCode === 'GB' ? 0.70 : 0.00);
+
       document.getElementById('rateCallSell').value = rate.callSellPricePerMin;
       document.getElementById('rateCallWholesale').value = rate.callWholesaleCostPerMin;
       document.getElementById('rateSmsSell').value = rate.smsSellPrice;
       document.getElementById('rateSmsWholesale').value = rate.smsWholesaleCost;
+
+      const inSmsEl = document.getElementById('rateInboundSmsPolicy');
+      if (inSmsEl) inSmsEl.value = (rate.inboundSmsPolicy || 'FREE').toUpperCase();
+
+      const inCallEl = document.getElementById('rateInboundCallPolicy');
+      if (inCallEl) inCallEl.value = (rate.inboundCallPolicy || 'FREE').toUpperCase();
+
       document.getElementById('rateIsActive').checked = rate.isActive;
       document.getElementById('rateAllowCalls').checked = rate.allowOutboundCalls;
       document.getElementById('rateAllowSms').checked = rate.allowOutboundSms;
 
       document.getElementById('modalCountryFlag').innerText = rate.flagEmoji || '🌐';
       document.getElementById('modalCountryTitle').innerText = `Edit ${rate.countryName} Rate Deck`;
-      document.getElementById('modalCountrySubtitle').innerText = `Route: ${rate.dialCode} (${rate.countryCode})`;
+      document.getElementById('modalCountrySubtitle').innerText = `Route: ${rate.dialCode} (${rate.countryCode}) • Carrier: ${rate.carrier || 'TWILIO'}`;
       document.getElementById('btnDeleteRateDeck').classList.remove('hidden');
 
       // Populate dynamic custom plan tiers
@@ -7166,21 +7215,36 @@
       document.getElementById('rateCountryName').value = '';
       document.getElementById('rateFlagEmoji').value = '🌐';
       document.getElementById('rateDialCode').value = '+';
-      document.getElementById('rateNumMonthly').value = '2.00';
+      
+      const carrierEl = document.getElementById('rateCarrier');
+      if (carrierEl) carrierEl.value = 'TWILIO';
+
+      document.getElementById('rateNumMonthly').value = '1.99';
       document.getElementById('rateNumYearly').value = '20.00';
       document.getElementById('rateNum7Day').value = '1.00';
-      document.getElementById('rateNumWholesale').value = '1.00';
-      document.getElementById('rateCallSell').value = '0.030';
-      document.getElementById('rateCallWholesale').value = '0.015';
-      document.getElementById('rateSmsSell').value = '0.030';
-      document.getElementById('rateSmsWholesale').value = '0.010';
+      document.getElementById('rateNumWholesale').value = '1.15';
+      
+      const setupFeeEl = document.getElementById('rateSetupFee');
+      if (setupFeeEl) setupFeeEl.value = '0.70';
+
+      document.getElementById('rateCallSell').value = '0.060';
+      document.getElementById('rateCallWholesale').value = '0.0305';
+      document.getElementById('rateSmsSell').value = '0.080';
+      document.getElementById('rateSmsWholesale').value = '0.056';
+
+      const inSmsEl = document.getElementById('rateInboundSmsPolicy');
+      if (inSmsEl) inSmsEl.value = 'FREE';
+
+      const inCallEl = document.getElementById('rateInboundCallPolicy');
+      if (inCallEl) inCallEl.value = 'FREE';
+
       document.getElementById('rateIsActive').checked = true;
       document.getElementById('rateAllowCalls').checked = true;
       document.getElementById('rateAllowSms').checked = true;
 
       document.getElementById('modalCountryFlag').innerText = '🌐';
       document.getElementById('modalCountryTitle').innerText = 'Add New Country Route';
-      document.getElementById('modalCountrySubtitle').innerText = 'Configure pricing and carrier wholesale base cost';
+      document.getElementById('modalCountrySubtitle').innerText = 'Configure pricing, carrier provider, and wholesale base costs';
       document.getElementById('btnDeleteRateDeck').classList.add('hidden');
 
       const customTiersGrid = document.getElementById('modalActivePlanTiersGrid');
@@ -7197,14 +7261,51 @@
       document.getElementById('editCountryRateModal').classList.add('hidden');
     }
 
+    async function fetchLiveCarrierRatesForModal() {
+      const cc = (document.getElementById('rateCountryCode')?.value || 'GB').trim().toUpperCase();
+      const carrier = (document.getElementById('rateCarrier')?.value || 'TWILIO').toUpperCase();
+      const btn = document.getElementById('btnFetchModalRates');
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Fetching Carrier API...';
+      }
+
+      try {
+        const res = await adminFetch(`/api/admin/carrier/rates-preview?country=${encodeURIComponent(cc)}&carrier=${encodeURIComponent(carrier)}`);
+        if (res && res.success && res.rates) {
+          const r = res.rates;
+          if (r.numberWholesaleCost !== undefined) document.getElementById('rateNumWholesale').value = Number(r.numberWholesaleCost).toFixed(2);
+          if (r.callWholesaleCostPerMin !== undefined) document.getElementById('rateCallWholesale').value = Number(r.callWholesaleCostPerMin).toFixed(4);
+          if (r.smsWholesaleCost !== undefined) document.getElementById('rateSmsWholesale').value = Number(r.smsWholesaleCost).toFixed(4);
+          
+          calculateModalMargins();
+          showToast(`✅ Live ${carrier} wholesale rates fetched for ${cc}!`, 'success');
+        } else {
+          showToast('Could not fetch live carrier rates. Keeping current values.', 'warning');
+        }
+      } catch (err) {
+        showToast('Error connecting to carrier pricing API: ' + err.message, 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-bolt text-amber-400"></i> <span>Fetch Live Carrier Rates</span>';
+        }
+      }
+    }
+
     function calculateModalMargins() {
       const numSell = parseFloat(document.getElementById('rateNumMonthly').value) || 0;
       const numCost = parseFloat(document.getElementById('rateNumWholesale').value) || 0;
+      const setupFee = parseFloat(document.getElementById('rateSetupFee')?.value) || 0;
       const callSell = parseFloat(document.getElementById('rateCallSell').value) || 0;
       const callCost = parseFloat(document.getElementById('rateCallWholesale').value) || 0;
       const smsSell = parseFloat(document.getElementById('rateSmsSell').value) || 0;
       const smsCost = parseFloat(document.getElementById('rateSmsWholesale').value) || 0;
 
+      const firstMonthRevenue = numSell + setupFee;
+      const firstMonthProfit = firstMonthRevenue - numCost;
+      const renewalProfit = numSell - numCost;
       const numMargin = numSell > 0 ? (((numSell - numCost) / numSell) * 100).toFixed(0) : 0;
       const callMargin = callSell > 0 ? (((callSell - callCost) / callSell) * 100).toFixed(0) : 0;
       const smsMargin = smsSell > 0 ? (((smsSell - smsCost) / smsSell) * 100).toFixed(0) : 0;
@@ -7213,7 +7314,9 @@
       const callEl = document.getElementById('rateCallMarginBadge');
       const smsEl = document.getElementById('rateSmsMarginBadge');
 
-      if (numEl) numEl.innerText = `+${numMargin}% Margin ($${(numSell - numCost).toFixed(2)}/mo net)`;
+      if (numEl) {
+        numEl.innerText = `Month 1: +$${firstMonthProfit.toFixed(2)} Net • Renew: +$${renewalProfit.toFixed(2)}/mo (+${numMargin}%)`;
+      }
       if (callEl) callEl.innerText = `+${callMargin}% Margin ($${(callSell - callCost).toFixed(3)}/min net)`;
       if (smsEl) smsEl.innerText = `+${smsMargin}% Margin ($${(smsSell - smsCost).toFixed(3)}/msg net)`;
     }
@@ -7246,14 +7349,18 @@
         countryName: document.getElementById('rateCountryName').value.trim(),
         flagEmoji: document.getElementById('rateFlagEmoji').value.trim() || '🌐',
         dialCode: document.getElementById('rateDialCode').value.trim(),
+        carrier: (document.getElementById('rateCarrier')?.value || 'TWILIO').trim().toUpperCase(),
         numberMonthlySellPrice: parseFloat(document.getElementById('rateNumMonthly').value),
         numberYearlySellPrice: parseFloat(document.getElementById('rateNumYearly').value),
         number7DaySellPrice: parseFloat(document.getElementById('rateNum7Day').value),
         numberWholesaleCost: parseFloat(document.getElementById('rateNumWholesale').value),
+        setupFee: parseFloat(document.getElementById('rateSetupFee')?.value) || 0.0,
         callSellPricePerMin: parseFloat(document.getElementById('rateCallSell').value),
         callWholesaleCostPerMin: parseFloat(document.getElementById('rateCallWholesale').value),
         smsSellPrice: parseFloat(document.getElementById('rateSmsSell').value),
         smsWholesaleCost: parseFloat(document.getElementById('rateSmsWholesale').value),
+        inboundSmsPolicy: (document.getElementById('rateInboundSmsPolicy')?.value || 'FREE').toUpperCase(),
+        inboundCallPolicy: (document.getElementById('rateInboundCallPolicy')?.value || 'FREE').toUpperCase(),
         customPlanPrices: customMap,
         isActive: document.getElementById('rateIsActive').checked,
         allowOutboundCalls: document.getElementById('rateAllowCalls').checked,
@@ -7266,12 +7373,12 @@
           body: JSON.stringify(payload)
         });
 
-        if (res.success) {
+        if (res && res.success) {
           showToast(res.message, 'success');
           closeEditCountryRateModal();
           loadPricing();
         } else {
-          showToast(res.error || 'Failed to save rate deck', 'error');
+          showToast(res?.error || 'Failed to save rate deck', 'error');
         }
       } catch (err) {
         showToast(err.message, 'error');
@@ -10046,30 +10153,70 @@
 // ==========================================
 // 📡 TELECOM CARRIER HEALTH & NET PROFIT
 // ==========================================
+let currentDashboardCarrier = 'all';
+
+function setDashboardCarrierFilter(carrier) {
+  currentDashboardCarrier = carrier;
+  
+  const btnAll = document.getElementById('btnCarrierFilterAll');
+  const btnTwilio = document.getElementById('btnCarrierFilterTwilio');
+  const btnTelnyx = document.getElementById('btnCarrierFilterTelnyx');
+
+  [btnAll, btnTwilio, btnTelnyx].forEach(b => {
+    if (b) {
+      b.className = 'px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-1.5';
+    }
+  });
+
+  if (carrier === 'all' && btnAll) {
+    btnAll.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-indigo-600 text-white shadow-md shadow-indigo-600/30';
+  } else if (carrier === 'twilio' && btnTwilio) {
+    btnTwilio.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-purple-600 text-white shadow-md shadow-purple-600/30 flex items-center gap-1.5';
+  } else if (carrier === 'telnyx' && btnTelnyx) {
+    btnTelnyx.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-emerald-600 text-white shadow-md shadow-emerald-600/30 flex items-center gap-1.5';
+  }
+
+  showToast(`Dashboard filtered by: ${carrier === 'all' ? 'All Carriers' : carrier === 'twilio' ? 'Twilio UK (🇬🇧)' : 'Telnyx'}`, 'info');
+  fetchFinanceMargins();
+}
+
 async function fetchCarrierHealth() {
   try {
     const data = await adminFetch('/api/admin/telecom/carrier-health');
     if (data && data.success) {
-      const pill = document.getElementById('carrierHealthPill');
-      if (pill) pill.classList.remove('hidden');
+      // 1. Populate Twilio UK Header Pill
+      const twilioPill = document.getElementById('carrierHealthTwilioPill');
+      if (twilioPill) {
+        twilioPill.classList.remove('hidden');
+        const twilioBalEl = document.getElementById('twilioBalanceHeader');
+        if (twilioBalEl) {
+          const currSymbol = data.twilioCurrency === 'GBP' ? '£' : '$';
+          twilioBalEl.innerText = `${currSymbol}${Number(data.twilioBalance || 0).toFixed(2)}`;
+        }
+      }
 
-      const balEl = document.getElementById('carrierBalanceHeader');
-      if (balEl) balEl.innerText = formatUSD8(data.balance || 0);
+      // 2. Populate Telnyx Header Pill
+      const telnyxPill = document.getElementById('carrierHealthPill');
+      if (telnyxPill) {
+        telnyxPill.classList.remove('hidden');
+        const telnyxBalEl = document.getElementById('carrierBalanceHeader');
+        if (telnyxBalEl) telnyxBalEl.innerText = `$${Number(data.telnyxBalance || 0).toFixed(2)}`;
 
-      const badgeEl = document.getElementById('carrierStatusBadge');
-      const dotEl = document.getElementById('carrierHealthDot');
+        const badgeEl = document.getElementById('carrierStatusBadge');
+        const dotEl = document.getElementById('carrierHealthDot');
 
-      if (badgeEl && dotEl) {
-        badgeEl.innerText = data.healthStatus.replace(/[🟢🟡🔴]/g, '').trim();
-        if (data.healthColor === 'rose') {
-          badgeEl.className = 'text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 font-semibold uppercase';
-          dotEl.className = 'w-2 h-2 rounded-full bg-rose-500 animate-ping';
-        } else if (data.healthColor === 'amber') {
-          badgeEl.className = 'text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-semibold uppercase';
-          dotEl.className = 'w-2 h-2 rounded-full bg-amber-400';
-        } else {
-          badgeEl.className = 'text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-semibold uppercase';
-          dotEl.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+        if (badgeEl && dotEl) {
+          badgeEl.innerText = data.healthStatus.replace(/[🟢🟡🔴]/g, '').trim();
+          if (data.healthColor === 'rose') {
+            badgeEl.className = 'text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 font-semibold uppercase';
+            dotEl.className = 'w-2 h-2 rounded-full bg-rose-500 animate-ping';
+          } else if (data.healthColor === 'amber') {
+            badgeEl.className = 'text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-semibold uppercase';
+            dotEl.className = 'w-2 h-2 rounded-full bg-amber-400';
+          } else {
+            badgeEl.className = 'text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-semibold uppercase';
+            dotEl.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+          }
         }
       }
     }
@@ -12798,8 +12945,8 @@ setInterval(() => {
       <form id="editCountryRateForm" onsubmit="handleSaveCountryRate(event)" class="space-y-4 text-xs">
         <input type="hidden" id="rateCountryCode">
 
-        <!-- Country Metadata -->
-        <div class="grid grid-cols-3 gap-3">
+        <!-- Country Metadata & Carrier Selector -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div>
             <label class="block font-semibold text-slate-400 mb-1">Flag Emoji</label>
             <input type="text" id="rateFlagEmoji" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white text-center text-base focus:outline-none focus:border-pink-500">
@@ -12810,20 +12957,44 @@ setInterval(() => {
           </div>
           <div>
             <label class="block font-semibold text-slate-400 mb-1">Dial Code</label>
-            <input type="text" id="rateDialCode" required placeholder="+1" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-pink-500">
+            <input type="text" id="rateDialCode" required placeholder="+44" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-pink-500">
           </div>
+          <div>
+            <label class="block font-semibold text-purple-400 mb-1">Carrier Provider</label>
+            <select id="rateCarrier" class="w-full bg-slate-950 border border-purple-500/40 rounded-xl p-2.5 text-white font-bold focus:outline-none focus:border-purple-400">
+              <option value="TWILIO">🟣 Twilio UK (Active)</option>
+              <option value="TELNYX">🟢 Telnyx Wholesale</option>
+              <option value="DIDWW">🔵 DIDWW Global</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- ⚡ Quick Live Carrier Pricing API Fetcher Bar -->
+        <div class="p-2.5 rounded-2xl bg-purple-950/20 border border-purple-500/30 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 text-[11px] text-purple-300">
+            <i class="fa-solid fa-cloud-arrow-down text-sm text-purple-400"></i>
+            <span>Fetch official wholesale rates directly from carrier API</span>
+          </div>
+          <button type="button" id="btnFetchModalRates" onclick="fetchLiveCarrierRatesForModal()" class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold text-[11px] shadow-sm flex items-center gap-1.5 transition-all">
+            <i class="fa-solid fa-bolt text-amber-400"></i>
+            <span>Fetch Live Carrier Rates</span>
+          </button>
         </div>
 
         <!-- 1. Virtual Line Pricing -->
         <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 space-y-3">
           <div class="font-bold text-white text-[11px] uppercase tracking-wider flex items-center justify-between">
-            <span class="flex items-center gap-1.5"><i class="fa-solid fa-phone text-emerald-400"></i> Virtual Number Pricing</span>
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-phone text-emerald-400"></i> Virtual Number Pricing & Setup Fee</span>
             <span id="rateLineMarginBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">+0% Margin</span>
           </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div>
-              <label class="block text-slate-400 text-[10px] mb-1">Monthly Sell ($)</label>
+              <label class="block text-slate-400 text-[10px] mb-1">Monthly Plan ($)</label>
               <input type="number" step="0.01" id="rateNumMonthly" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+              <label class="block text-amber-400 text-[10px] mb-1">One-Time Setup Fee ($)</label>
+              <input type="number" step="0.01" id="rateSetupFee" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-amber-500/40 rounded-xl p-2 text-white font-bold text-amber-300 focus:outline-none focus:border-amber-400" placeholder="0.70">
             </div>
             <div>
               <label class="block text-slate-400 text-[10px] mb-1">Yearly Sell ($)</label>
@@ -12873,6 +13044,30 @@ setInterval(() => {
             <div>
               <label class="block text-slate-400 text-[10px] mb-1">Carrier Wholesale Cost / Msg ($)</label>
               <input type="number" step="0.001" id="rateSmsWholesale" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-slate-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Inbound Policy Controls -->
+        <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800/80 space-y-2.5">
+          <div class="font-bold text-slate-300 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-inbox text-emerald-400"></i>
+            <span>Inbound (Incoming Traffic) Customer Billing Policy</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-400 text-[10px] mb-1">Inbound SMS Customer Policy</label>
+              <select id="rateInboundSmsPolicy" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-semibold focus:outline-none focus:border-emerald-500">
+                <option value="FREE">🟢 Free Unlimited for Customer ($0.00)</option>
+                <option value="PAID">🟡 Paid (Deduct from Customer Wallet)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-400 text-[10px] mb-1">Inbound Call Customer Policy</label>
+              <select id="rateInboundCallPolicy" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-semibold focus:outline-none focus:border-emerald-500">
+                <option value="FREE">🟢 Free for Customer ($0.00)</option>
+                <option value="PAID">🟡 Paid (Deduct from Customer Wallet)</option>
+              </select>
             </div>
           </div>
         </div>

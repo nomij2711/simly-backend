@@ -43,6 +43,7 @@ model PurchasedNumber {
   phoneNumber          String
   userId               String
   countryCode          String    @default("US")
+  carrier              String    @default("TWILIO") // "TWILIO", "TELNYX", "DIDWW"
   status               String    @default("active") // "active", "expiring_soon", "expired"
   planType             String    @default("30_days") // "7_days", "30_days", "365_days"
   profileName          String?   @default("My Line")
@@ -231,14 +232,20 @@ model CountryRate {
   countryName             String   // "United States", "United Kingdom", "Australia"
   dialCode                String   // "+1", "+44", "+61"
   flagEmoji               String   @default("🌐") // "🇺🇸", "🇬🇧", "🇦🇺"
+  carrier                 String   @default("TWILIO") // "TWILIO", "TELNYX", "DIDWW"
   numberMonthlySellPrice  Float    @default(1.0)
   numberYearlySellPrice   Float    @default(12.0)
   number7DaySellPrice     Float    @default(0.50)
   numberWholesaleCost     Float    @default(1.0)
+  setupFee                Float    @default(0.0) // e.g. 0.70 for UK
   callSellPricePerMin     Float    @default(0.02)
   callWholesaleCostPerMin Float    @default(0.007)
   smsSellPrice            Float    @default(0.02)
   smsWholesaleCost        Float    @default(0.004)
+  inboundSmsPolicy        String   @default("FREE") // "FREE", "PAID"
+  inboundCallPolicy       String   @default("FREE") // "FREE", "PAID"
+  inboundSmsCost          Float    @default(0.0075) // carrier wholesale
+  inboundCallCost         Float    @default(0.0100) // carrier wholesale
   customPlanPrices        String?  @default("{}") // JSON map of custom prices per plan tier key
   isActive                Boolean  @default(true)
   allowOutboundCalls      Boolean  @default(true)

@@ -11,16 +11,6 @@ const app = express();
 app.set('trust proxy', true);
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
-
-// 🔒 STRICT DOMAIN ISOLATION: Admin Center is ONLY accessible on api.simlyx.com or localhost
-app.use((req, res, next) => {
-  const host = (req.hostname || req.headers.host || '').toLowerCase().split(':')[0];
-  if ((host === 'simlyx.com' || host === 'www.simlyx.com') && (req.path.startsWith('/admin') || req.path === '/admin')) {
-    return res.status(404).send('<!DOCTYPE html><html><head><title>404 Not Found</title></head><body style="font-family:sans-serif;text-align:center;padding:50px;"><h1>404 Not Found</h1><p>The requested URL was not found on this server.</p></body></html>');
-  }
-  next();
-});
-
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html', 'htm'] }));
 
 // SEO & Web Crawler Endpoints
@@ -303,13 +293,8 @@ function getCustomerAccountId(userOrId) {
   return 'SIM-' + num;
 }
 
-// Admin Web Dashboard SPA Route (Strictly restricted to api.simlyx.com & localhost)
+// Admin Web Dashboard SPA Route (with strict no-cache headers)
 const sendAdminApp = (req, res) => {
-  const host = (req.hostname || req.headers.host || '').toLowerCase();
-  if (host === 'simlyx.com' || host === 'www.simlyx.com' || host.startsWith('simlyx.com:')) {
-    return res.status(404).send('<!DOCTYPE html><html><head><title>404 Not Found</title></head><body style="font-family:sans-serif;text-align:center;padding:50px;"><h1>404 Not Found</h1><p>The requested URL was not found on this server.</p></body></html>');
-  }
-
   res.set({
     'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
     'Pragma': 'no-cache',
@@ -1598,59 +1583,8 @@ app.get('/api/numbers/search', async (req, res) => {
       });
     }
     let numbers = [];
-    const activeCarrier = rateDeck.carrier || (countryCode === 'GB' ? 'TWILIO' : 'TELNYX');
 
-    // 1. Twilio Live Number Search (Primary for UK and Twilio-assigned routes)
-    if (activeCarrier === 'TWILIO' && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-      try {
-        const twilioNumbers = await getTwilioAvailableNumbers(countryCode, 15);
-        if (twilioNumbers && Array.isArray(twilioNumbers) && twilioNumbers.length > 0) {
-          const plans = getCountryPlans(countryCode, true);
-          const standardPlan = plans.find(p => p.key === '30_days') || plans[0] || { price: 1.99 };
-          const setupFee = rateDeck.setupFee || 0;
-
-          numbers = twilioNumbers.map(num => ({
-            phoneNumber: num.phone_number,
-            friendlyName: num.friendly_name || num.phone_number,
-            carrier: 'TWILIO',
-            setupFee: setupFee,
-            plans: plans,
-            cost: {
-              monthly_cost: standardPlan.price.toFixed(2),
-              setup_fee: setupFee.toFixed(2),
-              first_month_total: (standardPlan.price + setupFee).toFixed(2),
-              upfront_cost: (plans[0]?.price || 1.00).toFixed(2),
-              yearly_cost: (plans.find(p => p.key === '365_days')?.price || 20.00).toFixed(2),
-              seven_day_cost: (plans.find(p => p.key === '7_days')?.price || 1.00).toFixed(2),
-              carrier_wholesale_cost: rateDeck.numberWholesaleCost.toFixed(2),
-              inbound_sms_policy: rateDeck.inboundSmsPolicy || 'FREE',
-              inbound_call_policy: rateDeck.inboundCallPolicy || 'FREE',
-              carrier: 'TWILIO',
-              currency: 'USD'
-            },
-            rates: {
-              monthly: rateDeck.numberMonthlySellPrice,
-              sevenDay: rateDeck.number7DaySellPrice,
-              yearly: rateDeck.numberYearlySellPrice,
-              setupFee: setupFee,
-              callPerMin: rateDeck.callSellPricePerMin,
-              smsPerMsg: rateDeck.smsSellPrice,
-              inboundSmsPolicy: rateDeck.inboundSmsPolicy || 'FREE',
-              inboundCallPolicy: rateDeck.inboundCallPolicy || 'FREE'
-            },
-            region: {
-              region_name: `${rateDeck.countryName} Mobile (Twilio UK)`,
-              country_code: countryCode
-            }
-          }));
-        }
-      } catch (twilioErr) {
-        console.warn('[SIMLY NUMBERS] Twilio live search fallback:', twilioErr.message);
-      }
-    }
-
-    // 2. Telnyx Live Number Search (For Telnyx-assigned routes)
-    if ((!numbers || numbers.length === 0) && activeCarrier === 'TELNYX' && process.env.TELNYX_API_KEY && telnyx?.availablePhoneNumbers) {
+    if (process.env.TELNYX_API_KEY && telnyx?.availablePhoneNumbers) {
       try {
         const response = await telnyx.availablePhoneNumbers.list({
           filter: {
@@ -1661,43 +1595,31 @@ app.get('/api/numbers/search', async (req, res) => {
         });
 
         if (response?.data && Array.isArray(response.data) && response.data.length > 0) {
-          const plans = getCountryPlans(countryCode, true);
-          const standardPlan = plans.find(p => p.key === '30_days') || plans[0] || { price: 1.00 };
-          const setupFee = rateDeck.setupFee || 0;
-
           numbers = response.data.map(num => {
             let resolvedNumber = num.phone_number;
             if (resolvedNumber.includes('-')) {
               resolvedNumber = resolvedNumber.replace(/-/g, () => Math.floor(Math.random() * 10).toString());
             }
 
+            const plans = getCountryPlans(countryCode, true);
+            const standardPlan = plans.find(p => p.key === '30_days') || plans[0] || { price: 1.00 };
             return {
               phoneNumber: resolvedNumber,
-              carrier: 'TELNYX',
-              setupFee: setupFee,
               plans: plans,
               cost: {
                 monthly_cost: standardPlan.price.toFixed(2),
-                setup_fee: setupFee.toFixed(2),
-                first_month_total: (standardPlan.price + setupFee).toFixed(2),
                 upfront_cost: (plans[0]?.price || 0.50).toFixed(2),
                 yearly_cost: (plans.find(p => p.key === '365_days')?.price || 12.00).toFixed(2),
                 seven_day_cost: (plans.find(p => p.key === '7_days')?.price || 0.50).toFixed(2),
                 carrier_wholesale_cost: rateDeck.numberWholesaleCost.toFixed(2),
-                inbound_sms_policy: rateDeck.inboundSmsPolicy || 'FREE',
-                inbound_call_policy: rateDeck.inboundCallPolicy || 'FREE',
-                carrier: 'TELNYX',
                 currency: 'USD'
               },
               rates: {
                 monthly: rateDeck.numberMonthlySellPrice,
                 sevenDay: rateDeck.number7DaySellPrice,
                 yearly: rateDeck.numberYearlySellPrice,
-                setupFee: setupFee,
                 callPerMin: rateDeck.callSellPricePerMin,
-                smsPerMsg: rateDeck.smsSellPrice,
-                inboundSmsPolicy: rateDeck.inboundSmsPolicy || 'FREE',
-                inboundCallPolicy: rateDeck.inboundCallPolicy || 'FREE'
+                smsPerMsg: rateDeck.smsSellPrice
               },
               region: num.region_information || {
                 region_name: `${rateDeck.countryName} Standard`,
@@ -1707,16 +1629,16 @@ app.get('/api/numbers/search', async (req, res) => {
           });
         }
       } catch (telnyxErr) {
-        console.warn('[SIMLY NUMBERS] Telnyx live search fallback:', telnyxErr.message);
+        console.warn('[SIMLY NUMBERS] Carrier live search fallback:', telnyxErr.message);
       }
     }
 
-    // 3. High Quality Dynamic Fallback if Carrier is in test mode or returns empty
+    // High Quality Dynamic Fallback if Telnyx is in test mode or returns empty
     if (!numbers || numbers.length === 0) {
       const areaCodesMap = {
         US: ['202', '312', '415', '212', '718', '305', '702', '404'],
         CA: ['416', '647', '514', '604', '403'],
-        GB: ['7360', '7861', '7782', '7888', '7451', '7911'],
+        GB: ['7400', '7451', '7911', '7700', '7890'],
         AU: ['412', '423', '434', '445', '456'],
         DE: ['151', '152', '160', '170', '175'],
         FR: ['612', '623', '634', '645', '756'],
@@ -1726,10 +1648,9 @@ app.get('/api/numbers/search', async (req, res) => {
         TR: ['532', '542', '552', '505', '530']
       };
 
-      const areaCodes = areaCodesMap[countryCode] || ['7360', '7861', '7782', '7888'];
-      const prefix = rateDeck.dialCode || '+44';
-      const city = `${rateDeck.countryName} (${activeCarrier})`;
-      const setupFee = rateDeck.setupFee || 0;
+      const areaCodes = areaCodesMap[countryCode] || ['301', '402', '503', '604', '705'];
+      const prefix = rateDeck.dialCode || '+1';
+      const city = `${rateDeck.countryName} Virtual Line`;
 
       numbers = Array.from({ length: 15 }, (_, i) => {
         const area = areaCodes[i % areaCodes.length];
@@ -1737,34 +1658,24 @@ app.get('/api/numbers/search', async (req, res) => {
         const fullNumber = `${prefix}${area}${randomDigits}`;
 
         const plans = getCountryPlans(countryCode, true);
-        const standardPlan = plans.find(p => p.key === '30_days') || plans[0] || { price: 1.99 };
+        const standardPlan = plans.find(p => p.key === '30_days') || plans[0] || { price: 1.00 };
         return {
           phoneNumber: fullNumber,
-          carrier: activeCarrier,
-          setupFee: setupFee,
           plans: plans,
           cost: {
             monthly_cost: standardPlan.price.toFixed(2),
-            setup_fee: setupFee.toFixed(2),
-            first_month_total: (standardPlan.price + setupFee).toFixed(2),
             upfront_cost: (plans[0]?.price || 0.50).toFixed(2),
-            yearly_cost: (plans.find(p => p.key === '365_days')?.price || 20.00).toFixed(2),
-            seven_day_cost: (plans.find(p => p.key === '7_days')?.price || 1.00).toFixed(2),
+            yearly_cost: (plans.find(p => p.key === '365_days')?.price || 12.00).toFixed(2),
+            seven_day_cost: (plans.find(p => p.key === '7_days')?.price || 0.50).toFixed(2),
             carrier_wholesale_cost: rateDeck.numberWholesaleCost.toFixed(2),
-            inbound_sms_policy: rateDeck.inboundSmsPolicy || 'FREE',
-            inbound_call_policy: rateDeck.inboundCallPolicy || 'FREE',
-            carrier: activeCarrier,
             currency: 'USD'
           },
           rates: {
             monthly: rateDeck.numberMonthlySellPrice,
             sevenDay: rateDeck.number7DaySellPrice,
             yearly: rateDeck.numberYearlySellPrice,
-            setupFee: setupFee,
             callPerMin: rateDeck.callSellPricePerMin,
-            smsPerMsg: rateDeck.smsSellPrice,
-            inboundSmsPolicy: rateDeck.inboundSmsPolicy || 'FREE',
-            inboundCallPolicy: rateDeck.inboundCallPolicy || 'FREE'
+            smsPerMsg: rateDeck.smsSellPrice
           },
           region: {
             region_name: city,
@@ -1776,23 +1687,16 @@ app.get('/api/numbers/search', async (req, res) => {
 
     res.json({
       success: true,
-      carrier: activeCarrier,
       country: rateDeck.countryName,
       countryCode: rateDeck.countryCode,
       flagEmoji: rateDeck.flagEmoji,
       isActive: rateDeck.isActive,
-      setupFee: rateDeck.setupFee || 0,
-      inboundSmsPolicy: rateDeck.inboundSmsPolicy || 'FREE',
-      inboundCallPolicy: rateDeck.inboundCallPolicy || 'FREE',
       rates: {
         monthly: rateDeck.numberMonthlySellPrice,
         sevenDay: rateDeck.number7DaySellPrice,
         yearly: rateDeck.numberYearlySellPrice,
-        setupFee: rateDeck.setupFee || 0,
         callPerMin: rateDeck.callSellPricePerMin,
-        smsPerMsg: rateDeck.smsSellPrice,
-        inboundSmsPolicy: rateDeck.inboundSmsPolicy || 'FREE',
-        inboundCallPolicy: rateDeck.inboundCallPolicy || 'FREE'
+        smsPerMsg: rateDeck.smsSellPrice
       },
       numbers
     });
@@ -8005,20 +7909,14 @@ app.post('/api/admin/rates', requireAdmin, async (req, res) => {
       countryName,
       dialCode,
       flagEmoji = '🌐',
-      carrier = 'TWILIO',
       numberMonthlySellPrice,
       numberYearlySellPrice,
       number7DaySellPrice,
       numberWholesaleCost,
-      setupFee = 0.0,
       callSellPricePerMin,
       callWholesaleCostPerMin,
       smsSellPrice,
       smsWholesaleCost,
-      inboundSmsPolicy = 'FREE',
-      inboundCallPolicy = 'FREE',
-      inboundSmsCost = 0.0075,
-      inboundCallCost = 0.0100,
       customPlanPrices,
       isActive = true,
       allowOutboundCalls = true,
@@ -8040,20 +7938,14 @@ app.post('/api/admin/rates', requireAdmin, async (req, res) => {
         countryName: countryName.trim(),
         dialCode: dialCode.trim(),
         flagEmoji: flagEmoji.trim(),
-        carrier: (carrier || 'TWILIO').trim().toUpperCase(),
         numberMonthlySellPrice: parseFloat(numberMonthlySellPrice) || 1.0,
         numberYearlySellPrice: parseFloat(numberYearlySellPrice) || 12.0,
         number7DaySellPrice: parseFloat(number7DaySellPrice) || 0.50,
         numberWholesaleCost: parseFloat(numberWholesaleCost) || 1.0,
-        setupFee: parseFloat(setupFee) || 0.0,
         callSellPricePerMin: parseFloat(callSellPricePerMin) || 0.02,
         callWholesaleCostPerMin: parseFloat(callWholesaleCostPerMin) || 0.007,
         smsSellPrice: parseFloat(smsSellPrice) || 0.02,
         smsWholesaleCost: parseFloat(smsWholesaleCost) || 0.004,
-        inboundSmsPolicy: (inboundSmsPolicy || 'FREE').toUpperCase(),
-        inboundCallPolicy: (inboundCallPolicy || 'FREE').toUpperCase(),
-        inboundSmsCost: parseFloat(inboundSmsCost) || 0.0075,
-        inboundCallCost: parseFloat(inboundCallCost) || 0.0100,
         customPlanPrices: customPricesStr,
         isActive: Boolean(isActive),
         allowOutboundCalls: Boolean(allowOutboundCalls),
@@ -8064,20 +7956,14 @@ app.post('/api/admin/rates', requireAdmin, async (req, res) => {
         countryName: countryName.trim(),
         dialCode: dialCode.trim(),
         flagEmoji: flagEmoji.trim(),
-        carrier: (carrier || 'TWILIO').trim().toUpperCase(),
         numberMonthlySellPrice: parseFloat(numberMonthlySellPrice) || 1.0,
         numberYearlySellPrice: parseFloat(numberYearlySellPrice) || 12.0,
         number7DaySellPrice: parseFloat(number7DaySellPrice) || 0.50,
         numberWholesaleCost: parseFloat(numberWholesaleCost) || 1.0,
-        setupFee: parseFloat(setupFee) || 0.0,
         callSellPricePerMin: parseFloat(callSellPricePerMin) || 0.02,
         callWholesaleCostPerMin: parseFloat(callWholesaleCostPerMin) || 0.007,
         smsSellPrice: parseFloat(smsSellPrice) || 0.02,
         smsWholesaleCost: parseFloat(smsWholesaleCost) || 0.004,
-        inboundSmsPolicy: (inboundSmsPolicy || 'FREE').toUpperCase(),
-        inboundCallPolicy: (inboundCallPolicy || 'FREE').toUpperCase(),
-        inboundSmsCost: parseFloat(inboundSmsCost) || 0.0075,
-        inboundCallCost: parseFloat(inboundCallCost) || 0.0100,
         customPlanPrices: customPricesStr || '{}',
         isActive: Boolean(isActive),
         allowOutboundCalls: Boolean(allowOutboundCalls),
@@ -8086,7 +7972,7 @@ app.post('/api/admin/rates', requireAdmin, async (req, res) => {
     });
 
     await refreshDynamicCaches();
-    await logAuditEvent(req, 'UPDATE_PRICING', cc, 'country_rate', `Upserted Rate Deck for ${saved.flagEmoji} ${saved.countryName} (${cc}) [Carrier: ${saved.carrier}]`);
+    await logAuditEvent(req, 'UPDATE_PRICING', cc, 'country_rate', `Upserted Rate Deck for ${saved.flagEmoji} ${saved.countryName} (${cc})`);
 
     res.json({ success: true, message: `Rate deck for ${saved.countryName} saved successfully!`, rate: saved });
   } catch (error) {
@@ -8108,20 +7994,14 @@ app.put('/api/admin/rates/:countryCode', requireAdmin, async (req, res) => {
     if (req.body.countryName !== undefined) updates.countryName = req.body.countryName.trim();
     if (req.body.dialCode !== undefined) updates.dialCode = req.body.dialCode.trim();
     if (req.body.flagEmoji !== undefined) updates.flagEmoji = req.body.flagEmoji.trim();
-    if (req.body.carrier !== undefined) updates.carrier = req.body.carrier.trim().toUpperCase();
     if (req.body.numberMonthlySellPrice !== undefined) updates.numberMonthlySellPrice = parseFloat(req.body.numberMonthlySellPrice);
     if (req.body.numberYearlySellPrice !== undefined) updates.numberYearlySellPrice = parseFloat(req.body.numberYearlySellPrice);
     if (req.body.number7DaySellPrice !== undefined) updates.number7DaySellPrice = parseFloat(req.body.number7DaySellPrice);
     if (req.body.numberWholesaleCost !== undefined) updates.numberWholesaleCost = parseFloat(req.body.numberWholesaleCost);
-    if (req.body.setupFee !== undefined) updates.setupFee = parseFloat(req.body.setupFee);
     if (req.body.callSellPricePerMin !== undefined) updates.callSellPricePerMin = parseFloat(req.body.callSellPricePerMin);
     if (req.body.callWholesaleCostPerMin !== undefined) updates.callWholesaleCostPerMin = parseFloat(req.body.callWholesaleCostPerMin);
     if (req.body.smsSellPrice !== undefined) updates.smsSellPrice = parseFloat(req.body.smsSellPrice);
     if (req.body.smsWholesaleCost !== undefined) updates.smsWholesaleCost = parseFloat(req.body.smsWholesaleCost);
-    if (req.body.inboundSmsPolicy !== undefined) updates.inboundSmsPolicy = req.body.inboundSmsPolicy.trim().toUpperCase();
-    if (req.body.inboundCallPolicy !== undefined) updates.inboundCallPolicy = req.body.inboundCallPolicy.trim().toUpperCase();
-    if (req.body.inboundSmsCost !== undefined) updates.inboundSmsCost = parseFloat(req.body.inboundSmsCost);
-    if (req.body.inboundCallCost !== undefined) updates.inboundCallCost = parseFloat(req.body.inboundCallCost);
     if (req.body.customPlanPrices !== undefined) {
       updates.customPlanPrices = typeof req.body.customPlanPrices === 'string' ? req.body.customPlanPrices : JSON.stringify(req.body.customPlanPrices);
     }
@@ -8135,7 +8015,7 @@ app.put('/api/admin/rates/:countryCode', requireAdmin, async (req, res) => {
     });
 
     await refreshDynamicCaches();
-    await logAuditEvent(req, 'UPDATE_PRICING', cc, 'country_rate', `Updated Rate Deck for ${updated.flagEmoji} ${updated.countryName} (${cc}) [Carrier: ${updated.carrier}]`);
+    await logAuditEvent(req, 'UPDATE_PRICING', cc, 'country_rate', `Updated Rate Deck for ${updated.flagEmoji} ${updated.countryName} (${cc})`);
 
     res.json({ success: true, message: `Rate deck for ${updated.countryName} updated successfully!`, rate: updated });
   } catch (error) {
@@ -9358,184 +9238,9 @@ app.post('/api/admin/users/:id/unban', requireAdmin, async (req, res) => {
 });
 
 
-// Helper to fetch live Twilio balance
-async function getTwilioLiveBalance() {
-  const https = require('https');
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  if (!accountSid || !authToken) return { balance: 0, currency: 'GBP', status: 'NO_API_KEY' };
-
-  const authHeader = 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64');
-
-  return new Promise((resolve) => {
-    const options = {
-      hostname: 'api.twilio.com',
-      port: 443,
-      path: `/2010-04-01/Accounts/${accountSid}/Balance.json`,
-      method: 'GET',
-      headers: {
-        'Authorization': authHeader,
-        'Accept': 'application/json'
-      }
-    };
-
-    const req = https.request(options, (res) => {
-      let body = '';
-      res.on('data', chunk => body += chunk);
-      res.on('end', () => {
-        try {
-          const data = JSON.parse(body);
-          if (data && data.balance !== undefined) {
-            resolve({
-              balance: parseFloat(data.balance || 0),
-              currency: data.currency || 'GBP',
-              status: 'OK'
-            });
-          } else {
-            resolve({ balance: 0, currency: 'GBP', status: 'ERROR', raw: data });
-          }
-        } catch (e) {
-          resolve({ balance: 0, currency: 'GBP', status: 'PARSE_ERROR' });
-        }
-      });
-    });
-
-    req.on('error', () => resolve({ balance: 0, currency: 'GBP', status: 'NETWORK_ERROR' }));
-    req.end();
-  });
-}
-
-// Helper to fetch available UK / global phone numbers from Twilio
-async function getTwilioAvailableNumbers(countryCode = 'GB', limit = 15) {
-  const https = require('https');
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  if (!accountSid || !authToken) return [];
-
-  const authHeader = 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64');
-  const cc = countryCode.toUpperCase();
-
-  const fetchType = async (type) => {
-    return new Promise((resolve) => {
-      const options = {
-        hostname: 'api.twilio.com',
-        port: 443,
-        path: `/2010-04-01/Accounts/${accountSid}/AvailablePhoneNumbers/${cc}/${type}.json?PageSize=${limit}`,
-        method: 'GET',
-        headers: {
-          'Authorization': authHeader,
-          'Accept': 'application/json'
-        }
-      };
-
-      const req = https.request(options, (res) => {
-        let body = '';
-        res.on('data', chunk => body += chunk);
-        res.on('end', () => {
-          try {
-            const data = JSON.parse(body);
-            if (data?.available_phone_numbers && Array.isArray(data.available_phone_numbers)) {
-              resolve(data.available_phone_numbers);
-            } else {
-              resolve([]);
-            }
-          } catch (e) {
-            resolve([]);
-          }
-        });
-      });
-
-      req.on('error', () => resolve([]));
-      req.end();
-    });
-  };
-
-  let numbers = await fetchType('Mobile');
-  if (!numbers || numbers.length === 0) {
-    numbers = await fetchType('Local');
-  }
-  return numbers;
-}
-
-// Helper to fetch real-time wholesale pricing from Twilio Pricing API
-async function getTwilioLivePricing(countryCode = 'GB') {
-  const https = require('https');
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  if (!accountSid || !authToken) return null;
-
-  const authHeader = 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64');
-  const cc = countryCode.toUpperCase();
-
-  const fetchPricing = (urlPath) => {
-    return new Promise((resolve) => {
-      const options = {
-        hostname: 'pricing.twilio.com',
-        port: 443,
-        path: urlPath,
-        method: 'GET',
-        headers: {
-          'Authorization': authHeader,
-          'Accept': 'application/json'
-        }
-      };
-      const req = https.request(options, (res) => {
-        let body = '';
-        res.on('data', chunk => body += chunk);
-        res.on('end', () => {
-          try {
-            resolve(JSON.parse(body));
-          } catch (e) {
-            resolve(null);
-          }
-        });
-      });
-      req.on('error', () => resolve(null));
-      req.end();
-    });
-  };
-
-  try {
-    const [voiceData, msgData] = await Promise.all([
-      fetchPricing(`/v2/Voice/Countries/${cc}`),
-      fetchPricing(`/v2/Messaging/Countries/${cc}`)
-    ]);
-
-    let voiceRate = 0.0305;
-    let voiceInbound = 0.0100;
-    if (voiceData?.outbound_prefix_prices && Array.isArray(voiceData.outbound_prefix_prices)) {
-      const mobPrefix = voiceData.outbound_prefix_prices.find(p => p.prefixes && p.prefixes.some(x => x.startsWith('447') || x.startsWith('1')));
-      if (mobPrefix && mobPrefix.base_price) voiceRate = parseFloat(mobPrefix.base_price);
-      else if (voiceData.outbound_prefix_prices[0]?.base_price) voiceRate = parseFloat(voiceData.outbound_prefix_prices[0].base_price);
-    }
-    if (voiceData?.inbound_call_prices && voiceData.inbound_call_prices[0]?.base_price) {
-      voiceInbound = parseFloat(voiceData.inbound_call_prices[0].base_price);
-    }
-
-    let smsRate = 0.0560;
-    let smsInbound = 0.0075;
-    if (msgData?.outbound_sms_prices && Array.isArray(msgData.outbound_sms_prices)) {
-      const priceItem = msgData.outbound_sms_prices[0]?.prices?.[0]?.base_price;
-      if (priceItem) smsRate = parseFloat(priceItem);
-    }
-    if (msgData?.inbound_sms_prices && msgData.inbound_sms_prices[0]?.base_price) {
-      smsInbound = parseFloat(msgData.inbound_sms_prices[0].base_price);
-    }
-
-    return {
-      countryCode: cc,
-      carrier: 'TWILIO',
-      numberWholesaleCost: cc === 'GB' ? 1.15 : 1.00,
-      callWholesaleCostPerMin: voiceRate,
-      smsWholesaleCost: smsRate,
-      inboundCallCost: voiceInbound,
-      inboundSmsCost: smsInbound,
-      currency: 'USD'
-    };
-  } catch (err) {
-    return null;
-  }
-}
+// ==========================================
+// 📡 CARRIER HEALTH & NET PROFIT MARGINS (STEP 3)
+// ==========================================
 
 // Helper to fetch live Telnyx balance
 async function getTelnyxLiveBalance() {
@@ -9576,34 +9281,29 @@ async function getTelnyxLiveBalance() {
       });
     });
 
-    req.on('error', () => resolve({ balance: 0, currency: 'USD', creditLimit: '0.00', status: 'NETWORK_ERROR' }));
+    req.on('error', (e) => resolve({ balance: 0, currency: 'USD', creditLimit: '0.00', status: 'NETWORK_ERROR' }));
     req.end();
   });
 }
 
-// 1. Telecom Carrier Health & Live Balances (Multi-Carrier Engine)
+// 1. Telecom Carrier Health & Live Balance
 app.get('/api/admin/telecom/carrier-health', requireAdmin, async (req, res) => {
   try {
-    const [telnyxInfo, twilioInfo] = await Promise.all([
-      getTelnyxLiveBalance(),
-      getTwilioLiveBalance()
-    ]);
-
-    const telnyxBalance = telnyxInfo.balance || 0;
-    const twilioBalance = twilioInfo.balance || 0;
+    const telnyxInfo = await getTelnyxLiveBalance();
+    const balanceVal = telnyxInfo.balance || 0;
 
     let healthStatus = 'HEALTHY 🟢';
     let healthColor = 'emerald';
     let warningMessage = null;
 
-    if (twilioBalance <= 0 && telnyxBalance <= 5) {
+    if (balanceVal <= 5) {
       healthStatus = 'CRITICAL 🔴';
       healthColor = 'rose';
-      warningMessage = 'Carrier balances are critically low. Calls/SMS may fail if not refilled.';
-    } else if (twilioBalance < 10 && telnyxBalance < 30) {
+      warningMessage = 'Telnyx balance is critically low. Calls may fail soon if not refilled.';
+    } else if (balanceVal < 30) {
       healthStatus = 'LOW BALANCE 🟡';
       healthColor = 'amber';
-      warningMessage = 'Carrier balance is low. Consider topping up to prevent service interruptions.';
+      warningMessage = 'Telnyx balance is low. Consider topping up to prevent call interruption.';
     }
 
     const [activeNumbers, todayCalls, todayMessages] = await Promise.all([
@@ -9622,15 +9322,10 @@ app.get('/api/admin/telecom/carrier-health', requireAdmin, async (req, res) => {
 
     res.json({
       success: true,
-      carrier: 'Twilio UK & Telnyx Multi-Carrier Network',
-      balance: twilioBalance, // Primary UK active carrier balance
-      currency: twilioInfo.currency || 'GBP',
-      telnyxBalance: telnyxBalance,
-      telnyxCurrency: telnyxInfo.currency || 'USD',
-      telnyxStatus: telnyxInfo.status,
-      twilioBalance: twilioBalance,
-      twilioCurrency: twilioInfo.currency || 'GBP',
-      twilioStatus: twilioInfo.status,
+      carrier: 'Telnyx Wholesale Telecom',
+      balance: balanceVal,
+      currency: telnyxInfo.currency,
+      creditLimit: telnyxInfo.creditLimit,
       healthStatus,
       healthColor,
       warningMessage,
@@ -9645,41 +9340,7 @@ app.get('/api/admin/telecom/carrier-health', requireAdmin, async (req, res) => {
   }
 });
 
-// 2. Real-Time Carrier Rates Live Preview Endpoint (Twilio Pricing API)
-app.get('/api/admin/carrier/rates-preview', requireAdmin, async (req, res) => {
-  try {
-    const country = (req.query.country || 'GB').toUpperCase();
-    const carrier = (req.query.carrier || 'TWILIO').toUpperCase();
-
-    if (carrier === 'TWILIO') {
-      const liveRates = await getTwilioLivePricing(country);
-      if (liveRates) {
-        return res.json({ success: true, carrier: 'TWILIO', rates: liveRates });
-      }
-    }
-
-    // Fallback default structure
-    res.json({
-      success: true,
-      carrier: carrier,
-      rates: {
-        countryCode: country,
-        carrier: carrier,
-        numberWholesaleCost: country === 'GB' ? 1.15 : 1.00,
-        callWholesaleCostPerMin: 0.0305,
-        smsWholesaleCost: 0.0560,
-        inboundCallCost: 0.0100,
-        inboundSmsCost: 0.0075,
-        currency: 'USD'
-      }
-    });
-  } catch (error) {
-    console.error('[CARRIER RATES PREVIEW ERROR]', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// 3. Real-Time Net Profit Margins & Cost Analytics (8-Decimal Accuracy)
+// 2. Real-Time Net Profit Margins & Cost Analytics (8-Decimal Accuracy)
 app.get('/api/admin/finance/margins', requireAdmin, async (req, res) => {
   try {
     const fin = await calculateMasterFinancials();

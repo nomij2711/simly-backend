@@ -1594,12 +1594,20 @@ const getCountryPlans = (countryCode, onlyActive = true, isInitialPurchase = fal
     }
 
     // 2. Check country-level active/disabled overrides
-    if (customMap.activeTiers && Array.isArray(customMap.activeTiers)) {
-      isTierActive = customMap.activeTiers.includes(tier.key);
-    } else if (customMap.disabledTiers && Array.isArray(customMap.disabledTiers)) {
-      if (customMap.disabledTiers.includes(tier.key)) isTierActive = false;
+    if (customMap.disabledTiers && Array.isArray(customMap.disabledTiers) && customMap.disabledTiers.includes(tier.key)) {
+      isTierActive = false;
+    } else if (customMap.activeTiers && Array.isArray(customMap.activeTiers)) {
+      if (carrierTiersConfig && carrierTiersConfig[tier.key] === false) {
+        isTierActive = false;
+      } else {
+        isTierActive = customMap.activeTiers.includes(tier.key);
+      }
     } else if (customMap[tier.key] && typeof customMap[tier.key] === 'object' && customMap[tier.key].enabled !== undefined) {
-      isTierActive = Boolean(customMap[tier.key].enabled);
+      if (carrierTiersConfig && carrierTiersConfig[tier.key] === false) {
+        isTierActive = false;
+      } else {
+        isTierActive = Boolean(customMap[tier.key].enabled);
+      }
     }
 
     if (onlyActive && !isTierActive) continue;
@@ -1621,9 +1629,15 @@ const getCountryPlans = (countryCode, onlyActive = true, isInitialPurchase = fal
 
     // Calculate initial purchase price (Plan Price + One-Time Setup Fee) vs renewal price (Plan Price only)
     const effectivePrice = (isInitialPurchase && setupFee > 0) ? parseFloat((sellPrice + setupFee).toFixed(2)) : sellPrice;
-    let subtitleText = tier.subtitle || '';
+    
+    // Construct crystal-clear attractive breakdown for initial buy vs renewal
+    let subtitleText = '';
     if (isInitialPurchase && setupFee > 0) {
-      subtitleText = subtitleText ? `${subtitleText} (+$${setupFee.toFixed(2)} setup fee)` : `+$${setupFee.toFixed(2)} one-time setup fee`;
+      subtitleText = `Retail $${sellPrice.toFixed(2)} + $${setupFee.toFixed(2)} One-Time Setup = $${effectivePrice.toFixed(2)} Total • Renews at $${sellPrice.toFixed(2)} only`;
+    } else if (isInitialPurchase) {
+      subtitleText = `Retail $${sellPrice.toFixed(2)} • Instant Activation • Zero Setup Fee`;
+    } else {
+      subtitleText = `Renewal Rate: $${sellPrice.toFixed(2)} for ${tier.durationDays} Days • $0 Setup Fee`;
     }
 
     result.push({

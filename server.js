@@ -551,6 +551,42 @@ async function verifyTwilioPhoneOtp(phone, code) {
   }
 }
 
+// 📱 Twilio Outbound Direct SMS Engine (For UK & Twilio Numbers)
+async function sendTwilioStandardSms(from, to, text) {
+  try {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    if (!accountSid || !authToken) {
+      console.warn('⚠️ Twilio credentials missing for direct SMS');
+      return { success: false, error: 'Twilio credentials not configured' };
+    }
+    const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        'From': from,
+        'To': to,
+        'Body': text
+      }).toString()
+    });
+    const data = await res.json();
+    if (res.status >= 200 && res.status < 300) {
+      console.log(`💬 [TWILIO SMS SENT] To: ${to} (SID: ${data.sid})`);
+      return { success: true, id: data.sid, carrier: 'TWILIO', data };
+    } else {
+      console.warn(`⚠️ [TWILIO SMS FAILED] Status: ${res.status}:`, data.message);
+      return { success: false, error: data.message, data };
+    }
+  } catch (err) {
+    console.error('❌ [TWILIO SMS DISPATCH ERROR]', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
 // 🎨 Branded HTML Template Generator for SimlyX
 function generateSimlyxOtpEmail({ name, otpCode, type = 'signup' }) {
   const isForgot = type === 'forgot_password';
@@ -2431,15 +2467,42 @@ app.post('/api/sms/send', async (req, res) => {
     });
 
     let telnyxMessageId = null;
+    let dispatchedCarrier = (lineOwner?.carrier || (cleanFrom.startsWith('+44') ? 'TWILIO' : 'TELNYX')).toUpperCase();
+
     try {
-      const telnyxRes = await telnyx.messages.create({
-        from: cleanFrom,
-        to: cleanTo,
-        text: text
-      });
-      telnyxMessageId = telnyxRes?.data?.id || null;
+      if (dispatchedCarrier === 'TWILIO') {
+        const twilioRes = await sendTwilioStandardSms(cleanFrom, cleanTo, text);
+        if (twilioRes && twilioRes.success) {
+          telnyxMessageId = twilioRes.id;
+        } else {
+          // Graceful fallback to Telnyx
+          console.warn('[SIMLYX SMS] Twilio dispatch returned error, attempting Telnyx fallback...');
+          const telnyxRes = await telnyx.messages.create({
+            from: cleanFrom,
+            to: cleanTo,
+            text: text
+          }).catch(() => null);
+          telnyxMessageId = telnyxRes?.data?.id || null;
+        }
+      } else {
+        const telnyxRes = await telnyx.messages.create({
+          from: cleanFrom,
+          to: cleanTo,
+          text: text
+        });
+        telnyxMessageId = telnyxRes?.data?.id || null;
+      }
     } catch (carrierErr) {
-      console.warn('[SIMLYX SMS] Carrier dispatch notice:', carrierErr.message);
+      console.warn(`[SIMLYX SMS] Carrier (${dispatchedCarrier}) dispatch notice:`, carrierErr.message);
+      // Secondary fallback if primary threw an exception
+      if (dispatchedCarrier !== 'TWILIO') {
+        try {
+          const twilioFallback = await sendTwilioStandardSms(cleanFrom, cleanTo, text);
+          if (twilioFallback && twilioFallback.success) {
+            telnyxMessageId = twilioFallback.id;
+          }
+        } catch (_) {}
+      }
     }
 
     const savedMessage = await prisma.message.create({
@@ -2453,7 +2516,7 @@ app.post('/api/sms/send', async (req, res) => {
       }
     });
 
-    console.log(`💬 [BILLING - SMS] Deducted $${smsPrice} for SMS to ${cleanTo} (User: ${user.email}, New Balance: $${updatedUser.walletBalance.toFixed(2)})`);
+    console.log(`💬 [BILLING - SMS] Deducted $${smsPrice} for SMS to ${cleanTo} via ${dispatchedCarrier} (User: ${user.email}, New Balance: $${updatedUser.walletBalance.toFixed(2)})`);
 
     res.json({
       success: true,
@@ -2815,6 +2878,127 @@ app.post('/api/telnyx/webhook', async (req, res) => {
     console.error('[SIMLYX WEBHOOK ERROR]', err.message);
   }
   res.sendStatus(200);
+});
+
+// 8b. Endpoint: Twilio Inbound SMS & Universal Webhook Engine (UK & Global Twilio Numbers)
+app.post(['/api/twilio/sms', '/api/twilio/webhook'], async (req, res) => {
+  try {
+    const to = normalizePhone(req.body.To || req.body.to);
+    const from = normalizePhone(req.body.From || req.body.from);
+    const text = req.body.Body || req.body.body || req.body.text || '';
+    const messageSid = req.body.MessageSid || req.body.SmsSid || req.body.sms_sid || null;
+
+    if (to && from) {
+      console.log(`📩 [TWILIO INBOUND SMS] To: ${to} | From: ${from} | Text: ${text}`);
+
+      const lineOwner = await prisma.purchasedNumber.findFirst({
+        where: { phoneNumber: to, status: 'active' }
+      });
+
+      if (lineOwner) {
+        await prisma.message.create({
+          data: {
+            fromNumber: from,
+            toNumber: to,
+            text,
+            direction: 'inbound',
+            status: 'received',
+            telnyxMessageId: messageSid
+          }
+        });
+
+        // 🔔 Send Push Notification
+        if (lineOwner.userId) {
+          const ownerUser = await prisma.user.findFirst({
+            where: { OR: [{ id: lineOwner.userId }, { email: lineOwner.userId }] },
+            select: { id: true, email: true }
+          });
+          const pushTargets = ownerUser ? [ownerUser.id, ownerUser.email].filter(Boolean) : [lineOwner.userId];
+
+          sendOneSignalPush({
+            title: `💬 New SMS from ${from}`,
+            body: text || 'New message received',
+            userId: pushTargets,
+            audience: 'user',
+            data: {
+              type: 'sms',
+              from: from,
+              to: to,
+              text: text,
+              carrier: 'TWILIO'
+            }
+          }).catch(e => console.error('⚠️ [ONESIGNAL TWILIO INBOUND SMS ERROR]:', e.message));
+        }
+      } else {
+        console.warn(`⚠️ [TWILIO INBOUND SMS REJECTED] Line ${to} is inactive or unassigned.`);
+      }
+    }
+  } catch (err) {
+    console.error('[TWILIO SMS WEBHOOK ERROR]', err.message);
+  }
+  res.type('text/xml').send('<Response></Response>');
+});
+
+// 8c. Endpoint: Twilio Inbound Voice Call Webhook Engine
+app.post('/api/twilio/voice', async (req, res) => {
+  try {
+    const to = normalizePhone(req.body.To || req.body.to);
+    const from = normalizePhone(req.body.From || req.body.from);
+    const callSid = req.body.CallSid || req.body.call_sid;
+
+    if (to && from) {
+      console.log(`📲 [TWILIO INBOUND CALL] To: ${to} | From: ${from} | CallSid: ${callSid}`);
+
+      const lineOwner = await prisma.purchasedNumber.findFirst({
+        where: { phoneNumber: to, status: 'active' }
+      });
+
+      if (lineOwner) {
+        await prisma.callLog.create({
+          data: {
+            myNumber: to,
+            contactNumber: from,
+            direction: 'inbound',
+            status: 'ringing',
+            durationSeconds: 0
+          }
+        });
+
+        if (lineOwner.userId) {
+          const ownerUser = await prisma.user.findFirst({
+            where: { OR: [{ id: lineOwner.userId }, { email: lineOwner.userId }] },
+            select: { id: true, email: true }
+          });
+          const pushTargets = ownerUser ? [ownerUser.id, ownerUser.email].filter(Boolean) : [lineOwner.userId];
+
+          sendOneSignalPush({
+            title: `📞 Incoming Call on ${to}`,
+            body: `Incoming call from ${from}`,
+            userId: pushTargets,
+            audience: 'user',
+            data: {
+              type: 'incoming_call',
+              from: from,
+              to: to,
+              carrier: 'TWILIO'
+            }
+          }).catch(e => console.error('⚠️ [ONESIGNAL TWILIO INBOUND CALL ERROR]:', e.message));
+        }
+
+        // Handle Call Forwarding if configured
+        if (lineOwner.callForwardingNumber) {
+          return res.type('text/xml').send(`
+            <Response>
+              <Dial timeout="30">${lineOwner.callForwardingNumber}</Dial>
+            </Response>
+          `);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[TWILIO VOICE WEBHOOK ERROR]', err.message);
+  }
+  res.type('text/xml').send('<Response><Say>Thank you for calling SimlyX.</Say></Response>');
 });
 
 // 9. Endpoint: Log Call Record (Outbound or Inbound, with 2.5x per-minute call rate billing)

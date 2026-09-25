@@ -1544,10 +1544,12 @@ function getAllMergedRates() {
   return result;
 }
 
+const CANADA_AREA_CODES = ['416', '647', '437', '905', '289', '365', '514', '438', '450', '579', '604', '778', '236', '250', '403', '587', '825', '780', '613', '343', '819', '873', '709', '902', '506', '204', '431', '306', '639', '867'];
+
 // 📞 Resolves exact calling & SMS rate for any international destination phone number
 function getRateForDestinationNumber(phoneNumber) {
   if (!phoneNumber) {
-    return { callRatePerMin: 0.05, callRate: 0.05, callWholesaleCostPerMin: 0.02, smsRate: 0.05, smsWholesaleCost: 0.02, country: 'International', code: 'INTL', dialCode: '+', flag: '🌐' };
+    return { callRatePerMin: 0.05, callRate: 0.05, callWholesaleCostPerMin: 0.02, smsRate: 0.05, smsWholesaleCost: 0.02, country: 'International', code: 'INTL', dialCode: '+', flag: '🌐', allowCalls: true, allowSms: true, isActive: true };
   }
   let cleanNum = phoneNumber.toString().trim().replace(/[^\d+]/g, '');
   if (cleanNum.startsWith('00')) cleanNum = '+' + cleanNum.substring(2);
@@ -1559,11 +1561,21 @@ function getRateForDestinationNumber(phoneNumber) {
   }
 
   const allRates = getAllMergedRates();
+
+  // Special differentiation for Canada (+1 + Canadian area code)
+  if (cleanNum.startsWith('+1') && cleanNum.length >= 5) {
+    const area = cleanNum.substring(2, 5);
+    if (CANADA_AREA_CODES.includes(area)) {
+      const caMatch = allRates.find(r => r.countryCode === 'CA' || r.code === 'CA');
+      if (caMatch) return caMatch;
+    }
+  }
+
   // Sort by longest dialCode first so +1787 matches before +1, +971 before +9, etc.
   const sortedRates = [...allRates].sort((a, b) => (b.dialCode || '').length - (a.dialCode || '').length);
   const matched = sortedRates.find(r => cleanNum.startsWith(r.dialCode));
   if (matched) return matched;
-  return { callRatePerMin: 0.05, callRate: 0.05, callWholesaleCostPerMin: 0.02, smsRate: 0.05, smsWholesaleCost: 0.02, country: 'International Destination', code: 'INTL', dialCode: '+', flag: '🌐' };
+  return { callRatePerMin: 0.05, callRate: 0.05, callWholesaleCostPerMin: 0.02, smsRate: 0.05, smsWholesaleCost: 0.02, country: 'International Destination', code: 'INTL', dialCode: '+', flag: '🌐', allowCalls: true, allowSms: true, isActive: true };
 }
 
 // 💎 Constructs dynamic plan tiers for any country (Combining active tiers + base rates + custom overrides)
@@ -2550,7 +2562,18 @@ app.post('/api/sms/send', async (req, res) => {
 
     // Determine SMS cost (100% Dynamic Worldwide Rate Deck)
     const destRate = getRateForDestinationNumber(cleanTo);
-    const smsPrice = parseFloat(Number(destRate.smsRate || 0.05).toFixed(3));
+    if (destRate && destRate.allowSms === false) {
+      return res.status(403).json({
+        success: false,
+        error: `Outbound SMS to ${destRate.country || cleanTo} is currently disabled by administrator.`
+      });
+    }
+
+    const dispatchedCarrier = (lineOwner?.carrier || (cleanFrom.startsWith('+44') ? 'TWILIO' : 'TELNYX')).toUpperCase();
+    const baseSmsRate = Number(destRate.smsRate || 0.05);
+    // Guaranteed profit floor across carriers (Twilio international minimum $0.015, Telnyx $0.006)
+    const minSmsFloor = dispatchedCarrier === 'TWILIO' ? 0.015 : 0.006;
+    const smsPrice = parseFloat(Math.max(baseSmsRate, minSmsFloor).toFixed(3));
 
     // STRICT WALLET BALANCE CHECK
     if (user.walletBalance < smsPrice || user.walletBalance <= 0) {
@@ -2577,7 +2600,6 @@ app.post('/api/sms/send', async (req, res) => {
     });
 
     let telnyxMessageId = null;
-    let dispatchedCarrier = (lineOwner?.carrier || (cleanFrom.startsWith('+44') ? 'TWILIO' : 'TELNYX')).toUpperCase();
 
     try {
       if (dispatchedCarrier === 'TWILIO') {
@@ -3171,9 +3193,20 @@ app.post('/api/calls/log', async (req, res) => {
         });
       }
 
-      const minutes = durSec > 0 ? Math.ceil(durSec / 60) : 1;
       const destRate = getRateForDestinationNumber(cleanContact);
-      const ratePerMin = parseFloat(Number(destRate.callRatePerMin || destRate.callRate || 0.05).toFixed(4));
+      if (destRate && destRate.allowCalls === false) {
+        return res.status(403).json({
+          success: false,
+          error: `Outbound calling to ${destRate.country || cleanContact} is currently disabled by administrator.`
+        });
+      }
+
+      const minutes = durSec > 0 ? Math.ceil(durSec / 60) : 1;
+      const baseCallRate = Number(destRate.callRatePerMin || destRate.callRate || 0.05);
+      const originatingCarrier = (lineOwner?.carrier || (cleanMyNumber.startsWith('+44') ? 'TWILIO' : 'TELNYX')).toUpperCase();
+      // Guaranteed profit floor across carriers (Twilio wholesale to US $0.014/min -> floor $0.025/min; Telnyx floor $0.015/min)
+      const minCallFloor = originatingCarrier === 'TWILIO' ? 0.025 : 0.015;
+      const ratePerMin = parseFloat(Math.max(baseCallRate, minCallFloor).toFixed(4));
       callCost = parseFloat((minutes * ratePerMin).toFixed(4));
 
       if (durSec > 0) {
@@ -3442,9 +3475,19 @@ app.post('/api/calls/conference/log-participant', async (req, res) => {
     }
 
     // STRICT TELECOM BILLING: 1 sec to 60 sec = 1 min; 61 sec to 120 sec = 2 min
-    const minutes = durSec > 0 ? Math.ceil(durSec / 60) : 1;
     const destRate = getRateForDestinationNumber(cleanContact);
-    const ratePerMin = parseFloat(Number(destRate.callRatePerMin || destRate.callRate || 0.05).toFixed(4));
+    if (destRate && destRate.allowCalls === false) {
+      return res.status(403).json({
+        success: false,
+        error: `Outbound conference calling to ${destRate.country || cleanContact} is disabled by administrator.`
+      });
+    }
+
+    const minutes = durSec > 0 ? Math.ceil(durSec / 60) : 1;
+    const baseCallRate = Number(destRate.callRatePerMin || destRate.callRate || 0.05);
+    const originatingCarrier = (lineOwner?.carrier || (cleanMyNumber.startsWith('+44') ? 'TWILIO' : 'TELNYX')).toUpperCase();
+    const minCallFloor = originatingCarrier === 'TWILIO' ? 0.025 : 0.015;
+    const ratePerMin = parseFloat(Math.max(baseCallRate, minCallFloor).toFixed(4));
     const callCost = parseFloat((minutes * ratePerMin).toFixed(4));
 
     if (durSec > 0) {

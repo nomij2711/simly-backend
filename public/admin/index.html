@@ -1791,19 +1791,27 @@
             </div>
           </div>
 
-          <!-- 🌟 3 PRIMARY SUB-TABS (MODES) -->
+          <!-- 🌟 5 PRIMARY SUB-TABS (MODES) -->
           <div class="flex items-center gap-2 p-1.5 bg-slate-900 border border-slate-800 rounded-2xl overflow-x-auto custom-scrollbar">
             <button type="button" onclick="setRatesMode('numbers')" id="rate-mode-btn-numbers" class="rate-mode-btn active flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-pink-600 text-white shadow-md shadow-pink-600/30 transition-all cursor-pointer flex-shrink-0">
               <i class="fa-solid fa-phone-volume text-amber-300"></i>
               <span>📱 Virtual Number Lines Deck</span>
             </button>
-            <button type="button" onclick="setRatesMode('voice')" id="rate-mode-btn-voice" class="rate-mode-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer flex-shrink-0">
+            <button type="button" onclick="setRatesMode('voice_outbound')" id="rate-mode-btn-voice_outbound" class="rate-mode-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer flex-shrink-0">
               <i class="fa-solid fa-microphone-lines text-cyan-400"></i>
-              <span>📞 Master Outbound Calling Rates Matrix (Multi-Carrier / min)</span>
+              <span>📞 Outbound Voice Calling Matrix (/min)</span>
             </button>
-            <button type="button" onclick="setRatesMode('sms')" id="rate-mode-btn-sms" class="rate-mode-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer flex-shrink-0">
+            <button type="button" onclick="setRatesMode('sms_outbound')" id="rate-mode-btn-sms_outbound" class="rate-mode-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer flex-shrink-0">
               <i class="fa-solid fa-comment-sms text-purple-400"></i>
-              <span>💬 Master Outbound SMS Rates Matrix (Multi-Carrier / msg)</span>
+              <span>💬 Outbound SMS Messaging Matrix (/msg)</span>
+            </button>
+            <button type="button" onclick="setRatesMode('voice_inbound')" id="rate-mode-btn-voice_inbound" class="rate-mode-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer flex-shrink-0">
+              <i class="fa-solid fa-phone-arrow-down-left text-emerald-400"></i>
+              <span>📥 Inbound Voice Calls Matrix (Free / Paid)</span>
+            </button>
+            <button type="button" onclick="setRatesMode('sms_inbound')" id="rate-mode-btn-sms_inbound" class="rate-mode-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer flex-shrink-0">
+              <i class="fa-solid fa-envelope-open-text text-amber-400"></i>
+              <span>📨 Inbound SMS Matrix (OTP / 2FA Policy)</span>
             </button>
           </div>
 
@@ -1938,7 +1946,7 @@
           <!-- ============================================================ -->
           <!-- MODE 2 CONTAINER: 📞 OUTBOUND VOICE CALLING RATES MATRIX    -->
           <!-- ============================================================ -->
-          <div id="rates-mode-container-voice" class="rates-mode-view hidden space-y-6">
+          <div id="rates-mode-container-voice_outbound" class="rates-mode-view hidden space-y-6">
             <!-- Header Card with Presets & Search -->
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
               <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -1947,19 +1955,23 @@
                     <div class="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-bold">
                       <i class="fa-solid fa-microphone-lines"></i>
                     </div>
-                    <h3 class="text-sm font-bold text-white">Master Voice Outbound Calling Rates & Multi-Carrier Matrix</h3>
+                    <h3 class="text-sm font-bold text-white">Master Outbound Voice Calling Rates & Multi-Carrier Matrix</h3>
                   </div>
                   <p class="text-xs text-slate-400 mt-1">Side-by-side Carrier Wholesale Rates (Twilio, Telnyx, DIDWW) vs Master SimlyX Retail Sell Price per minute.</p>
                 </div>
 
                 <div class="flex items-center gap-2 flex-wrap">
+                  <button type="button" onclick="bulkEnableAllCalls()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md">
+                    <i class="fa-solid fa-bolt text-amber-300"></i>
+                    <span>⚡ Enable All 204 Outbound Calling Routes</span>
+                  </button>
                   <button type="button" onclick="bulkApplyVoiceMarkup(50)" class="px-3 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
                     <i class="fa-solid fa-wand-magic-sparkles text-cyan-400"></i>
-                    <span>+50% Profit Markup</span>
+                    <span>+50% Margin Markup</span>
                   </button>
                   <button type="button" onclick="bulkApplyVoiceMarkup(100)" class="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
                     <i class="fa-solid fa-chart-line text-emerald-400"></i>
-                    <span>+100% Profit Markup</span>
+                    <span>+100% Margin Markup</span>
                   </button>
                   <button type="button" onclick="refreshLiveVoiceWholesale()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer">
                     <i class="fa-solid fa-rotate text-indigo-400"></i>
@@ -1993,12 +2005,12 @@
                       <th class="py-3.5 px-4 min-w-[160px] text-cyan-300 bg-cyan-950/10">🔵 DIDWW Wholesale / min</th>
                       <th class="py-3.5 px-4 min-w-[200px] text-amber-300 bg-amber-950/10">🌟 SimlyX Retail Sell Price / min</th>
                       <th class="py-3.5 px-4 min-w-[170px]">Best Margin %</th>
-                      <th class="py-3.5 px-4 text-center">Status</th>
+                      <th class="py-3.5 px-4 text-center">Calling Status</th>
                       <th class="py-3.5 px-4 text-right">Quick Action</th>
                     </tr>
                   </thead>
                   <tbody id="voiceMatrixTableBody" class="divide-y divide-slate-800 text-xs">
-                    <tr><td colspan="8" class="py-10 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading Multi-Carrier Voice Calling Matrix...</td></tr>
+                    <tr><td colspan="8" class="py-10 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading Multi-Carrier Outbound Voice Calling Matrix...</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -2008,7 +2020,7 @@
           <!-- ============================================================ -->
           <!-- MODE 3 CONTAINER: 💬 OUTBOUND SMS MESSAGING RATES MATRIX     -->
           <!-- ============================================================ -->
-          <div id="rates-mode-container-sms" class="rates-mode-view hidden space-y-6">
+          <div id="rates-mode-container-sms_outbound" class="rates-mode-view hidden space-y-6">
             <!-- Header Card with Presets & Search -->
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
               <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -2017,19 +2029,23 @@
                     <div class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm font-bold">
                       <i class="fa-solid fa-comment-sms"></i>
                     </div>
-                    <h3 class="text-sm font-bold text-white">Master SMS Outbound Messaging Rates & Multi-Carrier Matrix</h3>
+                    <h3 class="text-sm font-bold text-white">Master Outbound SMS Messaging Rates & Multi-Carrier Matrix</h3>
                   </div>
                   <p class="text-xs text-slate-400 mt-1">Side-by-side Carrier Wholesale Rates (Twilio, Telnyx, DIDWW) vs Master SimlyX Retail Sell Price per message.</p>
                 </div>
 
                 <div class="flex items-center gap-2 flex-wrap">
+                  <button type="button" onclick="bulkEnableAllSms()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md">
+                    <i class="fa-solid fa-bolt text-amber-300"></i>
+                    <span>⚡ Enable All 204 Outbound SMS Routes</span>
+                  </button>
                   <button type="button" onclick="bulkApplySmsMarkup(50)" class="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
                     <i class="fa-solid fa-wand-magic-sparkles text-purple-400"></i>
-                    <span>+50% Profit Markup</span>
+                    <span>+50% Margin Markup</span>
                   </button>
                   <button type="button" onclick="bulkApplySmsMarkup(100)" class="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
                     <i class="fa-solid fa-chart-line text-emerald-400"></i>
-                    <span>+100% Profit Markup</span>
+                    <span>+100% Margin Markup</span>
                   </button>
                   <button type="button" onclick="refreshLiveSmsWholesale()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer">
                     <i class="fa-solid fa-rotate text-indigo-400"></i>
@@ -2063,12 +2079,142 @@
                       <th class="py-3.5 px-4 min-w-[160px] text-cyan-300 bg-cyan-950/10">🔵 DIDWW Wholesale / msg</th>
                       <th class="py-3.5 px-4 min-w-[200px] text-amber-300 bg-amber-950/10">🌟 SimlyX Retail Sell Price / msg</th>
                       <th class="py-3.5 px-4 min-w-[170px]">Best Margin %</th>
-                      <th class="py-3.5 px-4 text-center">Status</th>
+                      <th class="py-3.5 px-4 text-center">SMS Status</th>
                       <th class="py-3.5 px-4 text-right">Quick Action</th>
                     </tr>
                   </thead>
                   <tbody id="smsMatrixTableBody" class="divide-y divide-slate-800 text-xs">
-                    <tr><td colspan="8" class="py-10 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading Multi-Carrier SMS Messaging Matrix...</td></tr>
+                    <tr><td colspan="8" class="py-10 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading Multi-Carrier Outbound SMS Matrix...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ============================================================ -->
+          <!-- MODE 4 CONTAINER: 📥 INBOUND VOICE CALLS MATRIX             -->
+          <!-- ============================================================ -->
+          <div id="rates-mode-container-voice_inbound" class="rates-mode-view hidden space-y-6">
+            <!-- Header Card with Policy Toggles & Search -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
+              <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-bold">
+                      <i class="fa-solid fa-phone-arrow-down-left"></i>
+                    </div>
+                    <h3 class="text-sm font-bold text-white">Inbound Voice Calling Rates & User Policy Matrix</h3>
+                  </div>
+                  <p class="text-xs text-slate-400 mt-1">Side-by-side Carrier Inbound Wholesale Costs vs SimlyX User Policy (FREE Unlimited vs Paid $/min).</p>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                  <button type="button" onclick="bulkMakeInboundVoiceFree()" class="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md">
+                    <i class="fa-solid fa-gift text-amber-300"></i>
+                    <span>🌟 Make All Inbound Voice Calls 100% FREE</span>
+                  </button>
+                  <button type="button" onclick="refreshLiveVoiceWholesale()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer">
+                    <i class="fa-solid fa-rotate text-indigo-400"></i>
+                    <span>Refresh Wholesale</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Search and Pagination Bar -->
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-800/80">
+                <div class="relative w-full sm:w-80">
+                  <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-500 text-xs"></i>
+                  <input type="text" id="voiceInboundSearchInput" oninput="handleVoiceInboundSearch(this.value)" placeholder="Search country, ISO or dial code (+44, +1)..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all">
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap" id="voiceInboundPaginationControls">
+                  <!-- Populated by renderVoiceInboundPagination() -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Inbound Voice Matrix Table -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+              <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="border-b border-slate-800 bg-slate-950/80 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <th class="py-3.5 px-4 min-w-[180px]">Country Fleet Destination</th>
+                      <th class="py-3.5 px-4 min-w-[160px] text-purple-300 bg-purple-950/10">🟣 Twilio Inbound / min</th>
+                      <th class="py-3.5 px-4 min-w-[160px] text-emerald-300 bg-emerald-950/10">🟢 Telnyx Inbound / min</th>
+                      <th class="py-3.5 px-4 min-w-[160px] text-cyan-300 bg-cyan-950/10">🔵 DIDWW Inbound / min</th>
+                      <th class="py-3.5 px-4 min-w-[170px] text-slate-300">Carrier Wholesale Inbound Cost</th>
+                      <th class="py-3.5 px-4 text-center min-w-[180px]">User Inbound Policy</th>
+                      <th class="py-3.5 px-4 text-right">Quick Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="voiceInboundTableBody" class="divide-y divide-slate-800 text-xs">
+                    <tr><td colspan="7" class="py-10 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading Inbound Voice Matrix...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ============================================================ -->
+          <!-- MODE 5 CONTAINER: 📨 INBOUND SMS MESSAGING MATRIX           -->
+          <!-- ============================================================ -->
+          <div id="rates-mode-container-sms_inbound" class="rates-mode-view hidden space-y-6">
+            <!-- Header Card with Policy Toggles & Search -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
+              <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm font-bold">
+                      <i class="fa-solid fa-envelope-open-text"></i>
+                    </div>
+                    <h3 class="text-sm font-bold text-white">Inbound SMS Messaging (OTP / 2FA) & Policy Matrix</h3>
+                  </div>
+                  <p class="text-xs text-slate-400 mt-1">Side-by-side Carrier Inbound Wholesale SMS Costs vs SimlyX User Policy (FREE OTP vs Paid $/msg).</p>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                  <button type="button" onclick="bulkMakeInboundSmsFree()" class="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md">
+                    <i class="fa-solid fa-shield-halved text-slate-950"></i>
+                    <span>🌟 Make All Inbound SMS 100% FREE (OTP/2FA)</span>
+                  </button>
+                  <button type="button" onclick="refreshLiveSmsWholesale()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer">
+                    <i class="fa-solid fa-rotate text-indigo-400"></i>
+                    <span>Refresh Wholesale</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Search and Pagination Bar -->
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-800/80">
+                <div class="relative w-full sm:w-80">
+                  <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-500 text-xs"></i>
+                  <input type="text" id="smsInboundSearchInput" oninput="handleSmsInboundSearch(this.value)" placeholder="Search country, ISO or dial code (+44, +1)..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-all">
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap" id="smsInboundPaginationControls">
+                  <!-- Populated by renderSmsInboundPagination() -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Inbound SMS Matrix Table -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+              <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="border-b border-slate-800 bg-slate-950/80 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <th class="py-3.5 px-4 min-w-[180px]">Country Fleet Destination</th>
+                      <th class="py-3.5 px-4 min-w-[160px] text-purple-300 bg-purple-950/10">🟣 Twilio Inbound / msg</th>
+                      <th class="py-3.5 px-4 min-w-[160px] text-emerald-300 bg-emerald-950/10">🟢 Telnyx Inbound / msg</th>
+                      <th class="py-3.5 px-4 min-w-[160px] text-cyan-300 bg-cyan-950/10">🔵 DIDWW Inbound / msg</th>
+                      <th class="py-3.5 px-4 min-w-[170px] text-slate-300">Carrier Wholesale Inbound Cost</th>
+                      <th class="py-3.5 px-4 text-center min-w-[180px]">User Inbound SMS Policy</th>
+                      <th class="py-3.5 px-4 text-right">Quick Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="smsInboundTableBody" class="divide-y divide-slate-800 text-xs">
+                    <tr><td colspan="7" class="py-10 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading Inbound SMS Matrix...</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -6956,43 +7102,43 @@
     // ============================================================
     const CARRIER_WHOLESALE_PRESETS = {
       TWILIO: {
-        GB: { voice: 0.0305, sms: 0.0560 },
-        US: { voice: 0.0140, sms: 0.0079 },
-        CA: { voice: 0.0140, sms: 0.0079 },
-        AU: { voice: 0.0220, sms: 0.0450 },
-        DE: { voice: 0.0280, sms: 0.0750 },
-        FR: { voice: 0.0250, sms: 0.0650 },
-        PK: { voice: 0.1450, sms: 0.0700 },
-        IN: { voice: 0.0300, sms: 0.0350 },
-        AE: { voice: 0.1650, sms: 0.0750 },
-        SA: { voice: 0.1750, sms: 0.0800 },
-        DEFAULT: { voice: 0.0350, sms: 0.0550 }
+        GB: { voice: 0.0305, sms: 0.0560, inbound_voice: 0.0085, inbound_sms: 0.0075 },
+        US: { voice: 0.0140, sms: 0.0079, inbound_voice: 0.0085, inbound_sms: 0.0075 },
+        CA: { voice: 0.0140, sms: 0.0079, inbound_voice: 0.0085, inbound_sms: 0.0075 },
+        AU: { voice: 0.0220, sms: 0.0450, inbound_voice: 0.0090, inbound_sms: 0.0075 },
+        DE: { voice: 0.0280, sms: 0.0750, inbound_voice: 0.0095, inbound_sms: 0.0075 },
+        FR: { voice: 0.0250, sms: 0.0650, inbound_voice: 0.0095, inbound_sms: 0.0075 },
+        PK: { voice: 0.1450, sms: 0.0700, inbound_voice: 0.0100, inbound_sms: 0.0075 },
+        IN: { voice: 0.0300, sms: 0.0350, inbound_voice: 0.0100, inbound_sms: 0.0075 },
+        AE: { voice: 0.1650, sms: 0.0750, inbound_voice: 0.0100, inbound_sms: 0.0075 },
+        SA: { voice: 0.1750, sms: 0.0800, inbound_voice: 0.0100, inbound_sms: 0.0075 },
+        DEFAULT: { voice: 0.0350, sms: 0.0550, inbound_voice: 0.0100, inbound_sms: 0.0075 }
       },
       TELNYX: {
-        GB: { voice: 0.0150, sms: 0.0350 },
-        US: { voice: 0.0050, sms: 0.0040 },
-        CA: { voice: 0.0050, sms: 0.0040 },
-        AU: { voice: 0.0140, sms: 0.0380 },
-        DE: { voice: 0.0170, sms: 0.0480 },
-        FR: { voice: 0.0160, sms: 0.0460 },
-        PK: { voice: 0.1250, sms: 0.0580 },
-        IN: { voice: 0.0220, sms: 0.0280 },
-        AE: { voice: 0.1450, sms: 0.0620 },
-        SA: { voice: 0.1550, sms: 0.0650 },
-        DEFAULT: { voice: 0.0200, sms: 0.0350 }
+        GB: { voice: 0.0150, sms: 0.0350, inbound_voice: 0.0065, inbound_sms: 0.0035 },
+        US: { voice: 0.0050, sms: 0.0040, inbound_voice: 0.0050, inbound_sms: 0.0020 },
+        CA: { voice: 0.0050, sms: 0.0040, inbound_voice: 0.0050, inbound_sms: 0.0020 },
+        AU: { voice: 0.0140, sms: 0.0380, inbound_voice: 0.0065, inbound_sms: 0.0035 },
+        DE: { voice: 0.0170, sms: 0.0480, inbound_voice: 0.0065, inbound_sms: 0.0035 },
+        FR: { voice: 0.0160, sms: 0.0460, inbound_voice: 0.0065, inbound_sms: 0.0035 },
+        PK: { voice: 0.1250, sms: 0.0580, inbound_voice: 0.0080, inbound_sms: 0.0035 },
+        IN: { voice: 0.0220, sms: 0.0280, inbound_voice: 0.0070, inbound_sms: 0.0025 },
+        AE: { voice: 0.1450, sms: 0.0620, inbound_voice: 0.0080, inbound_sms: 0.0035 },
+        SA: { voice: 0.1550, sms: 0.0650, inbound_voice: 0.0080, inbound_sms: 0.0035 },
+        DEFAULT: { voice: 0.0200, sms: 0.0350, inbound_voice: 0.0080, inbound_sms: 0.0035 }
       },
       DIDWW: {
-        GB: { voice: 0.0100, sms: 0.0300 },
-        US: { voice: 0.0060, sms: 0.0040 },
-        CA: { voice: 0.0060, sms: 0.0040 },
-        AU: { voice: 0.0120, sms: 0.0350 },
-        DE: { voice: 0.0140, sms: 0.0400 },
-        FR: { voice: 0.0130, sms: 0.0380 },
-        PK: { voice: 0.1100, sms: 0.0500 },
-        IN: { voice: 0.0200, sms: 0.0250 },
-        AE: { voice: 0.1350, sms: 0.0550 },
-        SA: { voice: 0.1400, sms: 0.0580 },
-        DEFAULT: { voice: 0.0150, sms: 0.0300 }
+        GB: { voice: 0.0100, sms: 0.0300, inbound_voice: 0.0050, inbound_sms: 0.0030 },
+        US: { voice: 0.0060, sms: 0.0040, inbound_voice: 0.0040, inbound_sms: 0.0020 },
+        CA: { voice: 0.0060, sms: 0.0040, inbound_voice: 0.0040, inbound_sms: 0.0020 },
+        AU: { voice: 0.0120, sms: 0.0350, inbound_voice: 0.0050, inbound_sms: 0.0030 },
+        DE: { voice: 0.0140, sms: 0.0400, inbound_voice: 0.0050, inbound_sms: 0.0030 },
+        FR: { voice: 0.0130, sms: 0.0380, inbound_voice: 0.0050, inbound_sms: 0.0030 },
+        PK: { voice: 0.1100, sms: 0.0500, inbound_voice: 0.0060, inbound_sms: 0.0030 },
+        IN: { voice: 0.0200, sms: 0.0250, inbound_voice: 0.0050, inbound_sms: 0.0020 },
+        AE: { voice: 0.1350, sms: 0.0550, inbound_voice: 0.0060, inbound_sms: 0.0030 },
+        SA: { voice: 0.1400, sms: 0.0580, inbound_voice: 0.0060, inbound_sms: 0.0030 },
+        DEFAULT: { voice: 0.0150, sms: 0.0300, inbound_voice: 0.0060, inbound_sms: 0.0030 }
       }
     };
 
@@ -7005,14 +7151,16 @@
       if (existing && (existing.carrier || 'TWILIO').toUpperCase() === upperCarrier) {
         if (type === 'voice' && existing.callWholesaleCostPerMin > 0) return existing.callWholesaleCostPerMin;
         if (type === 'sms' && existing.smsWholesaleCost > 0) return existing.smsWholesaleCost;
+        if (type === 'inbound_voice' && existing.inboundCallCost > 0) return existing.inboundCallCost;
+        if (type === 'inbound_sms' && existing.inboundSmsCost > 0) return existing.inboundSmsCost;
       }
 
       const cData = CARRIER_WHOLESALE_PRESETS[upperCarrier] || CARRIER_WHOLESALE_PRESETS.TWILIO;
       const entry = cData[cc] || cData.DEFAULT;
-      return entry[type] || 0.02;
+      return entry[type] !== undefined ? entry[type] : (type.includes('voice') ? 0.0100 : 0.0075);
     }
 
-    let currentRatesMode = 'numbers'; // 'numbers' | 'voice' | 'sms'
+    let currentRatesMode = 'numbers'; // 'numbers' | 'voice_outbound' | 'sms_outbound' | 'voice_inbound' | 'sms_inbound'
     let voiceCurrentPage = 1;
     const voicePageSize = 50;
     let voiceSearchQuery = '';
@@ -7021,9 +7169,20 @@
     const smsPageSize = 50;
     let smsSearchQuery = '';
 
+    let voiceInboundCurrentPage = 1;
+    const voiceInboundPageSize = 50;
+    let voiceInboundSearchQuery = '';
+
+    let smsInboundCurrentPage = 1;
+    const smsInboundPageSize = 50;
+    let smsInboundSearchQuery = '';
+
     function setRatesMode(mode) {
+      if (mode === 'voice') mode = 'voice_outbound';
+      if (mode === 'sms') mode = 'sms_outbound';
       currentRatesMode = mode;
-      ['numbers', 'voice', 'sms'].forEach(m => {
+      const modes = ['numbers', 'voice_outbound', 'sms_outbound', 'voice_inbound', 'sms_inbound'];
+      modes.forEach(m => {
         const container = document.getElementById(`rates-mode-container-${m}`);
         const btn = document.getElementById(`rate-mode-btn-${m}`);
         if (container) {
@@ -7037,8 +7196,10 @@
           if (m === mode) {
             btn.className = `rate-mode-btn active flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold ${
               m === 'numbers' ? 'bg-pink-600 text-white shadow-md shadow-pink-600/30' :
-              m === 'voice' ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30' :
-              'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+              m === 'voice_outbound' ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30' :
+              m === 'sms_outbound' ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30' :
+              m === 'voice_inbound' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30' :
+              'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/30'
             } transition-all cursor-pointer flex-shrink-0`;
           } else {
             btn.className = 'rate-mode-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer flex-shrink-0';
@@ -7046,10 +7207,14 @@
         }
       });
 
-      if (mode === 'voice') {
+      if (mode === 'voice_outbound') {
         renderVoiceMatrixTable();
-      } else if (mode === 'sms') {
+      } else if (mode === 'sms_outbound') {
         renderSmsMatrixTable();
+      } else if (mode === 'voice_inbound') {
+        renderVoiceInboundTable();
+      } else if (mode === 'sms_inbound') {
+        renderSmsInboundTable();
       } else {
         applyCurrentRateFilter();
       }
@@ -7104,10 +7269,14 @@
 
         if (ratesData && ratesData.success) {
           cachedCountryRates = ratesData.rates || [];
-          if (currentRatesMode === 'voice') {
+          if (currentRatesMode === 'voice_outbound' || currentRatesMode === 'voice') {
             renderVoiceMatrixTable();
-          } else if (currentRatesMode === 'sms') {
+          } else if (currentRatesMode === 'sms_outbound' || currentRatesMode === 'sms') {
             renderSmsMatrixTable();
+          } else if (currentRatesMode === 'voice_inbound') {
+            renderVoiceInboundTable();
+          } else if (currentRatesMode === 'sms_inbound') {
+            renderSmsInboundTable();
           } else {
             applyCurrentRateFilter();
           }
@@ -7786,6 +7955,7 @@
         const lowestCost = Math.min(twilioWholesale, telnyxWholesale, didwwWholesale);
         const bestProfit = sellPrice - lowestCost;
         const bestMarginPct = sellPrice > 0 ? Math.round((bestProfit / sellPrice) * 100) : 0;
+        const isCallAllowed = r.allowOutboundCalls !== false;
 
         return `
           <tr class="hover:bg-slate-800/40 transition-all border-b border-slate-800/60" id="voice_row_${r.countryCode}">
@@ -7850,11 +8020,14 @@
               </div>
             </td>
 
-            <!-- 7. Status -->
+            <!-- 7. Calling Status (1-Click Toggle) -->
             <td class="py-3.5 px-4 text-center">
-              <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${r.isActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
-                ${r.isActive ? 'ACTIVE 🟢' : 'OFF 🔴'}
-              </span>
+              <button type="button" onclick="toggleRouteCallAllowed('${r.countryCode}')" id="btn_toggle_call_${r.countryCode}" title="Click to Toggle Outbound Voice Calling" class="cursor-pointer transition-all inline-block">
+                <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold ${isCallAllowed ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:bg-rose-500/30'} flex items-center gap-1 justify-center">
+                  <i class="fa-solid ${isCallAllowed ? 'fa-phone' : 'fa-phone-slash'}"></i>
+                  <span>${isCallAllowed ? 'CALLING ACTIVE 🟢' : 'CALLING BLOCKED 🔴'}</span>
+                </span>
+              </button>
             </td>
 
             <!-- 8. Quick Action -->
@@ -8005,6 +8178,7 @@
     function refreshLiveVoiceWholesale() {
       showToast('Wholesale rates synchronized with live carrier cards!', 'success');
       renderVoiceMatrixTable();
+      renderVoiceInboundTable();
     }
     window.refreshLiveVoiceWholesale = refreshLiveVoiceWholesale;
 
@@ -8063,6 +8237,7 @@
         const lowestCost = Math.min(twilioWholesale, telnyxWholesale, didwwWholesale);
         const bestProfit = sellPrice - lowestCost;
         const bestMarginPct = sellPrice > 0 ? Math.round((bestProfit / sellPrice) * 100) : 0;
+        const isSmsAllowed = r.allowOutboundSms !== false;
 
         return `
           <tr class="hover:bg-slate-800/40 transition-all border-b border-slate-800/60" id="sms_row_${r.countryCode}">
@@ -8127,11 +8302,14 @@
               </div>
             </td>
 
-            <!-- 7. Status -->
+            <!-- 7. SMS Status (1-Click Toggle) -->
             <td class="py-3.5 px-4 text-center">
-              <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${r.isActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
-                ${r.isActive ? 'ACTIVE 🟢' : 'OFF 🔴'}
-              </span>
+              <button type="button" onclick="toggleRouteSmsAllowed('${r.countryCode}')" id="btn_toggle_sms_${r.countryCode}" title="Click to Toggle Outbound SMS" class="cursor-pointer transition-all inline-block">
+                <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold ${isSmsAllowed ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:bg-rose-500/30'} flex items-center gap-1 justify-center">
+                  <i class="fa-solid ${isSmsAllowed ? 'fa-comment-sms' : 'fa-ban'}"></i>
+                  <span>${isSmsAllowed ? 'SMS ACTIVE 🟢' : 'SMS BLOCKED 🔴'}</span>
+                </span>
+              </button>
             </td>
 
             <!-- 8. Quick Action -->
@@ -8282,8 +8460,474 @@
     function refreshLiveSmsWholesale() {
       showToast('Wholesale rates synchronized with live carrier cards!', 'success');
       renderSmsMatrixTable();
+      renderSmsInboundTable();
     }
     window.refreshLiveSmsWholesale = refreshLiveSmsWholesale;
+
+    // ============================================================
+    // 📥 INBOUND VOICE CALLS & USER POLICY MATRIX CONTROLLERS
+    // ============================================================
+    function handleVoiceInboundSearch(val) {
+      voiceInboundSearchQuery = (val || '').trim().toLowerCase();
+      voiceInboundCurrentPage = 1;
+      renderVoiceInboundTable();
+    }
+    window.handleVoiceInboundSearch = handleVoiceInboundSearch;
+
+    function goToVoiceInboundPage(page) {
+      voiceInboundCurrentPage = page;
+      renderVoiceInboundTable();
+    }
+    window.goToVoiceInboundPage = goToVoiceInboundPage;
+
+    function renderVoiceInboundTable() {
+      const tbody = document.getElementById('voiceInboundTableBody');
+      if (!tbody) return;
+
+      let filtered = cachedCountryRates || [];
+      if (voiceInboundSearchQuery) {
+        filtered = filtered.filter(r =>
+          r.countryName.toLowerCase().includes(voiceInboundSearchQuery) ||
+          r.countryCode.toLowerCase().includes(voiceInboundSearchQuery) ||
+          r.dialCode.includes(voiceInboundSearchQuery)
+        );
+      }
+
+      const totalCount = filtered.length;
+      const totalPages = Math.max(1, Math.ceil(totalCount / voiceInboundPageSize));
+      if (voiceInboundCurrentPage > totalPages) voiceInboundCurrentPage = totalPages;
+      if (voiceInboundCurrentPage < 1) voiceInboundCurrentPage = 1;
+
+      const startIndex = (voiceInboundCurrentPage - 1) * voiceInboundPageSize;
+      const endIndex = Math.min(startIndex + voiceInboundPageSize, totalCount);
+      const pageItems = filtered.slice(startIndex, endIndex);
+
+      renderVoiceInboundPagination(totalCount, voiceInboundCurrentPage, totalPages, startIndex, endIndex);
+
+      if (pageItems.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="py-10 text-center text-slate-500">No country destinations found matching search.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = pageItems.map(r => {
+        const twilioInbound = getCarrierWholesale('TWILIO', r.countryCode, 'inbound_voice');
+        const telnyxInbound = getCarrierWholesale('TELNYX', r.countryCode, 'inbound_voice');
+        const didwwInbound = getCarrierWholesale('DIDWW', r.countryCode, 'inbound_voice');
+        const carrierCost = (r.inboundCallCost !== undefined && r.inboundCallCost !== null) ? r.inboundCallCost : 0.0100;
+        const policy = (r.inboundCallPolicy || 'FREE').toUpperCase();
+        const isFree = policy === 'FREE';
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition-all border-b border-slate-800/60" id="voice_inbound_row_${r.countryCode}">
+            <!-- 1. Country Fleet Destination -->
+            <td class="py-3.5 px-4">
+              <div class="flex items-center gap-2.5">
+                <span class="text-2xl">${r.flagEmoji || '🌐'}</span>
+                <div>
+                  <div class="font-bold text-white text-xs flex items-center gap-1.5">
+                    <span>${escapeHtml(r.countryName)}</span>
+                    <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">${r.countryCode}</span>
+                  </div>
+                  <div class="text-[11px] text-emerald-400 font-mono font-semibold mt-0.5">${escapeHtml(r.dialCode)}</div>
+                </div>
+              </div>
+            </td>
+
+            <!-- 2. Twilio Inbound Wholesale -->
+            <td class="py-3.5 px-4 bg-purple-950/10 font-mono text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-purple-300 font-bold">$${twilioInbound.toFixed(4)}</span>
+                <span class="text-[9px] text-purple-400/70 font-sans">/min</span>
+              </div>
+            </td>
+
+            <!-- 3. Telnyx Inbound Wholesale -->
+            <td class="py-3.5 px-4 bg-emerald-950/10 font-mono text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-emerald-300 font-bold">$${telnyxInbound.toFixed(4)}</span>
+                <span class="text-[9px] text-emerald-400/70 font-sans">/min</span>
+              </div>
+            </td>
+
+            <!-- 4. DIDWW Inbound Wholesale -->
+            <td class="py-3.5 px-4 bg-cyan-950/10 font-mono text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-cyan-300 font-bold">$${didwwInbound.toFixed(4)}</span>
+                <span class="text-[9px] text-cyan-400/70 font-sans">/min</span>
+              </div>
+            </td>
+
+            <!-- 5. Carrier Wholesale Base Cost -->
+            <td class="py-3.5 px-4 font-mono text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-300 font-bold">$${carrierCost.toFixed(4)}</span>
+                <span class="text-[9px] text-slate-500 font-sans">/min</span>
+              </div>
+            </td>
+
+            <!-- 6. User Inbound Policy (1-Click Toggle) -->
+            <td class="py-3.5 px-4 text-center">
+              <button type="button" onclick="toggleInboundVoicePolicy('${r.countryCode}')" id="btn_toggle_inbound_voice_${r.countryCode}" title="Click to Toggle Inbound Voice Policy" class="cursor-pointer transition-all inline-block">
+                <span class="px-3 py-1.5 rounded-xl text-xs font-bold ${isFree ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30'} flex items-center justify-center gap-1.5">
+                  <i class="fa-solid ${isFree ? 'fa-gift text-emerald-400' : 'fa-receipt text-amber-400'}"></i>
+                  <span>${isFree ? '100% FREE (Included)' : 'PAID $/min'}</span>
+                </span>
+              </button>
+            </td>
+
+            <!-- 7. Quick Action -->
+            <td class="py-3.5 px-4 text-right">
+              <button onclick="openEditCountryRateModal('${r.countryCode}')" class="p-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-emerald-400 rounded-lg text-xs transition-all ml-auto" title="Full Route Deck Settings">
+                <i class="fa-solid fa-sliders"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderVoiceInboundPagination(totalCount, currentPage, totalPages, startIdx, endIdx) {
+      const container = document.getElementById('voiceInboundPaginationControls');
+      if (!container) return;
+
+      if (totalCount === 0) {
+        container.innerHTML = '<span class="text-xs text-slate-500">0 destinations</span>';
+        return;
+      }
+
+      let pageBtns = '';
+      for (let p = 1; p <= totalPages; p++) {
+        const pStart = (p - 1) * voiceInboundPageSize + 1;
+        const pEnd = Math.min(p * voiceInboundPageSize, totalCount);
+        const isActive = p === currentPage;
+        pageBtns += `
+          <button type="button" onclick="goToVoiceInboundPage(${p})" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            isActive ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30' : 'bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800'
+          }">
+            <span>Page ${p}</span> <span class="text-[10px] opacity-75 font-mono">(${pStart}-${pEnd})</span>
+          </button>
+        `;
+      }
+
+      container.innerHTML = `
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs text-slate-400 mr-2">Showing <strong class="text-white font-mono">${startIdx + 1}-${endIdx}</strong> of <strong class="text-white font-mono">${totalCount}</strong></span>
+          <button type="button" onclick="goToVoiceInboundPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled class="opacity-40 cursor-not-allowed px-2.5 py-1.5 bg-slate-950 text-slate-600 rounded-xl text-xs border border-slate-800"' : 'class="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-xl text-xs border border-slate-800 cursor-pointer"'}><i class="fa-solid fa-chevron-left"></i> Prev</button>
+          <div class="flex items-center gap-1.5">${pageBtns}</div>
+          <button type="button" onclick="goToVoiceInboundPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled class="opacity-40 cursor-not-allowed px-2.5 py-1.5 bg-slate-950 text-slate-600 rounded-xl text-xs border border-slate-800"' : 'class="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-xl text-xs border border-slate-800 cursor-pointer"'}">Next <i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      `;
+    }
+
+    // ============================================================
+    // 📨 INBOUND SMS MESSAGING (OTP/2FA) & POLICY MATRIX CONTROLLERS
+    // ============================================================
+    function handleSmsInboundSearch(val) {
+      smsInboundSearchQuery = (val || '').trim().toLowerCase();
+      smsInboundCurrentPage = 1;
+      renderSmsInboundTable();
+    }
+    window.handleSmsInboundSearch = handleSmsInboundSearch;
+
+    function goToSmsInboundPage(page) {
+      smsInboundCurrentPage = page;
+      renderSmsInboundTable();
+    }
+    window.goToSmsInboundPage = goToSmsInboundPage;
+
+    function renderSmsInboundTable() {
+      const tbody = document.getElementById('smsInboundTableBody');
+      if (!tbody) return;
+
+      let filtered = cachedCountryRates || [];
+      if (smsInboundSearchQuery) {
+        filtered = filtered.filter(r =>
+          r.countryName.toLowerCase().includes(smsInboundSearchQuery) ||
+          r.countryCode.toLowerCase().includes(smsInboundSearchQuery) ||
+          r.dialCode.includes(smsInboundSearchQuery)
+        );
+      }
+
+      const totalCount = filtered.length;
+      const totalPages = Math.max(1, Math.ceil(totalCount / smsInboundPageSize));
+      if (smsInboundCurrentPage > totalPages) smsInboundCurrentPage = totalPages;
+      if (smsInboundCurrentPage < 1) smsInboundCurrentPage = 1;
+
+      const startIndex = (smsInboundCurrentPage - 1) * smsInboundPageSize;
+      const endIndex = Math.min(startIndex + smsInboundPageSize, totalCount);
+      const pageItems = filtered.slice(startIndex, endIndex);
+
+      renderSmsInboundPagination(totalCount, smsInboundCurrentPage, totalPages, startIndex, endIndex);
+
+      if (pageItems.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="py-10 text-center text-slate-500">No country destinations found matching search.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = pageItems.map(r => {
+        const twilioInbound = getCarrierWholesale('TWILIO', r.countryCode, 'inbound_sms');
+        const telnyxInbound = getCarrierWholesale('TELNYX', r.countryCode, 'inbound_sms');
+        const didwwInbound = getCarrierWholesale('DIDWW', r.countryCode, 'inbound_sms');
+        const carrierCost = (r.inboundSmsCost !== undefined && r.inboundSmsCost !== null) ? r.inboundSmsCost : 0.0075;
+        const policy = (r.inboundSmsPolicy || 'FREE').toUpperCase();
+        const isFree = policy === 'FREE';
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition-all border-b border-slate-800/60" id="sms_inbound_row_${r.countryCode}">
+            <!-- 1. Country Fleet Destination -->
+            <td class="py-3.5 px-4">
+              <div class="flex items-center gap-2.5">
+                <span class="text-2xl">${r.flagEmoji || '🌐'}</span>
+                <div>
+                  <div class="font-bold text-white text-xs flex items-center gap-1.5">
+                    <span>${escapeHtml(r.countryName)}</span>
+                    <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">${r.countryCode}</span>
+                  </div>
+                  <div class="text-[11px] text-amber-400 font-mono font-semibold mt-0.5">${escapeHtml(r.dialCode)}</div>
+                </div>
+              </div>
+            </td>
+
+            <!-- 2. Twilio Inbound Wholesale -->
+            <td class="py-3.5 px-4 bg-purple-950/10 font-mono text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-purple-300 font-bold">$${twilioInbound.toFixed(4)}</span>
+                <span class="text-[9px] text-purple-400/70 font-sans">/msg</span>
+              </div>
+            </td>
+
+            <!-- 3. Telnyx Inbound Wholesale -->
+            <td class="py-3.5 px-4 bg-emerald-950/10 font-mono text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-emerald-300 font-bold">$${telnyxInbound.toFixed(4)}</span>
+                <span class="text-[9px] text-emerald-400/70 font-sans">/msg</span>
+              </div>
+            </td>
+
+            <!-- 4. DIDWW Inbound Wholesale -->
+            <td class="py-3.5 px-4 bg-cyan-950/10 font-mono text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-cyan-300 font-bold">$${didwwInbound.toFixed(4)}</span>
+                <span class="text-[9px] text-cyan-400/70 font-sans">/msg</span>
+              </div>
+            </td>
+
+            <!-- 5. Carrier Wholesale Base Cost -->
+            <td class="py-3.5 px-4 font-mono text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-300 font-bold">$${carrierCost.toFixed(4)}</span>
+                <span class="text-[9px] text-slate-500 font-sans">/msg</span>
+              </div>
+            </td>
+
+            <!-- 6. User Inbound Policy (1-Click Toggle) -->
+            <td class="py-3.5 px-4 text-center">
+              <button type="button" onclick="toggleInboundSmsPolicy('${r.countryCode}')" id="btn_toggle_inbound_sms_${r.countryCode}" title="Click to Toggle Inbound SMS Policy" class="cursor-pointer transition-all inline-block">
+                <span class="px-3 py-1.5 rounded-xl text-xs font-bold ${isFree ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30'} flex items-center justify-center gap-1.5">
+                  <i class="fa-solid ${isFree ? 'fa-shield-halved text-emerald-400' : 'fa-receipt text-amber-400'}"></i>
+                  <span>${isFree ? '100% FREE (OTP/2FA)' : 'PAID $/msg'}</span>
+                </span>
+              </button>
+            </td>
+
+            <!-- 7. Quick Action -->
+            <td class="py-3.5 px-4 text-right">
+              <button onclick="openEditCountryRateModal('${r.countryCode}')" class="p-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-amber-400 rounded-lg text-xs transition-all ml-auto" title="Full Route Deck Settings">
+                <i class="fa-solid fa-sliders"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderSmsInboundPagination(totalCount, currentPage, totalPages, startIdx, endIdx) {
+      const container = document.getElementById('smsInboundPaginationControls');
+      if (!container) return;
+
+      if (totalCount === 0) {
+        container.innerHTML = '<span class="text-xs text-slate-500">0 destinations</span>';
+        return;
+      }
+
+      let pageBtns = '';
+      for (let p = 1; p <= totalPages; p++) {
+        const pStart = (p - 1) * smsInboundPageSize + 1;
+        const pEnd = Math.min(p * smsInboundPageSize, totalCount);
+        const isActive = p === currentPage;
+        pageBtns += `
+          <button type="button" onclick="goToSmsInboundPage(${p})" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            isActive ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30' : 'bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800'
+          }">
+            <span>Page ${p}</span> <span class="text-[10px] opacity-75 font-mono">(${pStart}-${pEnd})</span>
+          </button>
+        `;
+      }
+
+      container.innerHTML = `
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs text-slate-400 mr-2">Showing <strong class="text-white font-mono">${startIdx + 1}-${endIdx}</strong> of <strong class="text-white font-mono">${totalCount}</strong></span>
+          <button type="button" onclick="goToSmsInboundPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled class="opacity-40 cursor-not-allowed px-2.5 py-1.5 bg-slate-950 text-slate-600 rounded-xl text-xs border border-slate-800"' : 'class="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-xl text-xs border border-slate-800 cursor-pointer"'}><i class="fa-solid fa-chevron-left"></i> Prev</button>
+          <div class="flex items-center gap-1.5">${pageBtns}</div>
+          <button type="button" onclick="goToSmsInboundPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled class="opacity-40 cursor-not-allowed px-2.5 py-1.5 bg-slate-950 text-slate-600 rounded-xl text-xs border border-slate-800"' : 'class="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-xl text-xs border border-slate-800 cursor-pointer"'}">Next <i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      `;
+    }
+
+    // ============================================================
+    // ⚡ 1-CLICK TOGGLES & BULK ACTION ENGINE (VOICE, SMS, POLICIES)
+    // ============================================================
+    async function toggleRouteCallAllowed(countryCode) {
+      try {
+        const res = await adminFetch(`/api/admin/rates/${encodeURIComponent(countryCode)}/toggle-call`, { method: 'POST' });
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          const idx = cachedCountryRates.findIndex(r => r.countryCode === countryCode);
+          if (idx !== -1) cachedCountryRates[idx].allowOutboundCalls = res.rate.allowOutboundCalls;
+          renderVoiceMatrixTable();
+        } else {
+          showToast(res?.error || 'Failed to toggle calling status', 'error');
+        }
+      } catch (err) {
+        showToast('Error toggling calling: ' + err.message, 'error');
+      }
+    }
+    window.toggleRouteCallAllowed = toggleRouteCallAllowed;
+
+    async function toggleRouteSmsAllowed(countryCode) {
+      try {
+        const res = await adminFetch(`/api/admin/rates/${encodeURIComponent(countryCode)}/toggle-sms`, { method: 'POST' });
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          const idx = cachedCountryRates.findIndex(r => r.countryCode === countryCode);
+          if (idx !== -1) cachedCountryRates[idx].allowOutboundSms = res.rate.allowOutboundSms;
+          renderSmsMatrixTable();
+        } else {
+          showToast(res?.error || 'Failed to toggle SMS status', 'error');
+        }
+      } catch (err) {
+        showToast('Error toggling SMS: ' + err.message, 'error');
+      }
+    }
+    window.toggleRouteSmsAllowed = toggleRouteSmsAllowed;
+
+    async function toggleInboundVoicePolicy(countryCode) {
+      try {
+        const res = await adminFetch(`/api/admin/rates/${encodeURIComponent(countryCode)}/toggle-inbound-voice`, { method: 'POST' });
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          const idx = cachedCountryRates.findIndex(r => r.countryCode === countryCode);
+          if (idx !== -1) cachedCountryRates[idx].inboundCallPolicy = res.rate.inboundCallPolicy;
+          renderVoiceInboundTable();
+        } else {
+          showToast(res?.error || 'Failed to toggle inbound voice policy', 'error');
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    }
+    window.toggleInboundVoicePolicy = toggleInboundVoicePolicy;
+
+    async function toggleInboundSmsPolicy(countryCode) {
+      try {
+        const res = await adminFetch(`/api/admin/rates/${encodeURIComponent(countryCode)}/toggle-inbound-sms`, { method: 'POST' });
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          const idx = cachedCountryRates.findIndex(r => r.countryCode === countryCode);
+          if (idx !== -1) cachedCountryRates[idx].inboundSmsPolicy = res.rate.inboundSmsPolicy;
+          renderSmsInboundTable();
+        } else {
+          showToast(res?.error || 'Failed to toggle inbound SMS policy', 'error');
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    }
+    window.toggleInboundSmsPolicy = toggleInboundSmsPolicy;
+
+    async function bulkEnableAllCalls() {
+      if (!confirm('Enable Outbound Calling for ALL 204 worldwide destinations?')) return;
+      try {
+        showToast('Enabling all 204 outbound calling routes...', 'info');
+        const res = await adminFetch('/api/admin/rates/bulk-actions', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'enable_all_calls' })
+        });
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          cachedCountryRates.forEach(r => r.allowOutboundCalls = true);
+          renderVoiceMatrixTable();
+        } else {
+          showToast(res?.error || 'Bulk enable calls failed', 'error');
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    }
+    window.bulkEnableAllCalls = bulkEnableAllCalls;
+
+    async function bulkEnableAllSms() {
+      if (!confirm('Enable Outbound SMS for ALL 204 worldwide destinations?')) return;
+      try {
+        showToast('Enabling all 204 outbound SMS routes...', 'info');
+        const res = await adminFetch('/api/admin/rates/bulk-actions', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'enable_all_sms' })
+        });
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          cachedCountryRates.forEach(r => r.allowOutboundSms = true);
+          renderSmsMatrixTable();
+        } else {
+          showToast(res?.error || 'Bulk enable SMS failed', 'error');
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    }
+    window.bulkEnableAllSms = bulkEnableAllSms;
+
+    async function bulkMakeInboundVoiceFree() {
+      if (!confirm('Set Inbound Voice Calls to 100% FREE for all countries?')) return;
+      try {
+        showToast('Updating Inbound Voice policies...', 'info');
+        const res = await adminFetch('/api/admin/rates/bulk-actions', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'make_inbound_voice_free' })
+        });
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          cachedCountryRates.forEach(r => r.inboundCallPolicy = 'FREE');
+          renderVoiceInboundTable();
+        } else {
+          showToast(res?.error || 'Failed to update inbound voice', 'error');
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    }
+    window.bulkMakeInboundVoiceFree = bulkMakeInboundVoiceFree;
+
+    async function bulkMakeInboundSmsFree() {
+      if (!confirm('Set Inbound SMS (OTP/2FA) to 100% FREE for all countries?')) return;
+      try {
+        showToast('Updating Inbound SMS policies...', 'info');
+        const res = await adminFetch('/api/admin/rates/bulk-actions', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'make_inbound_sms_free' })
+        });
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          cachedCountryRates.forEach(r => r.inboundSmsPolicy = 'FREE');
+          renderSmsInboundTable();
+        } else {
+          showToast(res?.error || 'Failed to update inbound SMS', 'error');
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    }
+    window.bulkMakeInboundSmsFree = bulkMakeInboundSmsFree;
 
     function openQuickEditPlanPriceModal(countryCode, planKey, planName, durationDays, wholesaleCost, currentSellPrice) {
       const r = cachedCountryRates.find(x => x.countryCode === countryCode);

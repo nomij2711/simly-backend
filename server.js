@@ -8699,6 +8699,114 @@ app.post('/api/admin/rates/:countryCode/toggle', requireAdmin, async (req, res) 
   }
 });
 
+// 4a-1. Toggle Destination Outbound Call Allowed
+app.post('/api/admin/rates/:countryCode/toggle-call', requireAdmin, async (req, res) => {
+  try {
+    const cc = req.params.countryCode.trim().toUpperCase();
+    const existing = await prisma.countryRate.findUnique({ where: { countryCode: cc } });
+    if (!existing) return res.status(404).json({ success: false, error: 'Rate deck not found' });
+
+    const updated = await prisma.countryRate.update({
+      where: { countryCode: cc },
+      data: { allowOutboundCalls: !existing.allowOutboundCalls }
+    });
+
+    await refreshDynamicCaches();
+    res.json({ success: true, message: `Outbound calling to ${updated.countryName} is now ${updated.allowOutboundCalls ? 'ENABLED 🟢' : 'BLOCKED 🔴'}`, rate: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4a-2. Toggle Destination Outbound SMS Allowed
+app.post('/api/admin/rates/:countryCode/toggle-sms', requireAdmin, async (req, res) => {
+  try {
+    const cc = req.params.countryCode.trim().toUpperCase();
+    const existing = await prisma.countryRate.findUnique({ where: { countryCode: cc } });
+    if (!existing) return res.status(404).json({ success: false, error: 'Rate deck not found' });
+
+    const updated = await prisma.countryRate.update({
+      where: { countryCode: cc },
+      data: { allowOutboundSms: !existing.allowOutboundSms }
+    });
+
+    await refreshDynamicCaches();
+    res.json({ success: true, message: `Outbound SMS to ${updated.countryName} is now ${updated.allowOutboundSms ? 'ENABLED 🟢' : 'BLOCKED 🔴'}`, rate: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4a-3. Toggle Inbound Voice Policy (FREE vs PAID)
+app.post('/api/admin/rates/:countryCode/toggle-inbound-voice', requireAdmin, async (req, res) => {
+  try {
+    const cc = req.params.countryCode.trim().toUpperCase();
+    const existing = await prisma.countryRate.findUnique({ where: { countryCode: cc } });
+    if (!existing) return res.status(404).json({ success: false, error: 'Rate deck not found' });
+
+    const newPolicy = (existing.inboundCallPolicy || 'FREE').toUpperCase() === 'FREE' ? 'PAID' : 'FREE';
+    const updated = await prisma.countryRate.update({
+      where: { countryCode: cc },
+      data: { inboundCallPolicy: newPolicy }
+    });
+
+    await refreshDynamicCaches();
+    res.json({ success: true, message: `Inbound Call policy for ${updated.countryName} is now ${newPolicy}`, rate: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4a-4. Toggle Inbound SMS Policy (FREE vs PAID)
+app.post('/api/admin/rates/:countryCode/toggle-inbound-sms', requireAdmin, async (req, res) => {
+  try {
+    const cc = req.params.countryCode.trim().toUpperCase();
+    const existing = await prisma.countryRate.findUnique({ where: { countryCode: cc } });
+    if (!existing) return res.status(404).json({ success: false, error: 'Rate deck not found' });
+
+    const newPolicy = (existing.inboundSmsPolicy || 'FREE').toUpperCase() === 'FREE' ? 'PAID' : 'FREE';
+    const updated = await prisma.countryRate.update({
+      where: { countryCode: cc },
+      data: { inboundSmsPolicy: newPolicy }
+    });
+
+    await refreshDynamicCaches();
+    res.json({ success: true, message: `Inbound SMS policy for ${updated.countryName} is now ${newPolicy}`, rate: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4a-5. Bulk Enable/Disable All Outbound Calls & SMS or Inbound Policies
+app.post('/api/admin/rates/bulk-actions', requireAdmin, async (req, res) => {
+  try {
+    const { action } = req.body;
+    if (action === 'enable_all_calls') {
+      await prisma.countryRate.updateMany({ data: { allowOutboundCalls: true } });
+      await refreshDynamicCaches();
+      return res.json({ success: true, message: 'All 204 destination routes ENABLED for Outbound Calling 🟢' });
+    }
+    if (action === 'enable_all_sms') {
+      await prisma.countryRate.updateMany({ data: { allowOutboundSms: true } });
+      await refreshDynamicCaches();
+      return res.json({ success: true, message: 'All 204 destination routes ENABLED for Outbound SMS 🟢' });
+    }
+    if (action === 'make_inbound_voice_free') {
+      await prisma.countryRate.updateMany({ data: { inboundCallPolicy: 'FREE' } });
+      await refreshDynamicCaches();
+      return res.json({ success: true, message: 'All Inbound Voice calls set to 100% FREE for users 🌟' });
+    }
+    if (action === 'make_inbound_sms_free') {
+      await prisma.countryRate.updateMany({ data: { inboundSmsPolicy: 'FREE' } });
+      await refreshDynamicCaches();
+      return res.json({ success: true, message: 'All Inbound SMS messages set to 100% FREE for OTP/2FA verification 🌟' });
+    }
+    res.status(400).json({ success: false, error: 'Unknown bulk action' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 4b. Bulk Country Rates & Virtual Numbers Management
 app.post('/api/admin/rates/bulk', requireAdmin, async (req, res) => {
   try {

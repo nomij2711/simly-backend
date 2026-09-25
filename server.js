@@ -3215,15 +3215,15 @@ app.post('/api/calls/log', async (req, res) => {
         });
       }
 
-      const minutes = durSec > 0 ? Math.ceil(durSec / 60) : 1;
-      const baseCallRate = Number(destRate.callRatePerMin || destRate.callRate || 0.05);
-      const originatingCarrier = (lineOwner?.carrier || (cleanMyNumber.startsWith('+44') ? 'TWILIO' : 'TELNYX')).toUpperCase();
-      // Guaranteed profit floor across carriers (Twilio wholesale to US $0.014/min -> floor $0.025/min; Telnyx floor $0.015/min)
-      const minCallFloor = originatingCarrier === 'TWILIO' ? 0.025 : 0.015;
-      const ratePerMin = parseFloat(Math.max(baseCallRate, minCallFloor).toFixed(4));
-      callCost = parseFloat((minutes * ratePerMin).toFixed(4));
-
       if (durSec > 0) {
+        const minutes = Math.ceil(durSec / 60);
+        const baseCallRate = Number(destRate.callRatePerMin || destRate.callRate || 0.05);
+        const originatingCarrier = (lineOwner?.carrier || (cleanMyNumber.startsWith('+44') ? 'TWILIO' : 'TELNYX')).toUpperCase();
+        // Guaranteed profit floor across carriers (Twilio wholesale to US $0.014/min -> floor $0.025/min; Telnyx floor $0.015/min)
+        const minCallFloor = originatingCarrier === 'TWILIO' ? 0.025 : 0.015;
+        const ratePerMin = parseFloat(Math.max(baseCallRate, minCallFloor).toFixed(4));
+        callCost = parseFloat((minutes * ratePerMin).toFixed(4));
+
         if (user.walletBalance < callCost || user.walletBalance <= 0) {
           return res.status(402).json({
             success: false,
@@ -3248,6 +3248,8 @@ app.post('/api/calls/log', async (req, res) => {
         });
 
         console.log(`📞 [BILLING - CALL] Deducted $${callCost.toFixed(4)} from ${user.email} (Remaining Balance: $${(user.walletBalance - callCost).toFixed(4)})`);
+      } else {
+        callCost = 0.0;
       }
     }
 
@@ -3365,10 +3367,11 @@ app.post('/api/calls/simulate-inbound', async (req, res) => {
 // 11b. Endpoint: Outbound Multi-Party Conference Initiation Engine
 app.post('/api/calls/conference/initiate', async (req, res) => {
   try {
-    const { userId, myNumber, participants = [], conferenceName = 'SimlyX Multi-Party Conference' } = req.body;
+    const { userId, myNumber: inputMy, hostNumber, participants = [], conferenceName = 'SimlyX Multi-Party Conference' } = req.body;
+    const myNumber = inputMy || hostNumber;
 
     if (!myNumber || !Array.isArray(participants) || participants.length === 0) {
-      return res.status(400).json({ success: false, error: 'myNumber and an array of participant phone numbers are required.' });
+      return res.status(400).json({ success: false, error: 'myNumber (or hostNumber) and an array of participant phone numbers are required.' });
     }
 
     const cleanMyNumber = normalizePhone(myNumber);

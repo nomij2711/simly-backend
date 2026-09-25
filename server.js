@@ -1634,18 +1634,24 @@ const getCountryPlans = (countryCode, onlyActive = true, isInitialPurchase = fal
     let subtitleText = '';
     const durationLabel = tier.durationDays === 30 ? '/mo' : tier.durationDays === 7 ? '/7d' : tier.durationDays === 90 ? '/3mo' : tier.durationDays === 180 ? '/6mo' : tier.durationDays === 365 ? '/yr' : `/${tier.durationDays}d`;
 
+    // Extract clean emoji for badge so title fits cleanly on 1 line
+    let cleanBadge = tier.badge || '🌟';
+    if (cleanBadge.includes(' ')) {
+      cleanBadge = cleanBadge.split(' ')[0];
+    }
+
     if (isInitialPurchase && setupFee > 0) {
-      subtitleText = `⚡ $${sellPrice.toFixed(2)}${durationLabel} plan + $${setupFee.toFixed(2)} one-time setup (Renews at $${sellPrice.toFixed(2)})`;
+      subtitleText = `⚡ Plan: $${sellPrice.toFixed(2)}${durationLabel} • Setup: $${setupFee.toFixed(2)} (Renews at $${sellPrice.toFixed(2)})`;
     } else if (isInitialPurchase) {
-      subtitleText = `⚡ $${sellPrice.toFixed(2)}${durationLabel} plan • Instant activation • $0 setup fee`;
+      subtitleText = `⚡ Plan: $${sellPrice.toFixed(2)}${durationLabel} • $0 Setup Fee • Instant Active`;
     } else {
-      subtitleText = `🔄 Renews at $${sellPrice.toFixed(2)}${durationLabel} • $0 renewal fee`;
+      subtitleText = `🔄 Renewal: $${sellPrice.toFixed(2)}${durationLabel} • $0 Setup Fee`;
     }
 
     result.push({
       key: tier.key,
       name: tier.name,
-      badge: tier.badge,
+      badge: cleanBadge,
       subtitle: subtitleText,
       durationDays: tier.durationDays,
       price: effectivePrice, // Displayed & charged price for the action (Initial Buy = Plan + Setup Fee; Renewal = Plan only)

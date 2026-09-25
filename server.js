@@ -1567,7 +1567,7 @@ function getRateForDestinationNumber(phoneNumber) {
 }
 
 // 💎 Constructs dynamic plan tiers for any country (Combining active tiers + base rates + custom overrides)
-const getCountryPlans = (countryCode, onlyActive = true) => {
+const getCountryPlans = (countryCode, onlyActive = true, isInitialPurchase = false) => {
   const rate = getCountryRate(countryCode);
   if (!rate || (onlyActive && rate.isActive === false)) {
     return [];
@@ -1582,6 +1582,7 @@ const getCountryPlans = (countryCode, onlyActive = true) => {
   const carrier = (rate.carrier || 'TWILIO').toUpperCase();
   const carrierTiersConfig = getCarrierTiersConfig(carrier);
   const tiers = dynamicPlanTiersCache;
+  const setupFee = parseFloat((rate.setupFee || 0).toFixed(2));
 
   const result = [];
   for (const tier of tiers) {
@@ -1618,13 +1619,24 @@ const getCountryPlans = (countryCode, onlyActive = true) => {
     const profit = parseFloat((sellPrice - wholesaleCost).toFixed(2));
     const marginPct = sellPrice > 0 ? Math.round((profit / sellPrice) * 100) : 0;
 
+    // Calculate initial purchase price (Plan Price + One-Time Setup Fee) vs renewal price (Plan Price only)
+    const effectivePrice = (isInitialPurchase && setupFee > 0) ? parseFloat((sellPrice + setupFee).toFixed(2)) : sellPrice;
+    let subtitleText = tier.subtitle || '';
+    if (isInitialPurchase && setupFee > 0) {
+      subtitleText = subtitleText ? `${subtitleText} (+$${setupFee.toFixed(2)} setup fee)` : `+$${setupFee.toFixed(2)} one-time setup fee`;
+    }
+
     result.push({
       key: tier.key,
       name: tier.name,
       badge: tier.badge,
-      subtitle: tier.subtitle,
+      subtitle: subtitleText,
       durationDays: tier.durationDays,
-      price: sellPrice,
+      price: effectivePrice, // Displayed & charged price for the action (Initial Buy = Plan + Setup Fee; Renewal = Plan only)
+      planPrice: sellPrice, // Base recurring plan rate
+      renewalPrice: sellPrice, // Renewal rate without setup fee
+      setupFee: isInitialPurchase ? setupFee : 0, // One-time setup fee
+      firstMonthTotal: parseFloat((sellPrice + setupFee).toFixed(2)),
       wholesaleCost: wholesaleCost,
       profit: profit,
       marginPct: marginPct,
@@ -1637,22 +1649,23 @@ const getCountryPlans = (countryCode, onlyActive = true) => {
 };
 
 // Calculate Virtual Number Retail Price (Dynamically resolved from dynamic tiers)
-const calculateNumberPrice = (countryCode, planType, durationDays, phoneNumber = '') => {
+const calculateNumberPrice = (countryCode, planType, durationDays, phoneNumber = '', isInitialPurchase = false) => {
   const rate = getCountryRate(countryCode);
   if (!rate || rate.isActive === false) {
     throw new Error(`Virtual line route for ${rate?.countryName || countryCode} is disabled by administrator.`);
   }
-  const plans = getCountryPlans(countryCode, false);
+  const plans = getCountryPlans(countryCode, false, false);
   const matched = plans.find(p => p.key === planType || (durationDays && p.durationDays === parseInt(durationDays)));
-  if (matched) return matched.price;
-  return rate.numberMonthlySellPrice || 1.00;
+  const basePrice = matched ? (matched.planPrice || matched.price) : (rate.numberMonthlySellPrice || 1.00);
+  const setupFee = (isInitialPurchase && rate.setupFee > 0) ? parseFloat(rate.setupFee.toFixed(2)) : 0;
+  return parseFloat((basePrice + setupFee).toFixed(2));
 };
 
 // Calculate Virtual Number Carrier Wholesale Base Cost (Dynamically resolved from dynamic tiers)
 const calculateNumberWholesaleCost = (countryCode, planType, durationDays) => {
   const rate = getCountryRate(countryCode);
   if (!rate) return 1.00;
-  const plans = getCountryPlans(countryCode, false);
+  const plans = getCountryPlans(countryCode, false, false);
   const matched = plans.find(p => p.key === planType || (durationDays && p.durationDays === parseInt(durationDays)));
   if (matched) return matched.wholesaleCost;
   return rate.numberWholesaleCost || 1.00;
@@ -1688,9 +1701,10 @@ app.get('/api/numbers/search', async (req, res) => {
       try {
         const twilioNumbers = await getTwilioAvailableNumbers(countryCode, 15);
         if (twilioNumbers && Array.isArray(twilioNumbers) && twilioNumbers.length > 0) {
-          const plans = getCountryPlans(countryCode, true);
-          const standardPlan = plans.find(p => p.key === '30_days') || plans[0] || { price: 1.99 };
+          const plans = getCountryPlans(countryCode, true, true);
+          const standardPlan = plans.find(p => p.key === '30_days') || plans[0] || { price: 1.99, planPrice: 1.99 };
           const setupFee = rateDeck.setupFee || 0;
+          const baseMonthly = standardPlan.planPrice !== undefined ? standardPlan.planPrice : standardPlan.price;
 
           numbers = twilioNumbers.map(num => ({
             phoneNumber: num.phone_number,
@@ -1698,9 +1712,10 @@ app.get('/api/numbers/search', async (req, res) => {
             setupFee: setupFee,
             plans: plans,
             cost: {
-              monthly_cost: standardPlan.price.toFixed(2),
+              monthly_cost: baseMonthly.toFixed(2),
               setup_fee: setupFee.toFixed(2),
-              first_month_total: (standardPlan.price + setupFee).toFixed(2),
+              first_month_total: (baseMonthly + setupFee).toFixed(2),
+              renewal_cost: baseMonthly.toFixed(2),
               upfront_cost: (plans[0]?.price || 1.00).toFixed(2),
               yearly_cost: (plans.find(p => p.key === '365_days')?.price || 20.00).toFixed(2),
               seven_day_cost: (plans.find(p => p.key === '7_days')?.price || 1.00).toFixed(2),
@@ -1741,9 +1756,10 @@ app.get('/api/numbers/search', async (req, res) => {
         });
 
         if (response?.data && Array.isArray(response.data) && response.data.length > 0) {
-          const plans = getCountryPlans(countryCode, true);
-          const standardPlan = plans.find(p => p.key === '30_days') || plans[0] || { price: 1.00 };
+          const plans = getCountryPlans(countryCode, true, true);
+          const standardPlan = plans.find(p => p.key === '30_days') || plans[0] || { price: 1.00, planPrice: 1.00 };
           const setupFee = rateDeck.setupFee || 0;
+          const baseMonthly = standardPlan.planPrice !== undefined ? standardPlan.planPrice : standardPlan.price;
 
           numbers = response.data.map(num => {
             let resolvedNumber = num.phone_number;
@@ -1756,9 +1772,10 @@ app.get('/api/numbers/search', async (req, res) => {
               setupFee: setupFee,
               plans: plans,
               cost: {
-                monthly_cost: standardPlan.price.toFixed(2),
+                monthly_cost: baseMonthly.toFixed(2),
                 setup_fee: setupFee.toFixed(2),
-                first_month_total: (standardPlan.price + setupFee).toFixed(2),
+                first_month_total: (baseMonthly + setupFee).toFixed(2),
+                renewal_cost: baseMonthly.toFixed(2),
                 upfront_cost: (plans[0]?.price || 0.50).toFixed(2),
                 yearly_cost: (plans.find(p => p.key === '365_days')?.price || 12.00).toFixed(2),
                 seven_day_cost: (plans.find(p => p.key === '7_days')?.price || 0.50).toFixed(2),
@@ -1813,16 +1830,18 @@ app.get('/api/numbers/search', async (req, res) => {
         const randomDigits = Math.floor(100000 + Math.random() * 900000);
         const fullNumber = `${prefix}${area}${randomDigits}`;
 
-        const plans = getCountryPlans(countryCode, true);
-        const standardPlan = plans.find(p => p.key === '30_days') || plans[0] || { price: 1.99 };
+        const plans = getCountryPlans(countryCode, true, true);
+        const standardPlan = plans.find(p => p.key === '30_days') || plans[0] || { price: 1.99, planPrice: 1.99 };
+        const baseMonthly = standardPlan.planPrice !== undefined ? standardPlan.planPrice : standardPlan.price;
         return {
           phoneNumber: fullNumber,
           setupFee: setupFee,
           plans: plans,
           cost: {
-            monthly_cost: standardPlan.price.toFixed(2),
+            monthly_cost: baseMonthly.toFixed(2),
             setup_fee: setupFee.toFixed(2),
-            first_month_total: (standardPlan.price + setupFee).toFixed(2),
+            first_month_total: (baseMonthly + setupFee).toFixed(2),
+            renewal_cost: baseMonthly.toFixed(2),
             upfront_cost: (plans[0]?.price || 0.50).toFixed(2),
             yearly_cost: (plans.find(p => p.key === '365_days')?.price || 20.00).toFixed(2),
             seven_day_cost: (plans.find(p => p.key === '7_days')?.price || 1.00).toFixed(2),
@@ -1904,7 +1923,7 @@ const handleBuyTest = async (req, res) => {
 
     let price;
     try {
-      price = calculateNumberPrice(cleanCountryCode, planType, durationDays, cleanPhoneNumber);
+      price = calculateNumberPrice(cleanCountryCode, planType, durationDays, cleanPhoneNumber, true);
     } catch (priceErr) {
       return res.status(400).json({ success: false, error: priceErr.message });
     }
@@ -1955,6 +1974,8 @@ const handleBuyTest = async (req, res) => {
     });
 
     const activeCarrier = (rateDeck?.carrier || (cleanCountryCode === 'GB' ? 'TWILIO' : 'TELNYX')).toUpperCase();
+    const setupFeeDeducted = (rateDeck.setupFee && rateDeck.setupFee > 0) ? rateDeck.setupFee : 0;
+    const basePlanPrice = calculateNumberPrice(cleanCountryCode, planType, durationDays, cleanPhoneNumber, false);
 
     // Record Transaction Audit
     await prisma.transaction.create({
@@ -1962,7 +1983,7 @@ const handleBuyTest = async (req, res) => {
         userId: user.id,
         type: 'number_purchase',
         amount: -price,
-        description: `Line Purchase (${durationDays} Days): ${cleanPhoneNumber}`
+        description: `Line Purchase (${durationDays} Days): ${cleanPhoneNumber}${setupFeeDeducted > 0 ? ` (Includes $${setupFeeDeducted.toFixed(2)} setup fee)` : ''}`
       }
     });
 
@@ -1997,7 +2018,7 @@ const handleBuyTest = async (req, res) => {
       });
     }
 
-    console.log(`💳 [BILLING - NUMBER PURCHASE] Deducted $${price.toFixed(2)} from ${user.email} (New Balance: $${updatedUser.walletBalance.toFixed(2)})`);
+    console.log(`💳 [BILLING - NUMBER PURCHASE] Deducted $${price.toFixed(2)} (Plan: $${basePlanPrice.toFixed(2)} + Setup: $${setupFeeDeducted.toFixed(2)}) from ${user.email} (New Balance: $${updatedUser.walletBalance.toFixed(2)})`);
 
     // 🔔 Save In-App Notification in User's Private Inbox
     prisma.inAppNotification.create({
@@ -2031,6 +2052,9 @@ const handleBuyTest = async (req, res) => {
       success: true,
       message: `Number purchased! $${price.toFixed(2)} deducted from wallet.`,
       costDeducted: price,
+      setupFee: setupFeeDeducted,
+      planPrice: basePlanPrice,
+      renewalPrice: basePlanPrice,
       newWalletBalance: updatedUser.walletBalance,
       data: {
         ...safePurchasedData,
@@ -2129,7 +2153,7 @@ app.post('/api/numbers/renew', async (req, res) => {
     }
 
     const planType = durationDays >= 365 ? '365_days' : durationDays <= 7 ? '7_days' : '30_days';
-    const price = calculateNumberPrice(existing.countryCode, planType, durationDays, existing.phoneNumber);
+    const price = calculateNumberPrice(existing.countryCode, planType, durationDays, existing.phoneNumber, false);
 
     const user = await prisma.user.findUnique({ where: { id: existing.userId } });
     if (!user) {
@@ -9002,8 +9026,18 @@ app.get('/api/app/plans', async (req, res) => {
         plans: []
       });
     }
-    const plans = getCountryPlans(countryCode, true);
-    res.json({ success: true, count: plans.length, countryCode, plans });
+    const isInitialPurchase = req.query.isInitialPurchase === 'true' || req.query.mode === 'buy' || req.query.type === 'buy';
+    const plans = getCountryPlans(countryCode, true, isInitialPurchase);
+    res.json({
+      success: true,
+      count: plans.length,
+      countryCode,
+      countryName: rate.countryName,
+      flagEmoji: rate.flagEmoji,
+      setupFee: rate.setupFee || 0,
+      isInitialPurchase,
+      plans
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

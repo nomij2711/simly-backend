@@ -7168,6 +7168,7 @@
         if (addBtnEl) addBtnEl.onclick = () => openAddCountryRateModal(currentCarrierFilter);
       }
 
+      loadPlanTiers(currentCarrierFilter);
       applyCurrentRateFilter();
     }
     window.filterRatesByCarrier = filterRatesByCarrier;
@@ -7359,15 +7360,16 @@
 
     async function loadPricing() {
       try {
+        const targetCarrier = (currentCarrierFilter || 'ALL').toUpperCase();
         const [ratesData, tiersData, carriersData] = await Promise.all([
           adminFetch('/api/admin/rates'),
-          adminFetch('/api/admin/plan-tiers'),
+          adminFetch(`/api/admin/plan-tiers?carrier=${encodeURIComponent(targetCarrier)}`),
           adminFetch('/api/admin/telecom/carriers-config').catch(() => null)
         ]);
 
         if (tiersData && tiersData.success) {
           cachedPlanTiers = tiersData.tiers || [];
-          renderPlanTiersGrid(cachedPlanTiers);
+          renderPlanTiersGrid(cachedPlanTiers, targetCarrier);
         }
 
         if (carriersData && carriersData.success && Array.isArray(carriersData.carriers)) {
@@ -7862,7 +7864,18 @@
         } catch(e) {}
 
         const planCells = activeTiers.map(t => {
-          let sellPrice = customPrices[t.key];
+          let isCountryTierActive = true;
+          if (customPrices.activeTiers && Array.isArray(customPrices.activeTiers)) {
+            isCountryTierActive = customPrices.activeTiers.includes(t.key);
+          } else if (customPrices.disabledTiers && Array.isArray(customPrices.disabledTiers)) {
+            isCountryTierActive = !customPrices.disabledTiers.includes(t.key);
+          } else if (customPrices[t.key] && typeof customPrices[t.key] === 'object' && customPrices[t.key].enabled !== undefined) {
+            isCountryTierActive = Boolean(customPrices[t.key].enabled);
+          } else {
+            isCountryTierActive = t.isActive !== false;
+          }
+
+          let sellPrice = (typeof customPrices[t.key] === 'number') ? customPrices[t.key] : customPrices[t.key]?.price;
           if (sellPrice === undefined || sellPrice === null) {
             if (t.key === '7_days' && r.number7DaySellPrice !== undefined) sellPrice = r.number7DaySellPrice;
             else if (t.key === '30_days' && r.numberMonthlySellPrice !== undefined) sellPrice = r.numberMonthlySellPrice;
@@ -7880,6 +7893,19 @@
 
           const unitSuffix = t.durationDays === 30 ? '/mo' : t.durationDays === 365 ? '/yr' : `/${t.durationDays}d`;
 
+          if (!isCountryTierActive) {
+            return `
+              <td class="py-3.5 px-4">
+                <div class="p-2 rounded-xl bg-slate-950/50 border border-slate-800/60 flex items-center justify-between gap-1 text-[10px]">
+                  <span class="text-slate-500 font-bold font-mono">OFF 🔴</span>
+                  <button onclick="toggleCountryPlanTier('${r.countryCode}', '${t.key}', true, ${sellPrice})" class="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 font-bold transition-all flex items-center gap-1" title="Enable ${escapeHtml(t.name)} for ${escapeHtml(r.countryName)}">
+                    <i class="fa-solid fa-plus text-[8px]"></i> <span>Enable</span>
+                  </button>
+                </div>
+              </td>
+            `;
+          }
+
           return `
             <td class="py-3.5 px-4">
               <div class="space-y-1">
@@ -7889,6 +7915,7 @@
                     <span>$${sellPrice.toFixed(2)}${unitSuffix}</span>
                     ${isCustom ? '<span title="Custom price override" class="text-[8px] bg-pink-500/20 text-pink-300 px-1 py-0.2 rounded font-mono">Custom</span>' : ''}
                     <button onclick="openQuickEditPlanPriceModal('${r.countryCode}', '${t.key}', '${escapeHtml(t.name)}', ${t.durationDays}, ${wholesaleCost}, ${sellPrice})" title="Edit ${escapeHtml(t.name)} sell price for ${escapeHtml(r.countryName)}" class="text-slate-500 hover:text-pink-400 p-0.5"><i class="fa-solid fa-pencil text-[9px]"></i></button>
+                    <button onclick="toggleCountryPlanTier('${r.countryCode}', '${t.key}', false)" title="Disable ${escapeHtml(t.name)} for ${escapeHtml(r.countryName)}" class="text-slate-600 hover:text-rose-400 p-0.5"><i class="fa-solid fa-power-off text-[9px]"></i></button>
                   </div>
                 </div>
                 <div class="flex items-center justify-between text-[10px] px-1 text-slate-500">
@@ -9216,35 +9243,64 @@
 
       const customTiersGrid = document.getElementById('modalActivePlanTiersGrid');
       if (customTiersGrid) {
-        const activeTiers = (cachedPlanTiers || []).filter(t => t.isActive && !['7_days', '30_days', '365_days'].includes(t.key));
-        if (activeTiers.length === 0) {
-          customTiersGrid.innerHTML = '';
-          customTiersGrid.classList.add('hidden');
-        } else {
-          customTiersGrid.classList.remove('hidden');
-          customTiersGrid.innerHTML = `
-            <div class="col-span-full font-bold text-slate-300 text-[11px] uppercase tracking-wider mb-1 flex items-center gap-1.5">
-              <i class="fa-solid fa-layer-group text-indigo-400"></i>
-              <span>Active Custom Plan Tiers</span>
-            </div>
-            ${activeTiers.map(t => {
-              const currentVal = (customPrices[t.key] !== undefined) ? customPrices[t.key] : parseFloat((rate.numberMonthlySellPrice * t.defaultPriceRatio).toFixed(2));
-              const wholesaleCost = parseFloat((rate.numberWholesaleCost * t.wholesaleDayRatio).toFixed(2));
-              return `
-                <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                  <div class="flex items-center justify-between text-[10px]">
+        const allTiers = (cachedPlanTiers && cachedPlanTiers.length > 0) ? cachedPlanTiers : [
+          { key: '7_days', name: '7 Days', badge: '⚡ Quick', durationDays: 7, wholesaleDayRatio: 0.25, defaultPriceRatio: 0.5 },
+          { key: '30_days', name: '30 Days', badge: '🌟 Standard', durationDays: 30, wholesaleDayRatio: 1.0, defaultPriceRatio: 1.0 },
+          { key: '90_days', name: '3 Months', badge: '🔥 Popular', durationDays: 90, wholesaleDayRatio: 3.0, defaultPriceRatio: 2.7 },
+          { key: '180_days', name: '6 Months', badge: '🚀 Semi-Annual', durationDays: 180, wholesaleDayRatio: 6.0, defaultPriceRatio: 5.0 },
+          { key: '365_days', name: '1 Year', badge: '💎 Saver', durationDays: 365, wholesaleDayRatio: 12.0, defaultPriceRatio: 10.0 }
+        ];
+
+        customTiersGrid.classList.remove('hidden');
+        customTiersGrid.innerHTML = `
+          <div class="col-span-full font-bold text-slate-300 text-[11px] uppercase tracking-wider mb-1 flex items-center justify-between">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-layer-group text-indigo-400"></i> Plan Tiers Enabled for ${escapeHtml(rate.countryName)}</span>
+            <span class="text-[10px] text-slate-500 font-normal">Check to offer plan to users</span>
+          </div>
+          ${allTiers.map(t => {
+            let isTierEnabled = true;
+            if (customPrices.activeTiers && Array.isArray(customPrices.activeTiers)) {
+              isTierEnabled = customPrices.activeTiers.includes(t.key);
+            } else if (customPrices.disabledTiers && Array.isArray(customPrices.disabledTiers)) {
+              isTierEnabled = !customPrices.disabledTiers.includes(t.key);
+            } else if (customPrices[t.key] && typeof customPrices[t.key] === 'object' && customPrices[t.key].enabled !== undefined) {
+              isTierEnabled = Boolean(customPrices[t.key].enabled);
+            } else {
+              isTierEnabled = t.isActive !== false;
+            }
+
+            let currentVal = (typeof customPrices[t.key] === 'number') ? customPrices[t.key] : customPrices[t.key]?.price;
+            if (currentVal === undefined || currentVal === null) {
+              if (t.key === '7_days' && rate.number7DaySellPrice !== undefined) currentVal = rate.number7DaySellPrice;
+              else if (t.key === '30_days' && rate.numberMonthlySellPrice !== undefined) currentVal = rate.numberMonthlySellPrice;
+              else if (t.key === '365_days' && rate.numberYearlySellPrice !== undefined) currentVal = rate.numberYearlySellPrice;
+              else {
+                currentVal = parseFloat((rate.numberMonthlySellPrice * (t.defaultPriceRatio || 1.0)).toFixed(2));
+              }
+            }
+            const wholesaleCost = parseFloat((rate.numberWholesaleCost * (t.wholesaleDayRatio || 1.0)).toFixed(2));
+            const netProfit = parseFloat((currentVal - wholesaleCost).toFixed(2));
+            const marginPct = currentVal > 0 ? Math.round((netProfit / currentVal) * 100) : 0;
+
+            return `
+              <div class="p-2.5 rounded-xl border transition-all ${isTierEnabled ? 'bg-slate-900 border-slate-700' : 'bg-slate-950/40 border-slate-800/40 opacity-60'} space-y-1.5">
+                <div class="flex items-center justify-between text-[10px]">
+                  <label class="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" class="modal-tier-active-checkbox rounded border-slate-700 bg-slate-900 text-indigo-500 focus:ring-indigo-500" data-key="${t.key}" ${isTierEnabled ? 'checked' : ''} onchange="this.closest('.p-2.5').classList.toggle('opacity-60', !this.checked)">
                     <span class="font-bold text-white">${escapeHtml(t.name)}</span>
-                    <span class="text-slate-500 font-mono">Cost: $${wholesaleCost.toFixed(2)}</span>
-                  </div>
-                  <div>
-                    <label class="block text-[9px] text-slate-400">Sell Price ($):</label>
+                  </label>
+                  <span class="text-slate-500 font-mono">Cost: $${wholesaleCost.toFixed(2)}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="flex-1">
                     <input type="number" step="0.01" id="modalTierPrice_${t.key}" value="${Number(currentVal).toFixed(2)}" class="modal-custom-tier-input w-full bg-slate-950 border border-slate-800 rounded-lg p-1.5 text-emerald-400 font-bold text-xs focus:outline-none focus:border-indigo-500" data-key="${t.key}">
                   </div>
+                  <span class="text-[9px] font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${netProfit >= 0 ? '+' : ''}$${netProfit.toFixed(2)} (${marginPct}%)</span>
                 </div>
-              `;
-            }).join('')}
-          `;
-        }
+              </div>
+            `;
+          }).join('')}
+        `;
       }
 
       calculateModalMargins();
@@ -9586,6 +9642,18 @@
         }
       });
 
+      const activeTiersList = [];
+      document.querySelectorAll('.modal-tier-active-checkbox').forEach(cb => {
+        const k = cb.getAttribute('data-key');
+        if (cb.checked && k) {
+          activeTiersList.push(k);
+        }
+      });
+      if (activeTiersList.length > 0) {
+        customMap.activeTiers = activeTiersList;
+        customMap.disabledTiers = (cachedPlanTiers || []).map(t => t.key).filter(k => !activeTiersList.includes(k));
+      }
+
       const payload = {
         countryCode: cc,
         countryName: document.getElementById('rateCountryName').value.trim(),
@@ -9659,17 +9727,18 @@
     }
 
     // ============================================================
-    // 💎 SUBSCRIPTION PLAN TIERS CONTROLLER (ADMIN CRUD & TOGGLES)
+    // 💎 SUBSCRIPTION PLAN TIERS CONTROLLER (CARRIER-ISOLATED & COUNTRY-SCOPED)
     // ============================================================
     let cachedPlanTiers = [];
 
-    async function loadPlanTiers() {
+    async function loadPlanTiers(carrier = null) {
       try {
-        const res = await adminFetch('/api/admin/plan-tiers');
+        const targetCarrier = (carrier || currentCarrierFilter || 'ALL').toUpperCase();
+        const res = await adminFetch(`/api/admin/plan-tiers?carrier=${encodeURIComponent(targetCarrier)}`);
         if (!res || !res.success) return;
 
         cachedPlanTiers = res.tiers || [];
-        renderPlanTiersGrid(cachedPlanTiers);
+        renderPlanTiersGrid(cachedPlanTiers, targetCarrier);
         if (cachedCountryRates && cachedCountryRates.length > 0) {
           applyCurrentRateFilter();
         }
@@ -9678,9 +9747,17 @@
       }
     }
 
-    function renderPlanTiersGrid(tiers) {
+    function renderPlanTiersGrid(tiers, carrier = null) {
       const grid = document.getElementById('planTiersGrid');
       if (!grid) return;
+
+      const targetCarrier = (carrier || currentCarrierFilter || 'ALL').toUpperCase();
+      const carrierName = targetCarrier === 'ALL' ? 'Global Master Deck' : (targetCarrier === 'TWILIO' ? 'Twilio UK & Global' : (targetCarrier === 'TELNYX' ? 'Telnyx Wholesale' : (targetCarrier === 'DIDWW' ? 'DIDWW Global' : targetCarrier)));
+
+      const subtitleEl = document.getElementById('planTiersEngineSubtitle');
+      if (subtitleEl) {
+        subtitleEl.innerText = `Configure validity plan tiers specifically for ${carrierName} fleet (Auto-syncs with mobile app)`;
+      }
 
       if (!tiers || tiers.length === 0) {
         grid.innerHTML = '<div class="col-span-full text-center text-slate-500 py-6 text-xs">No subscription plan tiers defined. Click "+ Add Custom Tier" to create one.</div>';
@@ -9698,7 +9775,7 @@
                   <button onclick="openEditPlanTierModal('${t.id || t.key}')" title="Edit Plan Tier" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all text-[11px]">
                     <i class="fa-solid fa-pen"></i>
                   </button>
-                  <button onclick="togglePlanTierActive('${t.id || t.key}')" title="${isActive ? 'Click to Disable Tier' : 'Click to Enable Tier'}" class="px-2 py-0.5 rounded-full text-[10px] font-bold transition-all ${isActive ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20'}">
+                  <button onclick="togglePlanTierActive('${t.id || t.key}')" title="${isActive ? 'Click to Disable for ' + targetCarrier : 'Click to Enable for ' + targetCarrier}" class="px-2 py-0.5 rounded-full text-[10px] font-bold transition-all ${isActive ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20'}">
                     ${isActive ? 'ACTIVE 🟢' : 'OFF 🔴'}
                   </button>
                 </div>
@@ -9711,12 +9788,48 @@
             </div>
             <div class="pt-3 mt-3 border-t border-slate-800/60 flex items-center justify-between text-[10px]">
               <span class="text-slate-500">Carrier Ratio: <strong class="text-slate-300 font-mono">${t.wholesaleDayRatio}x</strong></span>
-              <span class="text-slate-500">Key: <strong class="text-indigo-400 font-mono">${escapeHtml(t.key)}</strong></span>
+              <span class="text-slate-500 font-bold ${(targetCarrier !== 'ALL' && isActive) ? 'text-emerald-400' : 'text-slate-400'}">${targetCarrier === 'ALL' ? 'Global' : targetCarrier}</span>
             </div>
           </div>
         `;
       }).join('');
     }
+
+    async function togglePlanTierActive(id) {
+      try {
+        const targetCarrier = (currentCarrierFilter || 'ALL').toUpperCase();
+        const res = await adminFetch(`/api/admin/plan-tiers/${encodeURIComponent(id)}/toggle`, {
+          method: 'POST',
+          body: JSON.stringify({ carrier: targetCarrier })
+        });
+        if (res.success) {
+          showToast(res.message, 'success');
+          await loadPricing();
+        } else {
+          showToast(res.error || 'Failed to toggle tier', 'error');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function toggleCountryPlanTier(countryCode, tierKey, isActive, price = null) {
+      try {
+        const res = await adminFetch(`/api/admin/rates/${encodeURIComponent(countryCode)}/toggle-tier`, {
+          method: 'POST',
+          body: JSON.stringify({ tierKey, isActive, price })
+        });
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          await loadPricing();
+        } else {
+          showToast(res?.error || 'Failed to toggle tier for route', 'error');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    window.toggleCountryPlanTier = toggleCountryPlanTier;
 
     function openAddPlanTierModal() {
       document.getElementById('tierId').value = '';
@@ -9795,20 +9908,6 @@
           await loadPricing();
         } else {
           showToast(res.error || 'Failed to save tier', 'error');
-        }
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
-    }
-
-    async function togglePlanTierActive(id) {
-      try {
-        const res = await adminFetch(`/api/admin/plan-tiers/${encodeURIComponent(id)}/toggle`, { method: 'POST' });
-        if (res.success) {
-          showToast(res.message, 'success');
-          await loadPricing();
-        } else {
-          showToast(res.error || 'Failed to toggle tier', 'error');
         }
       } catch (err) {
         showToast(err.message, 'error');

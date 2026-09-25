@@ -1373,11 +1373,33 @@ async function refreshDynamicCaches() {
       acc[cur.key] = cur.value;
       return acc;
     }, {});
+
+    if (dynamicConfigCache && dynamicConfigCache['carrier_plan_tiers']) {
+      try {
+        carrierPlanTiersCache = typeof dynamicConfigCache['carrier_plan_tiers'] === 'string'
+          ? JSON.parse(dynamicConfigCache['carrier_plan_tiers'])
+          : dynamicConfigCache['carrier_plan_tiers'];
+      } catch (e) {}
+    }
+
     console.log(`📡 [DYNAMIC CACHE] Synced ${dynamicRatesCache.length} country decks, ${dynamicPlanTiersCache.length} plan tiers, and ${Object.keys(dynamicConfigCache).length} system configs.`);
   } catch (err) {
     console.warn('[DYNAMIC CACHE WARNING] Sync error:', err.message);
     if (dynamicPlanTiersCache.length === 0) dynamicPlanTiersCache = DEFAULT_PLAN_TIERS;
   }
+}
+
+// Carrier-Specific Plan Tiers Cache
+let carrierPlanTiersCache = {
+  TELNYX: { "7_days": false, "30_days": true, "90_days": false, "180_days": false, "365_days": true },
+  TWILIO: { "7_days": false, "30_days": true, "90_days": false, "180_days": false, "365_days": false },
+  DIDWW: { "7_days": false, "30_days": true, "90_days": false, "180_days": false, "365_days": false }
+};
+
+function getCarrierTiersConfig(carrier) {
+  const c = (carrier || 'TWILIO').toUpperCase();
+  if (carrierPlanTiersCache[c]) return carrierPlanTiersCache[c];
+  return { "30_days": true, "365_days": false, "7_days": false, "90_days": false, "180_days": false };
 }
 
 // Initial cache load on server startup
@@ -1557,10 +1579,31 @@ const getCountryPlans = (countryCode, onlyActive = true) => {
     }
   } catch (e) {}
 
-  const tiers = onlyActive ? dynamicPlanTiersCache.filter(t => t.isActive) : dynamicPlanTiersCache;
+  const carrier = (rate.carrier || 'TWILIO').toUpperCase();
+  const carrierTiersConfig = getCarrierTiersConfig(carrier);
+  const tiers = dynamicPlanTiersCache;
 
-  return tiers.map(tier => {
-    let sellPrice = customMap[tier.key];
+  const result = [];
+  for (const tier of tiers) {
+    let isTierActive = tier.isActive;
+
+    // 1. Check carrier-level override if exists
+    if (carrierTiersConfig && carrierTiersConfig[tier.key] !== undefined) {
+      isTierActive = Boolean(carrierTiersConfig[tier.key]);
+    }
+
+    // 2. Check country-level active/disabled overrides
+    if (customMap.activeTiers && Array.isArray(customMap.activeTiers)) {
+      isTierActive = customMap.activeTiers.includes(tier.key);
+    } else if (customMap.disabledTiers && Array.isArray(customMap.disabledTiers)) {
+      if (customMap.disabledTiers.includes(tier.key)) isTierActive = false;
+    } else if (customMap[tier.key] && typeof customMap[tier.key] === 'object' && customMap[tier.key].enabled !== undefined) {
+      isTierActive = Boolean(customMap[tier.key].enabled);
+    }
+
+    if (onlyActive && !isTierActive) continue;
+
+    let sellPrice = (typeof customMap[tier.key] === 'number') ? customMap[tier.key] : (customMap[tier.key]?.price);
     if (sellPrice === undefined || sellPrice === null) {
       if (tier.key === '7_days' && rate.number7DaySellPrice !== undefined) sellPrice = rate.number7DaySellPrice;
       else if (tier.key === '30_days' && rate.numberMonthlySellPrice !== undefined) sellPrice = rate.numberMonthlySellPrice;
@@ -1575,7 +1618,7 @@ const getCountryPlans = (countryCode, onlyActive = true) => {
     const profit = parseFloat((sellPrice - wholesaleCost).toFixed(2));
     const marginPct = sellPrice > 0 ? Math.round((profit / sellPrice) * 100) : 0;
 
-    return {
+    result.push({
       key: tier.key,
       name: tier.name,
       badge: tier.badge,
@@ -1585,10 +1628,12 @@ const getCountryPlans = (countryCode, onlyActive = true) => {
       wholesaleCost: wholesaleCost,
       profit: profit,
       marginPct: marginPct,
-      isActive: tier.isActive,
+      isActive: isTierActive,
       sortOrder: tier.sortOrder
-    };
-  });
+    });
+  }
+
+  return result;
 };
 
 // Calculate Virtual Number Retail Price (Dynamically resolved from dynamic tiers)
@@ -8964,7 +9009,7 @@ app.get('/api/app/plans', async (req, res) => {
   }
 });
 
-// 2. Admin Endpoint: List All Plan Tiers (Active + Inactive)
+// 2. Admin Endpoint: List All Plan Tiers (Active + Inactive, Carrier-Aware)
 app.get('/api/admin/plan-tiers', requireAdmin, async (req, res) => {
   try {
     let tiers = [];
@@ -8974,7 +9019,30 @@ app.get('/api/admin/plan-tiers', requireAdmin, async (req, res) => {
     if (!tiers || tiers.length === 0) {
       tiers = dynamicPlanTiersCache;
     }
-    res.json({ success: true, count: tiers.length, tiers });
+
+    const carrier = (req.query.carrier || 'ALL').toUpperCase();
+    const carrierConfig = carrierPlanTiersCache[carrier] || (carrier === 'ALL' ? null : { "30_days": true, "365_days": false, "7_days": false, "90_days": false, "180_days": false });
+
+    // Map isActive based on selected carrier deck
+    const resolvedTiers = tiers.map(t => {
+      let active = t.isActive;
+      if (carrierConfig && carrierConfig[t.key] !== undefined) {
+        active = Boolean(carrierConfig[t.key]);
+      }
+      return {
+        ...t,
+        isActive: active,
+        globalActive: t.isActive
+      };
+    });
+
+    res.json({
+      success: true,
+      count: resolvedTiers.length,
+      carrier,
+      tiers: resolvedTiers,
+      carrierConfigurations: carrierPlanTiersCache
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -9025,28 +9093,116 @@ app.post('/api/admin/plan-tiers', requireAdmin, async (req, res) => {
   }
 });
 
-// 4. Admin Endpoint: Toggle Plan Tier Active Status
+// 4. Admin Endpoint: Toggle Plan Tier Active Status (Carrier Scoped or Global)
 app.post('/api/admin/plan-tiers/:id/toggle', requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
+    const carrier = (req.body.carrier || req.query.carrier || 'ALL').toUpperCase();
+
     const tier = await prisma.subscriptionPlanTier.findFirst({
       where: { OR: [{ id }, { key: id }] }
     });
     if (!tier) return res.status(404).json({ success: false, error: 'Plan tier not found' });
 
+    if (carrier && carrier !== 'ALL') {
+      if (!carrierPlanTiersCache[carrier]) {
+        carrierPlanTiersCache[carrier] = { "30_days": true, "365_days": false, "7_days": false, "90_days": false, "180_days": false };
+      }
+      const current = carrierPlanTiersCache[carrier][tier.key] !== undefined ? carrierPlanTiersCache[carrier][tier.key] : tier.isActive;
+      carrierPlanTiersCache[carrier][tier.key] = !current;
+
+      await prisma.systemConfig.upsert({
+        where: { key: 'carrier_plan_tiers' },
+        update: { value: JSON.stringify(carrierPlanTiersCache), updatedBy: 'Admin' },
+        create: { key: 'carrier_plan_tiers', value: JSON.stringify(carrierPlanTiersCache), updatedBy: 'Admin' }
+      });
+      await refreshDynamicCaches();
+
+      return res.json({
+        success: true,
+        message: `Plan tier '${tier.name}' is now ${carrierPlanTiersCache[carrier][tier.key] ? 'ACTIVE 🟢' : 'DISABLED 🔴'} for ${carrier}`,
+        carrier,
+        tier: { ...tier, isActive: carrierPlanTiersCache[carrier][tier.key] }
+      });
+    }
+
+    // Global toggle
     const updated = await prisma.subscriptionPlanTier.update({
       where: { id: tier.id },
       data: { isActive: !tier.isActive }
     });
 
     await refreshDynamicCaches();
-    res.json({ success: true, message: `Plan tier '${updated.name}' is now ${updated.isActive ? 'ACTIVE 🟢' : 'DISABLED 🔴'}`, tier: updated });
+    res.json({ success: true, message: `Plan tier '${updated.name}' is now ${updated.isActive ? 'ACTIVE 🟢' : 'DISABLED 🔴'} globally`, tier: updated });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// 5. Admin Endpoint: Delete Plan Tier
+// 5. Admin Endpoint: 1-Click Toggle Specific Plan Tier For A Country Route
+app.post('/api/admin/rates/:countryCode/toggle-tier', requireAdmin, async (req, res) => {
+  try {
+    const cc = req.params.countryCode.trim().toUpperCase();
+    const { tierKey, isActive, price } = req.body;
+    if (!tierKey) return res.status(400).json({ success: false, error: 'tierKey is required' });
+
+    const rate = await prisma.countryRate.findUnique({ where: { countryCode: cc } });
+    if (!rate) return res.status(404).json({ success: false, error: `Country ${cc} not found` });
+
+    let customMap = {};
+    try {
+      if (rate.customPlanPrices) {
+        customMap = typeof rate.customPlanPrices === 'string' ? JSON.parse(rate.customPlanPrices) : rate.customPlanPrices;
+      }
+    } catch (e) {}
+
+    if (isActive !== undefined) {
+      if (!customMap.activeTiers) {
+        const carrierTiers = getCarrierTiersConfig(rate.carrier);
+        customMap.activeTiers = Object.keys(carrierTiers).filter(k => carrierTiers[k]);
+        if (!customMap.activeTiers.includes('30_days')) customMap.activeTiers.push('30_days');
+      }
+      if (isActive) {
+        if (!customMap.activeTiers.includes(tierKey)) customMap.activeTiers.push(tierKey);
+        if (customMap.disabledTiers) {
+          customMap.disabledTiers = customMap.disabledTiers.filter(k => k !== tierKey);
+        }
+      } else {
+        customMap.activeTiers = customMap.activeTiers.filter(k => k !== tierKey);
+        if (!customMap.disabledTiers) customMap.disabledTiers = [];
+        if (!customMap.disabledTiers.includes(tierKey)) customMap.disabledTiers.push(tierKey);
+      }
+    }
+
+    if (price !== undefined && price !== null && !isNaN(price)) {
+      customMap[tierKey] = parseFloat(Number(price).toFixed(2));
+      if (tierKey === '7_days') rate.number7DaySellPrice = customMap[tierKey];
+      if (tierKey === '30_days') rate.numberMonthlySellPrice = customMap[tierKey];
+      if (tierKey === '365_days') rate.numberYearlySellPrice = customMap[tierKey];
+    }
+
+    const updated = await prisma.countryRate.update({
+      where: { countryCode: cc },
+      data: {
+        customPlanPrices: JSON.stringify(customMap),
+        ...(tierKey === '7_days' && price !== undefined ? { number7DaySellPrice: parseFloat(price) } : {}),
+        ...(tierKey === '30_days' && price !== undefined ? { numberMonthlySellPrice: parseFloat(price) } : {}),
+        ...(tierKey === '365_days' && price !== undefined ? { numberYearlySellPrice: parseFloat(price) } : {})
+      }
+    });
+
+    await refreshDynamicCaches();
+    res.json({
+      success: true,
+      message: `Plan tier '${tierKey}' for ${rate.countryName} (${cc}) is now ${isActive ? 'ENABLED 🟢' : 'DISABLED 🔴'}!`,
+      rate: updated
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6. Admin Endpoint: Delete Plan Tier
 app.delete('/api/admin/plan-tiers/:id', requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;

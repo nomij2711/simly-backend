@@ -1650,7 +1650,6 @@ app.get('/api/numbers/search', async (req, res) => {
           numbers = twilioNumbers.map(num => ({
             phoneNumber: num.phone_number,
             friendlyName: num.friendly_name || num.phone_number,
-            carrier: 'TWILIO',
             setupFee: setupFee,
             plans: plans,
             cost: {
@@ -1660,10 +1659,8 @@ app.get('/api/numbers/search', async (req, res) => {
               upfront_cost: (plans[0]?.price || 1.00).toFixed(2),
               yearly_cost: (plans.find(p => p.key === '365_days')?.price || 20.00).toFixed(2),
               seven_day_cost: (plans.find(p => p.key === '7_days')?.price || 1.00).toFixed(2),
-              carrier_wholesale_cost: rateDeck.numberWholesaleCost.toFixed(2),
               inbound_sms_policy: rateDeck.inboundSmsPolicy || 'FREE',
               inbound_call_policy: rateDeck.inboundCallPolicy || 'FREE',
-              carrier: 'TWILIO',
               currency: 'USD'
             },
             rates: {
@@ -1677,7 +1674,7 @@ app.get('/api/numbers/search', async (req, res) => {
               inboundCallPolicy: rateDeck.inboundCallPolicy || 'FREE'
             },
             region: {
-              region_name: `${rateDeck.countryName} Mobile (Twilio UK)`,
+              region_name: `${rateDeck.countryName} Mobile Line`,
               country_code: countryCode
             }
           }));
@@ -1711,7 +1708,6 @@ app.get('/api/numbers/search', async (req, res) => {
 
             return {
               phoneNumber: resolvedNumber,
-              carrier: 'TELNYX',
               setupFee: setupFee,
               plans: plans,
               cost: {
@@ -1721,10 +1717,8 @@ app.get('/api/numbers/search', async (req, res) => {
                 upfront_cost: (plans[0]?.price || 0.50).toFixed(2),
                 yearly_cost: (plans.find(p => p.key === '365_days')?.price || 12.00).toFixed(2),
                 seven_day_cost: (plans.find(p => p.key === '7_days')?.price || 0.50).toFixed(2),
-                carrier_wholesale_cost: rateDeck.numberWholesaleCost.toFixed(2),
                 inbound_sms_policy: rateDeck.inboundSmsPolicy || 'FREE',
                 inbound_call_policy: rateDeck.inboundCallPolicy || 'FREE',
-                carrier: 'TELNYX',
                 currency: 'USD'
               },
               rates: {
@@ -1738,7 +1732,7 @@ app.get('/api/numbers/search', async (req, res) => {
                 inboundCallPolicy: rateDeck.inboundCallPolicy || 'FREE'
               },
               region: num.region_information || {
-                region_name: `${rateDeck.countryName} Standard`,
+                region_name: `${rateDeck.countryName} Standard Virtual Line`,
                 country_code: countryCode
               }
             };
@@ -1766,7 +1760,7 @@ app.get('/api/numbers/search', async (req, res) => {
 
       const areaCodes = areaCodesMap[countryCode] || ['7360', '7861', '7782', '7888'];
       const prefix = rateDeck.dialCode || '+44';
-      const city = `${rateDeck.countryName} (${activeCarrier})`;
+      const city = `${rateDeck.countryName} Standard Virtual Line`;
       const setupFee = rateDeck.setupFee || 0;
 
       numbers = Array.from({ length: 15 }, (_, i) => {
@@ -1778,7 +1772,6 @@ app.get('/api/numbers/search', async (req, res) => {
         const standardPlan = plans.find(p => p.key === '30_days') || plans[0] || { price: 1.99 };
         return {
           phoneNumber: fullNumber,
-          carrier: activeCarrier,
           setupFee: setupFee,
           plans: plans,
           cost: {
@@ -1788,10 +1781,8 @@ app.get('/api/numbers/search', async (req, res) => {
             upfront_cost: (plans[0]?.price || 0.50).toFixed(2),
             yearly_cost: (plans.find(p => p.key === '365_days')?.price || 20.00).toFixed(2),
             seven_day_cost: (plans.find(p => p.key === '7_days')?.price || 1.00).toFixed(2),
-            carrier_wholesale_cost: rateDeck.numberWholesaleCost.toFixed(2),
             inbound_sms_policy: rateDeck.inboundSmsPolicy || 'FREE',
             inbound_call_policy: rateDeck.inboundCallPolicy || 'FREE',
-            carrier: activeCarrier,
             currency: 'USD'
           },
           rates: {
@@ -1814,7 +1805,6 @@ app.get('/api/numbers/search', async (req, res) => {
 
     res.json({
       success: true,
-      carrier: activeCarrier,
       country: rateDeck.countryName,
       countryCode: rateDeck.countryCode,
       flagEmoji: rateDeck.flagEmoji,
@@ -1927,7 +1917,7 @@ const handleBuyTest = async (req, res) => {
         userId: user.id,
         type: 'number_purchase',
         amount: -price,
-        description: `Line Purchase (${durationDays} Days) [${activeCarrier}]: ${cleanPhoneNumber}`
+        description: `Line Purchase (${durationDays} Days): ${cleanPhoneNumber}`
       }
     });
 
@@ -1990,13 +1980,15 @@ const handleBuyTest = async (req, res) => {
       }
     }).catch(e => console.error('⚠️ [ONESIGNAL NUMBER PURCHASE ERROR]:', e.message));
 
+    const { carrier: _c, ...safePurchasedData } = purchasedNumber;
+
     res.json({
       success: true,
       message: `Number purchased! $${price.toFixed(2)} deducted from wallet.`,
       costDeducted: price,
       newWalletBalance: updatedUser.walletBalance,
       data: {
-        ...purchasedNumber,
+        ...safePurchasedData,
         daysRemaining: durationDays
       }
     });
@@ -2052,8 +2044,10 @@ app.get('/api/numbers/my-numbers', async (req, res) => {
         cleanProfileName = null;
       }
 
+      const { carrier: _c, ...safeNumberData } = num;
+
       return {
-        ...num,
+        ...safeNumberData,
         profileName: cleanProfileName,
         expiresAt: expDate.toISOString(),
         daysRemaining,
@@ -3201,6 +3195,186 @@ app.post('/api/calls/simulate-inbound', async (req, res) => {
     });
   } catch (error) {
     console.error('[SIMLY ERROR] Failed to simulate call:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 11b. Endpoint: Outbound Multi-Party Conference Initiation Engine
+app.post('/api/calls/conference/initiate', async (req, res) => {
+  try {
+    const { userId, myNumber, participants = [], conferenceName = 'SimlyX Multi-Party Conference' } = req.body;
+
+    if (!myNumber || !Array.isArray(participants) || participants.length === 0) {
+      return res.status(400).json({ success: false, error: 'myNumber and an array of participant phone numbers are required.' });
+    }
+
+    const cleanMyNumber = normalizePhone(myNumber);
+    const lineOwner = await prisma.purchasedNumber.findFirst({
+      where: { phoneNumber: cleanMyNumber, status: 'active' }
+    });
+
+    let user = null;
+    if (lineOwner) {
+      user = await prisma.user.findUnique({ where: { id: lineOwner.userId } });
+    }
+    if (!user && userId) {
+      const cleanUid = userId.toString().trim();
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { id: cleanUid },
+            { email: cleanUid.toLowerCase() },
+            { email: `${cleanUid.toLowerCase()}@simlyx.com` }
+          ]
+        }
+      });
+    }
+
+    if (!user) {
+      return res.status(403).json({ success: false, error: 'You do not have an active virtual line to initiate outbound conference calls.' });
+    }
+
+    if (user.isBanned || !user.isVerified || user.isDeleted) {
+      return res.status(403).json({ success: false, error: 'Outbound conference calling is disabled for your account.' });
+    }
+
+    // Calculate per-minute rate for each participant
+    let totalEstRatePerMin = 0;
+    const participantDetails = participants.map(p => {
+      const cleanP = normalizePhone(p);
+      const destRate = getRateForDestinationNumber(cleanP);
+      const ratePerMin = parseFloat(Number(destRate.callRatePerMin || destRate.callRate || 0.05).toFixed(4));
+      totalEstRatePerMin += ratePerMin;
+      return {
+        phoneNumber: cleanP,
+        country: destRate.country || 'International',
+        ratePerMin
+      };
+    });
+
+    // Check if user has at least 1 minute of total conference balance
+    if (user.walletBalance < totalEstRatePerMin || user.walletBalance <= 0) {
+      return res.status(402).json({
+        success: false,
+        error: `Insufficient wallet balance. Outbound conference for ${participants.length} participants requires at least $${totalEstRatePerMin.toFixed(3)}/min, but your balance is $${user.walletBalance.toFixed(2)}. Please top up.`,
+        requiredAmount: totalEstRatePerMin,
+        currentBalance: user.walletBalance
+      });
+    }
+
+    const conferenceId = `conf_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const roomName = `room_${conferenceId}`;
+
+    res.json({
+      success: true,
+      conferenceId,
+      roomName,
+      conferenceName,
+      hostNumber: cleanMyNumber,
+      participantsCount: participants.length,
+      participants: participantDetails,
+      combinedRatePerMin: parseFloat(totalEstRatePerMin.toFixed(4)),
+      currentBalance: user.walletBalance
+    });
+  } catch (error) {
+    console.error('[SIMLY CONFERENCE INITIATE ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 11c. Endpoint: Outbound Conference Participant Call Leg Logger & Strict Telecom Standard Billing
+app.post('/api/calls/conference/log-participant', async (req, res) => {
+  try {
+    const {
+      userId,
+      myNumber,
+      contactNumber,
+      durationSeconds = 0,
+      conferenceId
+    } = req.body;
+
+    if (!myNumber || !contactNumber) {
+      return res.status(400).json({ success: false, error: 'myNumber and contactNumber are required' });
+    }
+
+    const cleanMyNumber = normalizePhone(myNumber);
+    const cleanContact = normalizePhone(contactNumber);
+    const durSec = parseInt(durationSeconds, 10) || 0;
+
+    let user = null;
+    const lineOwner = await prisma.purchasedNumber.findFirst({
+      where: { phoneNumber: cleanMyNumber, status: 'active' }
+    });
+    if (lineOwner) {
+      user = await prisma.user.findUnique({ where: { id: lineOwner.userId } });
+    }
+    if (!user && userId) {
+      const cleanUid = userId.toString().trim();
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { id: cleanUid },
+            { email: cleanUid.toLowerCase() },
+            { email: `${cleanUid.toLowerCase()}@simlyx.com` }
+          ]
+        }
+      });
+    }
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User account not found.' });
+    }
+
+    // STRICT TELECOM BILLING: 1 sec to 60 sec = 1 min; 61 sec to 120 sec = 2 min
+    const minutes = durSec > 0 ? Math.ceil(durSec / 60) : 1;
+    const destRate = getRateForDestinationNumber(cleanContact);
+    const ratePerMin = parseFloat(Number(destRate.callRatePerMin || destRate.callRate || 0.05).toFixed(4));
+    const callCost = parseFloat((minutes * ratePerMin).toFixed(4));
+
+    if (durSec > 0) {
+      const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: { walletBalance: { decrement: callCost } }
+      });
+
+      await prisma.transaction.create({
+        data: {
+          userId: user.id,
+          type: 'call',
+          amount: -callCost,
+          description: `Outbound Conference Call (${durSec}s @ $${ratePerMin.toFixed(3)}/min) to ${cleanContact}`
+        }
+      });
+
+      const saved = await prisma.callLog.create({
+        data: {
+          myNumber: cleanMyNumber,
+          contactNumber: cleanContact,
+          direction: 'outbound',
+          status: 'completed',
+          durationSeconds: durSec
+        }
+      });
+
+      console.log(`📞 [BILLING - CONFERENCE CALL] Deducted $${callCost.toFixed(4)} (${minutes} min for ${durSec}s) from ${user.email} for participant ${cleanContact}`);
+
+      return res.json({
+        success: true,
+        costDeducted: callCost,
+        billedMinutes: minutes,
+        newBalance: updatedUser.walletBalance,
+        call: saved
+      });
+    }
+
+    res.json({
+      success: true,
+      costDeducted: 0,
+      billedMinutes: 0,
+      newBalance: user.walletBalance
+    });
+  } catch (error) {
+    console.error('[SIMLY CONFERENCE LOG ERROR]', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

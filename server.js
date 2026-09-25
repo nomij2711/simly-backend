@@ -8780,7 +8780,7 @@ app.post('/api/admin/rates/:countryCode/toggle-inbound-sms', requireAdmin, async
 // 4a-5. Bulk Enable/Disable All Outbound Calls & SMS or Inbound Policies
 app.post('/api/admin/rates/bulk-actions', requireAdmin, async (req, res) => {
   try {
-    const { action } = req.body;
+    const { action, policy, retailPrice } = req.body;
     if (action === 'enable_all_calls') {
       await prisma.countryRate.updateMany({ data: { allowOutboundCalls: true } });
       await refreshDynamicCaches();
@@ -8791,15 +8791,25 @@ app.post('/api/admin/rates/bulk-actions', requireAdmin, async (req, res) => {
       await refreshDynamicCaches();
       return res.json({ success: true, message: 'All 204 destination routes ENABLED for Outbound SMS 🟢' });
     }
-    if (action === 'make_inbound_voice_free') {
+    if (action === 'make_inbound_voice_free' || (action === 'set_inbound_voice_policy' && policy === 'FREE')) {
       await prisma.countryRate.updateMany({ data: { inboundCallPolicy: 'FREE' } });
       await refreshDynamicCaches();
       return res.json({ success: true, message: 'All Inbound Voice calls set to 100% FREE for users 🌟' });
     }
-    if (action === 'make_inbound_sms_free') {
+    if (action === 'make_inbound_sms_free' || (action === 'set_inbound_sms_policy' && policy === 'FREE')) {
       await prisma.countryRate.updateMany({ data: { inboundSmsPolicy: 'FREE' } });
       await refreshDynamicCaches();
       return res.json({ success: true, message: 'All Inbound SMS messages set to 100% FREE for OTP/2FA verification 🌟' });
+    }
+    if (action === 'set_inbound_voice_policy' && policy === 'PAID') {
+      await prisma.countryRate.updateMany({ data: { inboundCallPolicy: 'PAID' } });
+      await refreshDynamicCaches();
+      return res.json({ success: true, message: `Inbound Voice calls policy set to PAID ($${parseFloat(retailPrice || 0.01).toFixed(3)}/min) 🏷️` });
+    }
+    if (action === 'set_inbound_sms_policy' && policy === 'PAID') {
+      await prisma.countryRate.updateMany({ data: { inboundSmsPolicy: 'PAID' } });
+      await refreshDynamicCaches();
+      return res.json({ success: true, message: `Inbound SMS policy set to PAID ($${parseFloat(retailPrice || 0.005).toFixed(3)}/msg) 🏷️` });
     }
     res.status(400).json({ success: false, error: 'Unknown bulk action' });
   } catch (error) {

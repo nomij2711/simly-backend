@@ -2092,64 +2092,118 @@
           </div>
 
           <!-- ============================================================ -->
-          <!-- MODE 4 CONTAINER: 📥 INBOUND VOICE CALLS MATRIX             -->
+          <!-- ============================================================ -->
+          <!-- MODE 4 CONTAINER: 📥 INBOUND VOICE CALLS POLICY & CARRIER COSTS -->
           <!-- ============================================================ -->
           <div id="rates-mode-container-voice_inbound" class="rates-mode-view hidden space-y-6">
-            <!-- Header Card with Policy Toggles & Search -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
+            <!-- Top Banner & Global Policy Control Box -->
+            <div class="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-2xl p-6 shadow-xl space-y-5">
               <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div>
-                  <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-bold">
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg font-bold border border-emerald-500/30 shadow-inner">
                       <i class="fa-solid fa-phone-arrow-down-left"></i>
                     </div>
-                    <h3 class="text-sm font-bold text-white">Inbound Voice Calling Rates & User Policy Matrix</h3>
+                    <div>
+                      <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <span>Inbound Voice Calls - Global Retail Policy & Carrier Wholesale</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">Single Global Rate</span>
+                      </h3>
+                      <p class="text-xs text-slate-400">Incoming calls are received on your active virtual numbers. Set whether inbound calls are 100% FREE for users or charge a retail rate per minute.</p>
+                    </div>
                   </div>
-                  <p class="text-xs text-slate-400 mt-1">Side-by-side Carrier Inbound Wholesale Costs vs SimlyX User Policy (FREE Unlimited vs Paid $/min).</p>
                 </div>
 
-                <div class="flex items-center gap-2 flex-wrap">
-                  <button type="button" onclick="bulkMakeInboundVoiceFree()" class="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md">
+                <!-- Quick Action Buttons -->
+                <div class="flex items-center gap-2.5 flex-wrap">
+                  <button type="button" onclick="setGlobalInboundVoicePolicy('FREE')" class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-600/30">
                     <i class="fa-solid fa-gift text-amber-300"></i>
-                    <span>🌟 Make All Inbound Voice Calls 100% FREE</span>
+                    <span>Make Inbound Voice 100% FREE 🌟</span>
                   </button>
-                  <button type="button" onclick="refreshLiveVoiceWholesale()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer">
-                    <i class="fa-solid fa-rotate text-indigo-400"></i>
-                    <span>Refresh Wholesale</span>
+                  <button type="button" onclick="setGlobalInboundVoicePolicy('PAID')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-receipt text-amber-400"></i>
+                    <span>Set As PAID ($/min)</span>
                   </button>
                 </div>
               </div>
 
-              <!-- Search and Pagination Bar -->
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-800/80">
-                <div class="relative w-full sm:w-80">
-                  <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-500 text-xs"></i>
-                  <input type="text" id="voiceInboundSearchInput" oninput="handleVoiceInboundSearch(this.value)" placeholder="Search country, ISO or dial code (+44, +1)..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all">
+              <!-- Active Global Inbound Voice Policy Card -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-800/80">
+                <!-- 1. SimlyX Retail End-User Policy -->
+                <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-3">
+                  <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-user-tag text-emerald-400"></i> Current User Inbound Voice Policy</span>
+                    <span id="voiceInboundPolicyBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">100% FREE (Included)</span>
+                  </div>
+                  
+                  <div class="flex items-center gap-3">
+                    <div class="flex-1">
+                      <label class="block text-[10px] text-slate-400 mb-1">Retail Price Charged to User (/min):</label>
+                      <div class="relative">
+                        <span class="absolute left-3 top-2.5 text-xs text-slate-500 font-mono">$</span>
+                        <input type="number" step="0.001" min="0" id="inboundVoiceRetailInput" value="0.000" class="w-full bg-slate-900 border border-slate-700 focus:border-emerald-400 rounded-xl pl-6 pr-3 py-2 text-sm font-bold text-emerald-300 font-mono focus:outline-none transition-all">
+                      </div>
+                    </div>
+                    <button type="button" onclick="saveInboundVoiceRetailRate()" class="mt-4 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md cursor-pointer">
+                      <i class="fa-solid fa-floppy-disk"></i>
+                      <span>Save Rate</span>
+                    </button>
+                  </div>
+                  <p class="text-[11px] text-slate-500">If set to <strong>$0.000</strong>, users receive unlimited incoming calls without balance deduction.</p>
                 </div>
 
-                <div class="flex items-center gap-2 flex-wrap" id="voiceInboundPaginationControls">
-                  <!-- Populated by renderVoiceInboundPagination() -->
+                <!-- 2. Carrier Wholesale Inbound Cost Overview -->
+                <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-2.5">
+                  <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-tower-broadcast text-indigo-400"></i>
+                    <span>Multi-Carrier Inbound Voice Wholesale Costs</span>
+                  </div>
+                  <div class="grid grid-cols-3 gap-2 text-xs">
+                    <div class="p-2.5 rounded-xl bg-purple-950/20 border border-purple-500/30 text-center">
+                      <div class="text-[10px] text-purple-300 font-bold">🟣 Twilio Inbound</div>
+                      <div class="text-sm font-mono font-bold text-purple-200 mt-1">$0.0085<span class="text-[9px] text-purple-400 font-normal">/min</span></div>
+                      <div class="text-[9px] text-slate-400 mt-0.5">UK & Global</div>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30 text-center">
+                      <div class="text-[10px] text-emerald-300 font-bold">🟢 Telnyx Inbound</div>
+                      <div class="text-sm font-mono font-bold text-emerald-200 mt-1">$0.0050<span class="text-[9px] text-emerald-400 font-normal">/min</span></div>
+                      <div class="text-[9px] text-slate-400 mt-0.5">Direct Wholesale</div>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-cyan-950/20 border border-cyan-500/30 text-center">
+                      <div class="text-[10px] text-cyan-300 font-bold">🔵 DIDWW Inbound</div>
+                      <div class="text-sm font-mono font-bold text-cyan-200 mt-1">$0.0040<span class="text-[9px] text-cyan-400 font-normal">/min</span></div>
+                      <div class="text-[9px] text-slate-400 mt-0.5">Global SIP</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Inbound Voice Matrix Table -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <!-- Active Country Fleet Inbound Voice Status (Only Active Virtual Line Countries) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl space-y-0">
+              <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+                <div>
+                  <h4 class="text-xs font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-emerald-400"></i>
+                    <span>Active Number Fleet Inbound Voice Status</span>
+                  </h4>
+                  <p class="text-[11px] text-slate-400 mt-0.5">Countries where virtual number lines are active for purchase and incoming calls.</p>
+                </div>
+                <div id="activeFleetVoiceCount" class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">Active Fleets</div>
+              </div>
               <div class="overflow-x-auto custom-scrollbar">
                 <table class="w-full text-left border-collapse">
                   <thead>
                     <tr class="border-b border-slate-800 bg-slate-950/80 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      <th class="py-3.5 px-4 min-w-[180px]">Country Fleet Destination</th>
-                      <th class="py-3.5 px-4 min-w-[160px] text-purple-300 bg-purple-950/10">🟣 Twilio Inbound / min</th>
-                      <th class="py-3.5 px-4 min-w-[160px] text-emerald-300 bg-emerald-950/10">🟢 Telnyx Inbound / min</th>
-                      <th class="py-3.5 px-4 min-w-[160px] text-cyan-300 bg-cyan-950/10">🔵 DIDWW Inbound / min</th>
-                      <th class="py-3.5 px-4 min-w-[170px] text-slate-300">Carrier Wholesale Inbound Cost</th>
-                      <th class="py-3.5 px-4 text-center min-w-[180px]">User Inbound Policy</th>
-                      <th class="py-3.5 px-4 text-right">Quick Action</th>
+                      <th class="py-3 px-4">Active Fleet Country</th>
+                      <th class="py-3 px-4">Assigned Carrier</th>
+                      <th class="py-3 px-4">Carrier Inbound Wholesale Cost</th>
+                      <th class="py-3 px-4 text-center">User Inbound Policy</th>
+                      <th class="py-3 px-4 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody id="voiceInboundTableBody" class="divide-y divide-slate-800 text-xs">
-                    <tr><td colspan="7" class="py-10 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading Inbound Voice Matrix...</td></tr>
+                  <tbody id="activeFleetVoiceTableBody" class="divide-y divide-slate-800 text-xs">
+                    <!-- Dynamically populated with active fleet countries -->
                   </tbody>
                 </table>
               </div>
@@ -2157,64 +2211,117 @@
           </div>
 
           <!-- ============================================================ -->
-          <!-- MODE 5 CONTAINER: 📨 INBOUND SMS MESSAGING MATRIX           -->
+          <!-- MODE 5 CONTAINER: 📨 INBOUND SMS & OTP/2FA POLICY            -->
           <!-- ============================================================ -->
           <div id="rates-mode-container-sms_inbound" class="rates-mode-view hidden space-y-6">
-            <!-- Header Card with Policy Toggles & Search -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
+            <!-- Top Banner & Global Policy Control Box -->
+            <div class="bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/30 rounded-2xl p-6 shadow-xl space-y-5">
               <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div>
-                  <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm font-bold">
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg font-bold border border-amber-500/30 shadow-inner">
                       <i class="fa-solid fa-envelope-open-text"></i>
                     </div>
-                    <h3 class="text-sm font-bold text-white">Inbound SMS Messaging (OTP / 2FA) & Policy Matrix</h3>
+                    <div>
+                      <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <span>Inbound SMS & OTP / 2FA - Global Retail Policy & Carrier Wholesale</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">Single Global Rate</span>
+                      </h3>
+                      <p class="text-xs text-slate-400">Incoming SMS, OTP verification, and 2FA codes are received on your active virtual numbers. Set whether inbound SMS is 100% FREE for users or charge a retail rate per message.</p>
+                    </div>
                   </div>
-                  <p class="text-xs text-slate-400 mt-1">Side-by-side Carrier Inbound Wholesale SMS Costs vs SimlyX User Policy (FREE OTP vs Paid $/msg).</p>
                 </div>
 
-                <div class="flex items-center gap-2 flex-wrap">
-                  <button type="button" onclick="bulkMakeInboundSmsFree()" class="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md">
+                <!-- Quick Action Buttons -->
+                <div class="flex items-center gap-2.5 flex-wrap">
+                  <button type="button" onclick="setGlobalInboundSmsPolicy('FREE')" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/30">
                     <i class="fa-solid fa-shield-halved text-slate-950"></i>
-                    <span>🌟 Make All Inbound SMS 100% FREE (OTP/2FA)</span>
+                    <span>Make Inbound SMS 100% FREE (OTP/2FA) 🌟</span>
                   </button>
-                  <button type="button" onclick="refreshLiveSmsWholesale()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer">
-                    <i class="fa-solid fa-rotate text-indigo-400"></i>
-                    <span>Refresh Wholesale</span>
+                  <button type="button" onclick="setGlobalInboundSmsPolicy('PAID')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-receipt text-amber-400"></i>
+                    <span>Set As PAID ($/msg)</span>
                   </button>
                 </div>
               </div>
 
-              <!-- Search and Pagination Bar -->
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-800/80">
-                <div class="relative w-full sm:w-80">
-                  <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-500 text-xs"></i>
-                  <input type="text" id="smsInboundSearchInput" oninput="handleSmsInboundSearch(this.value)" placeholder="Search country, ISO or dial code (+44, +1)..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-all">
+              <!-- Active Global Inbound SMS Policy Card -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-800/80">
+                <!-- 1. SimlyX Retail End-User Policy -->
+                <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-3">
+                  <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-shield-halved text-amber-400"></i> Current User Inbound SMS Policy</span>
+                    <span id="smsInboundPolicyBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">100% FREE (OTP/2FA)</span>
+                  </div>
+                  
+                  <div class="flex items-center gap-3">
+                    <div class="flex-1">
+                      <label class="block text-[10px] text-slate-400 mb-1">Retail Price Charged to User (/msg):</label>
+                      <div class="relative">
+                        <span class="absolute left-3 top-2.5 text-xs text-slate-500 font-mono">$</span>
+                        <input type="number" step="0.001" min="0" id="inboundSmsRetailInput" value="0.000" class="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-xl pl-6 pr-3 py-2 text-sm font-bold text-amber-300 font-mono focus:outline-none transition-all">
+                      </div>
+                    </div>
+                    <button type="button" onclick="saveInboundSmsRetailRate()" class="mt-4 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md cursor-pointer">
+                      <i class="fa-solid fa-floppy-disk"></i>
+                      <span>Save Rate</span>
+                    </button>
+                  </div>
+                  <p class="text-[11px] text-slate-500">If set to <strong>$0.000</strong>, users receive unlimited OTP, 2FA, and verification SMS messages for free.</p>
                 </div>
 
-                <div class="flex items-center gap-2 flex-wrap" id="smsInboundPaginationControls">
-                  <!-- Populated by renderSmsInboundPagination() -->
+                <!-- 2. Carrier Wholesale Inbound Cost Overview -->
+                <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-2.5">
+                  <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-tower-broadcast text-indigo-400"></i>
+                    <span>Multi-Carrier Inbound SMS Wholesale Costs</span>
+                  </div>
+                  <div class="grid grid-cols-3 gap-2 text-xs">
+                    <div class="p-2.5 rounded-xl bg-purple-950/20 border border-purple-500/30 text-center">
+                      <div class="text-[10px] text-purple-300 font-bold">🟣 Twilio Inbound</div>
+                      <div class="text-sm font-mono font-bold text-purple-200 mt-1">$0.0075<span class="text-[9px] text-purple-400 font-normal">/msg</span></div>
+                      <div class="text-[9px] text-slate-400 mt-0.5">UK & Global</div>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30 text-center">
+                      <div class="text-[10px] text-emerald-300 font-bold">🟢 Telnyx Inbound</div>
+                      <div class="text-sm font-mono font-bold text-emerald-200 mt-1">$0.0020<span class="text-[9px] text-emerald-400 font-normal">/msg</span></div>
+                      <div class="text-[9px] text-slate-400 mt-0.5">OTP/2FA Direct</div>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-cyan-950/20 border border-cyan-500/30 text-center">
+                      <div class="text-[10px] text-cyan-300 font-bold">🔵 DIDWW Inbound</div>
+                      <div class="text-sm font-mono font-bold text-cyan-200 mt-1">$0.0020<span class="text-[9px] text-cyan-400 font-normal">/msg</span></div>
+                      <div class="text-[9px] text-slate-400 mt-0.5">Global 2-Way</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Inbound SMS Matrix Table -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <!-- Active Country Fleet Inbound SMS Status (Only Active Virtual Line Countries) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl space-y-0">
+              <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+                <div>
+                  <h4 class="text-xs font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-amber-400"></i>
+                    <span>Active Number Fleet Inbound SMS & OTP Policy</span>
+                  </h4>
+                  <p class="text-[11px] text-slate-400 mt-0.5">Countries where virtual number lines are active for OTP, 2FA, and incoming SMS.</p>
+                </div>
+                <div id="activeFleetSmsCount" class="text-xs font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">Active Fleets</div>
+              </div>
               <div class="overflow-x-auto custom-scrollbar">
                 <table class="w-full text-left border-collapse">
                   <thead>
                     <tr class="border-b border-slate-800 bg-slate-950/80 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      <th class="py-3.5 px-4 min-w-[180px]">Country Fleet Destination</th>
-                      <th class="py-3.5 px-4 min-w-[160px] text-purple-300 bg-purple-950/10">🟣 Twilio Inbound / msg</th>
-                      <th class="py-3.5 px-4 min-w-[160px] text-emerald-300 bg-emerald-950/10">🟢 Telnyx Inbound / msg</th>
-                      <th class="py-3.5 px-4 min-w-[160px] text-cyan-300 bg-cyan-950/10">🔵 DIDWW Inbound / msg</th>
-                      <th class="py-3.5 px-4 min-w-[170px] text-slate-300">Carrier Wholesale Inbound Cost</th>
-                      <th class="py-3.5 px-4 text-center min-w-[180px]">User Inbound SMS Policy</th>
-                      <th class="py-3.5 px-4 text-right">Quick Action</th>
+                      <th class="py-3 px-4">Active Fleet Country</th>
+                      <th class="py-3 px-4">Assigned Carrier</th>
+                      <th class="py-3 px-4">Carrier Inbound Wholesale Cost</th>
+                      <th class="py-3 px-4 text-center">User Inbound SMS Policy</th>
+                      <th class="py-3 px-4 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody id="smsInboundTableBody" class="divide-y divide-slate-800 text-xs">
-                    <tr><td colspan="7" class="py-10 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading Inbound SMS Matrix...</td></tr>
+                  <tbody id="activeFleetSmsTableBody" class="divide-y divide-slate-800 text-xs">
+                    <!-- Dynamically populated with active fleet countries -->
                   </tbody>
                 </table>
               </div>
@@ -8465,62 +8572,60 @@
     window.refreshLiveSmsWholesale = refreshLiveSmsWholesale;
 
     // ============================================================
-    // 📥 INBOUND VOICE CALLS & USER POLICY MATRIX CONTROLLERS
     // ============================================================
-    function handleVoiceInboundSearch(val) {
-      voiceInboundSearchQuery = (val || '').trim().toLowerCase();
-      voiceInboundCurrentPage = 1;
-      renderVoiceInboundTable();
-    }
-    window.handleVoiceInboundSearch = handleVoiceInboundSearch;
-
-    function goToVoiceInboundPage(page) {
-      voiceInboundCurrentPage = page;
-      renderVoiceInboundTable();
-    }
-    window.goToVoiceInboundPage = goToVoiceInboundPage;
+    // 📥 INBOUND VOICE CALLS GLOBAL POLICY & ACTIVE FLEETS CONTROLLER
+    // ============================================================
+    let globalInboundVoicePolicy = 'FREE';
+    let globalInboundVoiceRetailRate = 0.000;
 
     function renderVoiceInboundTable() {
-      const tbody = document.getElementById('voiceInboundTableBody');
-      if (!tbody) return;
+      const tbody = document.getElementById('activeFleetVoiceTableBody');
+      const badge = document.getElementById('voiceInboundPolicyBadge');
+      const input = document.getElementById('inboundVoiceRetailInput');
+      const countEl = document.getElementById('activeFleetVoiceCount');
 
-      let filtered = cachedCountryRates || [];
-      if (voiceInboundSearchQuery) {
-        filtered = filtered.filter(r =>
-          r.countryName.toLowerCase().includes(voiceInboundSearchQuery) ||
-          r.countryCode.toLowerCase().includes(voiceInboundSearchQuery) ||
-          r.dialCode.includes(voiceInboundSearchQuery)
-        );
+      const allRates = cachedCountryRates || [];
+      const activeFleets = allRates.filter(r => r.isActive);
+
+      // Check majority policy
+      const freeCount = allRates.filter(r => (r.inboundCallPolicy || 'FREE').toUpperCase() === 'FREE').length;
+      globalInboundVoicePolicy = freeCount >= (allRates.length / 2) ? 'FREE' : 'PAID';
+
+      if (badge) {
+        if (globalInboundVoicePolicy === 'FREE') {
+          badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+          badge.innerHTML = '<i class="fa-solid fa-gift mr-1 text-emerald-400"></i> 100% FREE (Included)';
+        } else {
+          badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+          badge.innerHTML = '<i class="fa-solid fa-receipt mr-1 text-amber-400"></i> PAID Per Minute';
+        }
       }
 
-      const totalCount = filtered.length;
-      const totalPages = Math.max(1, Math.ceil(totalCount / voiceInboundPageSize));
-      if (voiceInboundCurrentPage > totalPages) voiceInboundCurrentPage = totalPages;
-      if (voiceInboundCurrentPage < 1) voiceInboundCurrentPage = 1;
+      if (input && document.activeElement !== input) {
+        input.value = globalInboundVoiceRetailRate.toFixed(3);
+      }
 
-      const startIndex = (voiceInboundCurrentPage - 1) * voiceInboundPageSize;
-      const endIndex = Math.min(startIndex + voiceInboundPageSize, totalCount);
-      const pageItems = filtered.slice(startIndex, endIndex);
+      if (countEl) {
+        countEl.innerText = `${activeFleets.length} Active Fleets`;
+      }
 
-      renderVoiceInboundPagination(totalCount, voiceInboundCurrentPage, totalPages, startIndex, endIndex);
+      if (!tbody) return;
 
-      if (pageItems.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="py-10 text-center text-slate-500">No country destinations found matching search.</td></tr>';
+      if (activeFleets.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-500">No active virtual line country fleets found. Activate routes in Virtual Lines Deck.</td></tr>';
         return;
       }
 
-      tbody.innerHTML = pageItems.map(r => {
-        const twilioInbound = getCarrierWholesale('TWILIO', r.countryCode, 'inbound_voice');
-        const telnyxInbound = getCarrierWholesale('TELNYX', r.countryCode, 'inbound_voice');
-        const didwwInbound = getCarrierWholesale('DIDWW', r.countryCode, 'inbound_voice');
-        const carrierCost = (r.inboundCallCost !== undefined && r.inboundCallCost !== null) ? r.inboundCallCost : 0.0100;
+      tbody.innerHTML = activeFleets.map(r => {
+        const carrier = (r.carrier || 'TWILIO').toUpperCase();
+        const wholesaleCost = getCarrierWholesale(carrier, r.countryCode, 'inbound_voice');
         const policy = (r.inboundCallPolicy || 'FREE').toUpperCase();
         const isFree = policy === 'FREE';
 
         return `
           <tr class="hover:bg-slate-800/40 transition-all border-b border-slate-800/60" id="voice_inbound_row_${r.countryCode}">
-            <!-- 1. Country Fleet Destination -->
-            <td class="py-3.5 px-4">
+            <!-- 1. Active Fleet Country -->
+            <td class="py-3 px-4">
               <div class="flex items-center gap-2.5">
                 <span class="text-2xl">${r.flagEmoji || '🌐'}</span>
                 <div>
@@ -8533,40 +8638,28 @@
               </div>
             </td>
 
-            <!-- 2. Twilio Inbound Wholesale -->
-            <td class="py-3.5 px-4 bg-purple-950/10 font-mono text-xs">
-              <div class="flex items-center justify-between">
-                <span class="text-purple-300 font-bold">$${twilioInbound.toFixed(4)}</span>
-                <span class="text-[9px] text-purple-400/70 font-sans">/min</span>
+            <!-- 2. Assigned Carrier -->
+            <td class="py-3 px-4">
+              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                carrier === 'TWILIO' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
+                carrier === 'TELNYX' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
+                'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+              }">
+                <span class="w-1.5 h-1.5 rounded-full ${carrier === 'TWILIO' ? 'bg-purple-400' : carrier === 'TELNYX' ? 'bg-emerald-400' : 'bg-cyan-400'}"></span>
+                <span>${carrier}</span>
+              </span>
+            </td>
+
+            <!-- 3. Wholesale Inbound Cost -->
+            <td class="py-3 px-4 font-mono text-xs">
+              <div class="flex items-center gap-1">
+                <span class="text-slate-300 font-bold">$${wholesaleCost.toFixed(4)}</span>
+                <span class="text-[10px] text-slate-500">/min</span>
               </div>
             </td>
 
-            <!-- 3. Telnyx Inbound Wholesale -->
-            <td class="py-3.5 px-4 bg-emerald-950/10 font-mono text-xs">
-              <div class="flex items-center justify-between">
-                <span class="text-emerald-300 font-bold">$${telnyxInbound.toFixed(4)}</span>
-                <span class="text-[9px] text-emerald-400/70 font-sans">/min</span>
-              </div>
-            </td>
-
-            <!-- 4. DIDWW Inbound Wholesale -->
-            <td class="py-3.5 px-4 bg-cyan-950/10 font-mono text-xs">
-              <div class="flex items-center justify-between">
-                <span class="text-cyan-300 font-bold">$${didwwInbound.toFixed(4)}</span>
-                <span class="text-[9px] text-cyan-400/70 font-sans">/min</span>
-              </div>
-            </td>
-
-            <!-- 5. Carrier Wholesale Base Cost -->
-            <td class="py-3.5 px-4 font-mono text-xs">
-              <div class="flex items-center justify-between">
-                <span class="text-slate-300 font-bold">$${carrierCost.toFixed(4)}</span>
-                <span class="text-[9px] text-slate-500 font-sans">/min</span>
-              </div>
-            </td>
-
-            <!-- 6. User Inbound Policy (1-Click Toggle) -->
-            <td class="py-3.5 px-4 text-center">
+            <!-- 4. User Inbound Policy -->
+            <td class="py-3 px-4 text-center">
               <button type="button" onclick="toggleInboundVoicePolicy('${r.countryCode}')" id="btn_toggle_inbound_voice_${r.countryCode}" title="Click to Toggle Inbound Voice Policy" class="cursor-pointer transition-all inline-block">
                 <span class="px-3 py-1.5 rounded-xl text-xs font-bold ${isFree ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30'} flex items-center justify-center gap-1.5">
                   <i class="fa-solid ${isFree ? 'fa-gift text-emerald-400' : 'fa-receipt text-amber-400'}"></i>
@@ -8575,9 +8668,9 @@
               </button>
             </td>
 
-            <!-- 7. Quick Action -->
-            <td class="py-3.5 px-4 text-right">
-              <button onclick="openEditCountryRateModal('${r.countryCode}')" class="p-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-emerald-400 rounded-lg text-xs transition-all ml-auto" title="Full Route Deck Settings">
+            <!-- 5. Action -->
+            <td class="py-3 px-4 text-right">
+              <button onclick="openEditCountryRateModal('${r.countryCode}')" class="p-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-emerald-400 rounded-lg text-xs transition-all ml-auto" title="Route Deck Settings">
                 <i class="fa-solid fa-sliders"></i>
               </button>
             </td>
@@ -8586,96 +8679,98 @@
       }).join('');
     }
 
-    function renderVoiceInboundPagination(totalCount, currentPage, totalPages, startIdx, endIdx) {
-      const container = document.getElementById('voiceInboundPaginationControls');
-      if (!container) return;
-
-      if (totalCount === 0) {
-        container.innerHTML = '<span class="text-xs text-slate-500">0 destinations</span>';
-        return;
+    async function setGlobalInboundVoicePolicy(policy) {
+      try {
+        showToast(`Setting Global Inbound Voice Policy to ${policy}...`, 'info');
+        const res = await adminFetch('/api/admin/rates/bulk-actions', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'set_inbound_voice_policy', policy, retailPrice: globalInboundVoiceRetailRate })
+        });
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          globalInboundVoicePolicy = policy;
+          (cachedCountryRates || []).forEach(r => r.inboundCallPolicy = policy);
+          if (policy === 'FREE') {
+            globalInboundVoiceRetailRate = 0.000;
+            const input = document.getElementById('inboundVoiceRetailInput');
+            if (input) input.value = '0.000';
+          }
+          renderVoiceInboundTable();
+        } else {
+          showToast(res?.error || 'Failed to update inbound policy', 'error');
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
       }
-
-      let pageBtns = '';
-      for (let p = 1; p <= totalPages; p++) {
-        const pStart = (p - 1) * voiceInboundPageSize + 1;
-        const pEnd = Math.min(p * voiceInboundPageSize, totalCount);
-        const isActive = p === currentPage;
-        pageBtns += `
-          <button type="button" onclick="goToVoiceInboundPage(${p})" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            isActive ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30' : 'bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800'
-          }">
-            <span>Page ${p}</span> <span class="text-[10px] opacity-75 font-mono">(${pStart}-${pEnd})</span>
-          </button>
-        `;
-      }
-
-      container.innerHTML = `
-        <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-xs text-slate-400 mr-2">Showing <strong class="text-white font-mono">${startIdx + 1}-${endIdx}</strong> of <strong class="text-white font-mono">${totalCount}</strong></span>
-          <button type="button" onclick="goToVoiceInboundPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled class="opacity-40 cursor-not-allowed px-2.5 py-1.5 bg-slate-950 text-slate-600 rounded-xl text-xs border border-slate-800"' : 'class="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-xl text-xs border border-slate-800 cursor-pointer"'}><i class="fa-solid fa-chevron-left"></i> Prev</button>
-          <div class="flex items-center gap-1.5">${pageBtns}</div>
-          <button type="button" onclick="goToVoiceInboundPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled class="opacity-40 cursor-not-allowed px-2.5 py-1.5 bg-slate-950 text-slate-600 rounded-xl text-xs border border-slate-800"' : 'class="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-xl text-xs border border-slate-800 cursor-pointer"'}">Next <i class="fa-solid fa-chevron-right"></i></button>
-        </div>
-      `;
     }
+    window.setGlobalInboundVoicePolicy = setGlobalInboundVoicePolicy;
+
+    async function saveInboundVoiceRetailRate() {
+      const input = document.getElementById('inboundVoiceRetailInput');
+      if (!input) return;
+      const rate = parseFloat(input.value) || 0;
+      globalInboundVoiceRetailRate = rate;
+
+      const policy = rate <= 0 ? 'FREE' : 'PAID';
+      await setGlobalInboundVoicePolicy(policy);
+      showToast(`✅ Inbound Voice Sell Rate saved as $${rate.toFixed(3)}/min (${policy})!`, 'success');
+    }
+    window.saveInboundVoiceRetailRate = saveInboundVoiceRetailRate;
 
     // ============================================================
-    // 📨 INBOUND SMS MESSAGING (OTP/2FA) & POLICY MATRIX CONTROLLERS
+    // 📨 INBOUND SMS (OTP/2FA) GLOBAL POLICY & ACTIVE FLEETS CONTROLLER
     // ============================================================
-    function handleSmsInboundSearch(val) {
-      smsInboundSearchQuery = (val || '').trim().toLowerCase();
-      smsInboundCurrentPage = 1;
-      renderSmsInboundTable();
-    }
-    window.handleSmsInboundSearch = handleSmsInboundSearch;
-
-    function goToSmsInboundPage(page) {
-      smsInboundCurrentPage = page;
-      renderSmsInboundTable();
-    }
-    window.goToSmsInboundPage = goToSmsInboundPage;
+    let globalInboundSmsPolicy = 'FREE';
+    let globalInboundSmsRetailRate = 0.000;
 
     function renderSmsInboundTable() {
-      const tbody = document.getElementById('smsInboundTableBody');
-      if (!tbody) return;
+      const tbody = document.getElementById('activeFleetSmsTableBody');
+      const badge = document.getElementById('smsInboundPolicyBadge');
+      const input = document.getElementById('inboundSmsRetailInput');
+      const countEl = document.getElementById('activeFleetSmsCount');
 
-      let filtered = cachedCountryRates || [];
-      if (smsInboundSearchQuery) {
-        filtered = filtered.filter(r =>
-          r.countryName.toLowerCase().includes(smsInboundSearchQuery) ||
-          r.countryCode.toLowerCase().includes(smsInboundSearchQuery) ||
-          r.dialCode.includes(smsInboundSearchQuery)
-        );
+      const allRates = cachedCountryRates || [];
+      const activeFleets = allRates.filter(r => r.isActive);
+
+      // Check majority policy
+      const freeCount = allRates.filter(r => (r.inboundSmsPolicy || 'FREE').toUpperCase() === 'FREE').length;
+      globalInboundSmsPolicy = freeCount >= (allRates.length / 2) ? 'FREE' : 'PAID';
+
+      if (badge) {
+        if (globalInboundSmsPolicy === 'FREE') {
+          badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+          badge.innerHTML = '<i class="fa-solid fa-shield-halved mr-1 text-emerald-400"></i> 100% FREE (OTP/2FA)';
+        } else {
+          badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+          badge.innerHTML = '<i class="fa-solid fa-receipt mr-1 text-amber-400"></i> PAID Per Message';
+        }
       }
 
-      const totalCount = filtered.length;
-      const totalPages = Math.max(1, Math.ceil(totalCount / smsInboundPageSize));
-      if (smsInboundCurrentPage > totalPages) smsInboundCurrentPage = totalPages;
-      if (smsInboundCurrentPage < 1) smsInboundCurrentPage = 1;
+      if (input && document.activeElement !== input) {
+        input.value = globalInboundSmsRetailRate.toFixed(3);
+      }
 
-      const startIndex = (smsInboundCurrentPage - 1) * smsInboundPageSize;
-      const endIndex = Math.min(startIndex + smsInboundPageSize, totalCount);
-      const pageItems = filtered.slice(startIndex, endIndex);
+      if (countEl) {
+        countEl.innerText = `${activeFleets.length} Active Fleets`;
+      }
 
-      renderSmsInboundPagination(totalCount, smsInboundCurrentPage, totalPages, startIndex, endIndex);
+      if (!tbody) return;
 
-      if (pageItems.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="py-10 text-center text-slate-500">No country destinations found matching search.</td></tr>';
+      if (activeFleets.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-500">No active virtual line country fleets found. Activate routes in Virtual Lines Deck.</td></tr>';
         return;
       }
 
-      tbody.innerHTML = pageItems.map(r => {
-        const twilioInbound = getCarrierWholesale('TWILIO', r.countryCode, 'inbound_sms');
-        const telnyxInbound = getCarrierWholesale('TELNYX', r.countryCode, 'inbound_sms');
-        const didwwInbound = getCarrierWholesale('DIDWW', r.countryCode, 'inbound_sms');
-        const carrierCost = (r.inboundSmsCost !== undefined && r.inboundSmsCost !== null) ? r.inboundSmsCost : 0.0075;
+      tbody.innerHTML = activeFleets.map(r => {
+        const carrier = (r.carrier || 'TWILIO').toUpperCase();
+        const wholesaleCost = getCarrierWholesale(carrier, r.countryCode, 'inbound_sms');
         const policy = (r.inboundSmsPolicy || 'FREE').toUpperCase();
         const isFree = policy === 'FREE';
 
         return `
           <tr class="hover:bg-slate-800/40 transition-all border-b border-slate-800/60" id="sms_inbound_row_${r.countryCode}">
-            <!-- 1. Country Fleet Destination -->
-            <td class="py-3.5 px-4">
+            <!-- 1. Active Fleet Country -->
+            <td class="py-3 px-4">
               <div class="flex items-center gap-2.5">
                 <span class="text-2xl">${r.flagEmoji || '🌐'}</span>
                 <div>
@@ -8688,40 +8783,28 @@
               </div>
             </td>
 
-            <!-- 2. Twilio Inbound Wholesale -->
-            <td class="py-3.5 px-4 bg-purple-950/10 font-mono text-xs">
-              <div class="flex items-center justify-between">
-                <span class="text-purple-300 font-bold">$${twilioInbound.toFixed(4)}</span>
-                <span class="text-[9px] text-purple-400/70 font-sans">/msg</span>
+            <!-- 2. Assigned Carrier -->
+            <td class="py-3 px-4">
+              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                carrier === 'TWILIO' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
+                carrier === 'TELNYX' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
+                'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+              }">
+                <span class="w-1.5 h-1.5 rounded-full ${carrier === 'TWILIO' ? 'bg-purple-400' : carrier === 'TELNYX' ? 'bg-emerald-400' : 'bg-cyan-400'}"></span>
+                <span>${carrier}</span>
+              </span>
+            </td>
+
+            <!-- 3. Wholesale Inbound Cost -->
+            <td class="py-3 px-4 font-mono text-xs">
+              <div class="flex items-center gap-1">
+                <span class="text-slate-300 font-bold">$${wholesaleCost.toFixed(4)}</span>
+                <span class="text-[10px] text-slate-500">/msg</span>
               </div>
             </td>
 
-            <!-- 3. Telnyx Inbound Wholesale -->
-            <td class="py-3.5 px-4 bg-emerald-950/10 font-mono text-xs">
-              <div class="flex items-center justify-between">
-                <span class="text-emerald-300 font-bold">$${telnyxInbound.toFixed(4)}</span>
-                <span class="text-[9px] text-emerald-400/70 font-sans">/msg</span>
-              </div>
-            </td>
-
-            <!-- 4. DIDWW Inbound Wholesale -->
-            <td class="py-3.5 px-4 bg-cyan-950/10 font-mono text-xs">
-              <div class="flex items-center justify-between">
-                <span class="text-cyan-300 font-bold">$${didwwInbound.toFixed(4)}</span>
-                <span class="text-[9px] text-cyan-400/70 font-sans">/msg</span>
-              </div>
-            </td>
-
-            <!-- 5. Carrier Wholesale Base Cost -->
-            <td class="py-3.5 px-4 font-mono text-xs">
-              <div class="flex items-center justify-between">
-                <span class="text-slate-300 font-bold">$${carrierCost.toFixed(4)}</span>
-                <span class="text-[9px] text-slate-500 font-sans">/msg</span>
-              </div>
-            </td>
-
-            <!-- 6. User Inbound Policy (1-Click Toggle) -->
-            <td class="py-3.5 px-4 text-center">
+            <!-- 4. User Inbound Policy -->
+            <td class="py-3 px-4 text-center">
               <button type="button" onclick="toggleInboundSmsPolicy('${r.countryCode}')" id="btn_toggle_inbound_sms_${r.countryCode}" title="Click to Toggle Inbound SMS Policy" class="cursor-pointer transition-all inline-block">
                 <span class="px-3 py-1.5 rounded-xl text-xs font-bold ${isFree ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30'} flex items-center justify-center gap-1.5">
                   <i class="fa-solid ${isFree ? 'fa-shield-halved text-emerald-400' : 'fa-receipt text-amber-400'}"></i>
@@ -8730,9 +8813,9 @@
               </button>
             </td>
 
-            <!-- 7. Quick Action -->
-            <td class="py-3.5 px-4 text-right">
-              <button onclick="openEditCountryRateModal('${r.countryCode}')" class="p-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-amber-400 rounded-lg text-xs transition-all ml-auto" title="Full Route Deck Settings">
+            <!-- 5. Action -->
+            <td class="py-3 px-4 text-right">
+              <button onclick="openEditCountryRateModal('${r.countryCode}')" class="p-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-amber-400 rounded-lg text-xs transition-all ml-auto" title="Route Deck Settings">
                 <i class="fa-solid fa-sliders"></i>
               </button>
             </td>
@@ -8741,38 +8824,43 @@
       }).join('');
     }
 
-    function renderSmsInboundPagination(totalCount, currentPage, totalPages, startIdx, endIdx) {
-      const container = document.getElementById('smsInboundPaginationControls');
-      if (!container) return;
-
-      if (totalCount === 0) {
-        container.innerHTML = '<span class="text-xs text-slate-500">0 destinations</span>';
-        return;
+    async function setGlobalInboundSmsPolicy(policy) {
+      try {
+        showToast(`Setting Global Inbound SMS Policy to ${policy}...`, 'info');
+        const res = await adminFetch('/api/admin/rates/bulk-actions', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'set_inbound_sms_policy', policy, retailPrice: globalInboundSmsRetailRate })
+        });
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          globalInboundSmsPolicy = policy;
+          (cachedCountryRates || []).forEach(r => r.inboundSmsPolicy = policy);
+          if (policy === 'FREE') {
+            globalInboundSmsRetailRate = 0.000;
+            const input = document.getElementById('inboundSmsRetailInput');
+            if (input) input.value = '0.000';
+          }
+          renderSmsInboundTable();
+        } else {
+          showToast(res?.error || 'Failed to update inbound policy', 'error');
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
       }
-
-      let pageBtns = '';
-      for (let p = 1; p <= totalPages; p++) {
-        const pStart = (p - 1) * smsInboundPageSize + 1;
-        const pEnd = Math.min(p * smsInboundPageSize, totalCount);
-        const isActive = p === currentPage;
-        pageBtns += `
-          <button type="button" onclick="goToSmsInboundPage(${p})" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            isActive ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30' : 'bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800'
-          }">
-            <span>Page ${p}</span> <span class="text-[10px] opacity-75 font-mono">(${pStart}-${pEnd})</span>
-          </button>
-        `;
-      }
-
-      container.innerHTML = `
-        <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-xs text-slate-400 mr-2">Showing <strong class="text-white font-mono">${startIdx + 1}-${endIdx}</strong> of <strong class="text-white font-mono">${totalCount}</strong></span>
-          <button type="button" onclick="goToSmsInboundPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled class="opacity-40 cursor-not-allowed px-2.5 py-1.5 bg-slate-950 text-slate-600 rounded-xl text-xs border border-slate-800"' : 'class="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-xl text-xs border border-slate-800 cursor-pointer"'}><i class="fa-solid fa-chevron-left"></i> Prev</button>
-          <div class="flex items-center gap-1.5">${pageBtns}</div>
-          <button type="button" onclick="goToSmsInboundPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled class="opacity-40 cursor-not-allowed px-2.5 py-1.5 bg-slate-950 text-slate-600 rounded-xl text-xs border border-slate-800"' : 'class="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-xl text-xs border border-slate-800 cursor-pointer"'}">Next <i class="fa-solid fa-chevron-right"></i></button>
-        </div>
-      `;
     }
+    window.setGlobalInboundSmsPolicy = setGlobalInboundSmsPolicy;
+
+    async function saveInboundSmsRetailRate() {
+      const input = document.getElementById('inboundSmsRetailInput');
+      if (!input) return;
+      const rate = parseFloat(input.value) || 0;
+      globalInboundSmsRetailRate = rate;
+
+      const policy = rate <= 0 ? 'FREE' : 'PAID';
+      await setGlobalInboundSmsPolicy(policy);
+      showToast(`✅ Inbound SMS Sell Rate saved as $${rate.toFixed(3)}/msg (${policy})!`, 'success');
+    }
+    window.saveInboundSmsRetailRate = saveInboundSmsRetailRate;
 
     // ============================================================
     // ⚡ 1-CLICK TOGGLES & BULK ACTION ENGINE (VOICE, SMS, POLICIES)

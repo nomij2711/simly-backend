@@ -2237,6 +2237,8 @@ app.post('/api/numbers/renew', async (req, res) => {
       success: true,
       message: `Line renewed for +${durationDays} days! $${price.toFixed(2)} deducted.`,
       costDeducted: price,
+      setupFee: 0.00,
+      planPrice: price,
       newWalletBalance: updatedUser.walletBalance,
       data: updated
     });

@@ -1677,8 +1677,20 @@ const calculateNumberPrice = (countryCode, planType, durationDays, phoneNumber =
     throw new Error(`Virtual line route for ${rate?.countryName || countryCode} is disabled by administrator.`);
   }
   const plans = getCountryPlans(countryCode, false, false);
-  const matched = plans.find(p => p.key === planType || (durationDays && p.durationDays === parseInt(durationDays)));
-  const basePrice = matched ? (matched.planPrice || matched.price) : (rate.numberMonthlySellPrice || 1.00);
+  const numDays = durationDays ? parseInt(durationDays, 10) : null;
+  
+  let matched = null;
+  if (numDays) {
+    matched = plans.find(p => p.durationDays === numDays);
+  }
+  if (!matched && planType) {
+    matched = plans.find(p => p.key === planType);
+  }
+  if (!matched && plans.length > 0) {
+    matched = plans.find(p => p.key === '30_days') || plans[0];
+  }
+
+  const basePrice = matched ? (matched.planPrice !== undefined ? matched.planPrice : matched.price) : (rate.numberMonthlySellPrice || 1.00);
   const setupFee = (isInitialPurchase && rate.setupFee > 0) ? parseFloat(rate.setupFee.toFixed(2)) : 0;
   return parseFloat((basePrice + setupFee).toFixed(2));
 };
@@ -1926,7 +1938,8 @@ const handleBuyTest = async (req, res) => {
     }
     const rawCountryCode = (req.method === 'POST' ? req.body?.countryCode : req.query.countryCode) || "US";
     const planType = (req.method === 'POST' ? req.body?.planType : req.query.planType) || "30_days";
-    const durationDays = parseInt((req.method === 'POST' ? req.body?.durationDays : req.query.durationDays) || (planType === "7_days" ? 7 : planType === "365_days" ? 365 : 30), 10);
+    const defaultDays = planType === '7_days' ? 7 : (planType === '365_days' ? 365 : (planType === '180_days' ? 180 : (planType === '90_days' ? 90 : 30)));
+    const durationDays = parseInt((req.method === 'POST' ? req.body?.durationDays : req.query.durationDays) || defaultDays, 10);
 
     const cleanPhoneNumber = rawPhoneNumber.toString().trim().replace(/\s+/g, '').replace(/-/g, '');
     const cleanCountryCode = rawCountryCode.toString().trim().toUpperCase().substring(0, 2) || "US";
@@ -2160,10 +2173,10 @@ app.get('/api/numbers/my-numbers', async (req, res) => {
   }
 });
 
-// 3.1 Endpoint: Extend / Renew virtual line validity (1.5x price deduction)
+// 3.1 Endpoint: Extend / Renew virtual line validity
 app.post('/api/numbers/renew', async (req, res) => {
   try {
-    const { id, phoneNumber, durationDays = 30 } = req.body;
+    const { id, phoneNumber, durationDays = 30, planType: inputPlanType } = req.body;
     if (!id && !phoneNumber) {
       return res.status(400).json({ success: false, error: 'id or phoneNumber is required' });
     }
@@ -2174,8 +2187,17 @@ app.post('/api/numbers/renew', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Virtual number not found' });
     }
 
-    const planType = durationDays >= 365 ? '365_days' : durationDays <= 7 ? '7_days' : '30_days';
-    const price = calculateNumberPrice(existing.countryCode, planType, durationDays, existing.phoneNumber, false);
+    const numDays = parseInt(durationDays, 10) || 30;
+    let resolvedPlanType = inputPlanType;
+    if (!resolvedPlanType) {
+      if (numDays >= 365) resolvedPlanType = '365_days';
+      else if (numDays >= 180) resolvedPlanType = '180_days';
+      else if (numDays >= 90) resolvedPlanType = '90_days';
+      else if (numDays <= 7) resolvedPlanType = '7_days';
+      else resolvedPlanType = '30_days';
+    }
+
+    const price = calculateNumberPrice(existing.countryCode, resolvedPlanType, numDays, existing.phoneNumber, false);
 
     const user = await prisma.user.findUnique({ where: { id: existing.userId } });
     if (!user) {
@@ -2202,7 +2224,7 @@ app.post('/api/numbers/renew', async (req, res) => {
 
     const currentExpiry = existing.expiresAt ? new Date(existing.expiresAt).getTime() : Date.now();
     const baseTime = currentExpiry > Date.now() ? currentExpiry : Date.now();
-    const newExpiresAt = new Date(baseTime + parseInt(durationDays, 10) * 24 * 60 * 60 * 1000);
+    const newExpiresAt = new Date(baseTime + numDays * 24 * 60 * 60 * 1000);
 
     // Deduct price from wallet
     const updatedUser = await prisma.user.update({
@@ -2215,7 +2237,7 @@ app.post('/api/numbers/renew', async (req, res) => {
         userId: user.id,
         type: 'renewal',
         amount: -price,
-        description: `Line Renewal (+${durationDays} Days): ${existing.phoneNumber}`
+        description: `Line Renewal (+${numDays} Days): ${existing.phoneNumber}`
       }
     });
 
@@ -2223,18 +2245,19 @@ app.post('/api/numbers/renew', async (req, res) => {
       where: { id: existing.id },
       data: {
         expiresAt: newExpiresAt,
-        status: "active"
+        status: "active",
+        planType: resolvedPlanType
       }
     });
 
-    console.log(`🔄 [BILLING - LINE RENEW] Number ${existing.phoneNumber} renewed for $${price.toFixed(2)}. New balance: $${updatedUser.walletBalance.toFixed(2)}`);
+    console.log(`🔄 [BILLING - LINE RENEW] Number ${existing.phoneNumber} renewed for $${price.toFixed(2)} (${resolvedPlanType}, +${numDays} days). New balance: $${updatedUser.walletBalance.toFixed(2)}`);
 
     // 🔔 Save In-App Notification in User's Private Inbox
     prisma.inAppNotification.create({
       data: {
         userId: user.id,
         title: '🔄 Line Renewed Successfully!',
-        message: `Line ${existing.phoneNumber} renewed for +${durationDays} days. New validity until ${newExpiresAt.toLocaleDateString()}.`,
+        message: `Line ${existing.phoneNumber} renewed for +${numDays} days. New validity until ${newExpiresAt.toLocaleDateString()}.`,
         type: 'WALLET',
         icon: 'phone',
         actionType: 'navigate_my_numbers',
@@ -2246,7 +2269,7 @@ app.post('/api/numbers/renew', async (req, res) => {
     // 🔔 Lockscreen Push Notification on Number Renewal
     sendOneSignalPush({
       title: '🔄 Line Renewed Successfully!',
-      body: `Line ${existing.phoneNumber} extended for +${durationDays} days. Valid until ${newExpiresAt.toLocaleDateString()}.`,
+      body: `Line ${existing.phoneNumber} extended for +${numDays} days. Valid until ${newExpiresAt.toLocaleDateString()}.`,
       userId: [user.id, user.email].filter(Boolean),
       audience: 'user',
       data: {
@@ -2257,7 +2280,7 @@ app.post('/api/numbers/renew', async (req, res) => {
 
     res.json({
       success: true,
-      message: `Line renewed for +${durationDays} days! $${price.toFixed(2)} deducted.`,
+      message: `Line renewed for +${numDays} days! $${price.toFixed(2)} deducted.`,
       costDeducted: price,
       setupFee: 0.00,
       planPrice: price,
@@ -8281,7 +8304,7 @@ app.post('/api/admin/agent-actions/purchase-for-user', requireStaffPermission('c
 
     // Determine retail price based on exact system pricing rules
     const cCode = countryCode.toUpperCase();
-    const durationDays = planType === '7_days' ? 7 : (planType === '365_days' ? 365 : 30);
+    const durationDays = planType === '7_days' ? 7 : (planType === '365_days' ? 365 : (planType === '180_days' ? 180 : (planType === '90_days' ? 90 : 30)));
     const retailPrice = calculateNumberPrice(cCode, planType, durationDays, assignedNumber);
 
     // STRICT WALLET BALANCE CHECK

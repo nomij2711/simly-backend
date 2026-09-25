@@ -2352,7 +2352,69 @@
             </div>
           </div>
 
-          <!-- 2. Permanent Lifetime Carrier Inventory & Audit Ledger -->
+          <!-- 2. ⚡ Live Carrier Pricing & Country Route Matrix Inspector -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-magnifying-glass-dollar text-pink-400"></i>
+                  <span>Live Carrier Pricing & Country Route Matrix Inspector</span>
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">Inspect real-time wholesale costs for any Carrier & Destination Country, compare profit margins, and assign routes with 1-click.</p>
+              </div>
+              <div class="px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/20 text-[11px] text-pink-300 font-semibold flex items-center gap-1.5">
+                <i class="fa-solid fa-bolt text-amber-300"></i>
+                <span>Live Carrier API Sync</span>
+              </div>
+            </div>
+
+            <!-- Inspector Controls -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-slate-950 rounded-2xl border border-slate-800">
+              <div>
+                <label class="block text-slate-400 text-[11px] font-semibold mb-1">1. Select Wholesale Carrier:</label>
+                <select id="inspectCarrierSelect" class="w-full bg-slate-900 border border-purple-500/40 rounded-xl p-2.5 text-white font-bold text-xs focus:outline-none focus:border-purple-400" onchange="runCarrierRouteInspect()">
+                  <option value="TWILIO">🟣 Twilio UK & Global</option>
+                  <option value="TELNYX">🟢 Telnyx Wholesale</option>
+                  <option value="DIDWW">🔵 DIDWW Global</option>
+                  <option value="VONAGE">🟠 Vonage / Nexmo</option>
+                  <option value="BANDWIDTH">🔷 Bandwidth Inc</option>
+                  <option value="PLIVO">🟣 Plivo</option>
+                  <option value="SINCH">🔴 Sinch</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-slate-400 text-[11px] font-semibold mb-1">2. Select Destination Country Route:</label>
+                <select id="inspectCountrySelect" class="w-full bg-slate-900 border border-indigo-500/40 rounded-xl p-2.5 text-white font-bold text-xs focus:outline-none focus:border-indigo-400" onchange="runCarrierRouteInspect()">
+                  <option value="GB">🇬🇧 United Kingdom (+44)</option>
+                  <option value="US">🇺🇸 United States (+1)</option>
+                  <option value="CA">🇨🇦 Canada (+1)</option>
+                  <option value="AU">🇦🇺 Australia (+61)</option>
+                  <option value="DE">🇩🇪 Germany (+49)</option>
+                  <option value="FR">🇫🇷 France (+33)</option>
+                  <option value="PK">🇵🇰 Pakistan (+92)</option>
+                  <option value="IN">🇮🇳 India (+91)</option>
+                  <option value="AE">🇦🇪 United Arab Emirates (+971)</option>
+                  <option value="SA">🇸🇦 Saudi Arabia (+966)</option>
+                  <option value="TR">🇹🇷 Turkey (+90)</option>
+                </select>
+              </div>
+              <div class="flex items-end">
+                <button type="button" id="btnRunCarrierInspect" onclick="runCarrierRouteInspect()" class="w-full py-2.5 px-4 bg-gradient-to-r from-pink-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-pink-600/30 transition-all cursor-pointer">
+                  <i class="fa-solid fa-bolt text-amber-300"></i>
+                  <span>Fetch Live Wholesale API</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Inspection Result Comparison Card -->
+            <div id="carrierInspectResultCard" class="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+              <div class="text-center text-slate-500 text-xs py-2">
+                <i class="fa-solid fa-arrow-pointer mr-1.5 text-indigo-400"></i>Select a Carrier and Country above to inspect live wholesale costs & profit margins.
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Permanent Lifetime Carrier Inventory & Audit Ledger -->
           <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
@@ -7517,14 +7579,34 @@
         const res = await adminFetch(`/api/admin/carrier/rates-preview?country=${encodeURIComponent(cc)}&carrier=${encodeURIComponent(carrier)}`);
         if (res && res.success && res.rates) {
           const r = res.rates;
-          if (r.numberWholesaleCost !== undefined) document.getElementById('rateNumWholesale').value = Number(r.numberWholesaleCost).toFixed(2);
-          if (r.callWholesaleCostPerMin !== undefined) document.getElementById('rateCallWholesale').value = Number(r.callWholesaleCostPerMin).toFixed(4);
-          if (r.smsWholesaleCost !== undefined) document.getElementById('rateSmsWholesale').value = Number(r.smsWholesaleCost).toFixed(4);
-          if (r.inboundSmsCost !== undefined && document.getElementById('rateInboundSmsCost')) document.getElementById('rateInboundSmsCost').value = Number(r.inboundSmsCost).toFixed(4);
-          if (r.inboundCallCost !== undefined && document.getElementById('rateInboundCallCost')) document.getElementById('rateInboundCallCost').value = Number(r.inboundCallCost).toFixed(4);
+          const numWholesaleEl = document.getElementById('rateNumWholesale');
+          const callWholesaleEl = document.getElementById('rateCallWholesale');
+          const smsWholesaleEl = document.getElementById('rateSmsWholesale');
+          const inSmsCostEl = document.getElementById('rateInboundSmsCost');
+          const inCallCostEl = document.getElementById('rateInboundCallCost');
+
+          if (r.numberWholesaleCost !== undefined && numWholesaleEl) numWholesaleEl.value = Number(r.numberWholesaleCost).toFixed(2);
+          if (r.callWholesaleCostPerMin !== undefined && callWholesaleEl) callWholesaleEl.value = Number(r.callWholesaleCostPerMin).toFixed(4);
+          if (r.smsWholesaleCost !== undefined && smsWholesaleEl) smsWholesaleEl.value = Number(r.smsWholesaleCost).toFixed(4);
+          if (r.inboundSmsCost !== undefined && inSmsCostEl) inSmsCostEl.value = Number(r.inboundSmsCost).toFixed(4);
+          if (r.inboundCallCost !== undefined && inCallCostEl) inCallCostEl.value = Number(r.inboundCallCost).toFixed(4);
           
+          if (r.suggested) {
+            const numMonthlyEl = document.getElementById('rateNumMonthly');
+            const numYearlyEl = document.getElementById('rateNumYearly');
+            const num7DayEl = document.getElementById('rateNum7Day');
+            const callSellEl = document.getElementById('rateCallSell');
+            const smsSellEl = document.getElementById('rateSmsSell');
+
+            if (r.suggested.numberMonthlySellPrice && numMonthlyEl) numMonthlyEl.value = Number(r.suggested.numberMonthlySellPrice).toFixed(2);
+            if (r.suggested.numberYearlySellPrice && numYearlyEl) numYearlyEl.value = Number(r.suggested.numberYearlySellPrice).toFixed(2);
+            if (r.suggested.number7DaySellPrice && num7DayEl) num7DayEl.value = Number(r.suggested.number7DaySellPrice).toFixed(2);
+            if (r.suggested.callSellPricePerMin && callSellEl) callSellEl.value = Number(r.suggested.callSellPricePerMin).toFixed(3);
+            if (r.suggested.smsSellPrice && smsSellEl) smsSellEl.value = Number(r.suggested.smsSellPrice).toFixed(3);
+          }
+
           calculateModalMargins();
-          showToast(`✅ Live ${carrier} wholesale rates fetched for ${cc}!`, 'success');
+          showToast(`✅ Live ${carrier} rates loaded for ${cc}! (Wholesale: Call $${Number(r.callWholesaleCostPerMin).toFixed(4)}/m, SMS $${Number(r.smsWholesaleCost).toFixed(4)})`, 'success');
         } else {
           showToast('Could not fetch live carrier rates. Keeping current values.', 'warning');
         }
@@ -7535,6 +7617,177 @@
           btn.disabled = false;
           btn.innerHTML = '<i class="fa-solid fa-bolt text-amber-400"></i> <span>Fetch Live Carrier Rates</span>';
         }
+      }
+    }
+
+    // ⚡ Carrier Live Pricing & Country Route Inspector Controller
+    async function runCarrierRouteInspect() {
+      const carrier = (document.getElementById('inspectCarrierSelect')?.value || 'TWILIO').toUpperCase();
+      const countryCode = (document.getElementById('inspectCountrySelect')?.value || 'GB').toUpperCase();
+      const cardEl = document.getElementById('carrierInspectResultCard');
+      const btn = document.getElementById('btnRunCarrierInspect');
+
+      if (!cardEl) return;
+      cardEl.classList.remove('hidden');
+      cardEl.innerHTML = `
+        <div class="py-6 text-center text-slate-400 text-xs">
+          <i class="fa-solid fa-spinner fa-spin text-pink-400 text-lg mr-2"></i>
+          <span>Querying live ${carrier} Pricing API for ${countryCode}...</span>
+        </div>
+      `;
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Fetching...';
+      }
+
+      try {
+        const res = await adminFetch(`/api/admin/carrier/rates-preview?country=${encodeURIComponent(countryCode)}&carrier=${encodeURIComponent(carrier)}`);
+        if (res && res.success && res.rates) {
+          const r = res.rates;
+          const s = r.suggested || {};
+          
+          const numCost = Number(r.numberWholesaleCost || 1.0).toFixed(2);
+          const numSell = Number(s.numberMonthlySellPrice || numCost * 1.5).toFixed(2);
+          const numProfit = (numSell - numCost).toFixed(2);
+          const numMargin = Math.round(((numSell - numCost) / numSell) * 100);
+
+          const callCost = Number(r.callWholesaleCostPerMin || 0.02).toFixed(4);
+          const callSell = Number(s.callSellPricePerMin || callCost * 1.8).toFixed(3);
+          const callProfit = (callSell - callCost).toFixed(4);
+          const callMargin = Math.round(((callSell - callCost) / callSell) * 100);
+
+          const smsCost = Number(r.smsWholesaleCost || 0.03).toFixed(4);
+          const smsSell = Number(s.smsSellPrice || smsCost * 1.6).toFixed(3);
+          const smsProfit = (smsSell - smsCost).toFixed(4);
+          const smsMargin = Math.round(((smsSell - smsCost) / smsSell) * 100);
+
+          cardEl.innerHTML = `
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-500/20 to-purple-500/20 border border-pink-500/30 flex items-center justify-center text-2xl">
+                  ${countryCode === 'GB' ? '🇬🇧' : (countryCode === 'US' ? '🇺🇸' : (countryCode === 'CA' ? '🇨🇦' : (countryCode === 'PK' ? '🇵🇰' : (countryCode === 'AU' ? '🇦🇺' : (countryCode === 'DE' ? '🇩🇪' : (countryCode === 'IN' ? '🇮🇳' : (countryCode === 'AE' ? '🇦🇪' : (countryCode === 'SA' ? '🇸🇦' : '🌐'))))))))}
+                </div>
+                <div>
+                  <div class="text-sm font-bold text-white flex items-center gap-2">
+                    <span>${countryCode} Destination Route</span>
+                    <span class="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold text-[10px] border border-purple-500/30">${carrier} Telecom</span>
+                  </div>
+                  <div class="text-xs text-slate-400 mt-0.5">Live wholesale termination costs & retail profit margins for this country destination.</div>
+                </div>
+              </div>
+              <button type="button" onclick="applyInspectedCarrierRoute('${carrier}', '${countryCode}', ${numCost}, ${numSell}, ${callCost}, ${callSell}, ${smsCost}, ${smsSell})" class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition-all cursor-pointer">
+                <i class="fa-solid fa-check-double text-amber-300"></i>
+                <span>Assign ${carrier} & Apply Rates to ${countryCode}</span>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <!-- 1. DID Virtual Number -->
+              <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800/90 space-y-2">
+                <div class="flex items-center justify-between text-slate-400 font-semibold text-[11px]">
+                  <span class="flex items-center gap-1.5"><i class="fa-solid fa-phone text-emerald-400"></i> Virtual Number DID</span>
+                  <span class="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full">+${numMargin}% Margin</span>
+                </div>
+                <div class="flex items-center justify-between pt-1">
+                  <div>
+                    <div class="text-[10px] text-slate-500">Carrier Wholesale:</div>
+                    <div class="text-sm font-bold text-cyan-400 font-mono">$${numCost} / mo</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-[10px] text-slate-500">Suggested Retail:</div>
+                    <div class="text-sm font-bold text-indigo-400 font-mono">$${numSell} / mo</div>
+                  </div>
+                </div>
+                <div class="text-[10px] text-slate-400 pt-1 border-t border-slate-800">
+                  Net Profit: <strong class="text-emerald-300 font-mono">+$${numProfit}/month</strong> per line
+                </div>
+              </div>
+
+              <!-- 2. Voice Calling Termination -->
+              <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800/90 space-y-2">
+                <div class="flex items-center justify-between text-slate-400 font-semibold text-[11px]">
+                  <span class="flex items-center gap-1.5"><i class="fa-solid fa-microphone text-cyan-400"></i> Voice Calling / Min</span>
+                  <span class="text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded-full">+${callMargin}% Margin</span>
+                </div>
+                <div class="flex items-center justify-between pt-1">
+                  <div>
+                    <div class="text-[10px] text-slate-500">Carrier Wholesale:</div>
+                    <div class="text-sm font-bold text-cyan-400 font-mono">$${callCost} / min</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-[10px] text-slate-500">Suggested Retail:</div>
+                    <div class="text-sm font-bold text-indigo-400 font-mono">$${callSell} / min</div>
+                  </div>
+                </div>
+                <div class="text-[10px] text-slate-400 pt-1 border-t border-slate-800">
+                  Net Profit: <strong class="text-emerald-300 font-mono">+$${callProfit}/min</strong> billed
+                </div>
+              </div>
+
+              <!-- 3. SMS Messaging -->
+              <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800/90 space-y-2">
+                <div class="flex items-center justify-between text-slate-400 font-semibold text-[11px]">
+                  <span class="flex items-center gap-1.5"><i class="fa-solid fa-comment-dots text-purple-400"></i> SMS Messaging / Msg</span>
+                  <span class="text-purple-400 font-bold bg-purple-500/10 px-2 py-0.5 rounded-full">+${smsMargin}% Margin</span>
+                </div>
+                <div class="flex items-center justify-between pt-1">
+                  <div>
+                    <div class="text-[10px] text-slate-500">Carrier Wholesale:</div>
+                    <div class="text-sm font-bold text-cyan-400 font-mono">$${smsCost} / msg</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-[10px] text-slate-500">Suggested Retail:</div>
+                    <div class="text-sm font-bold text-indigo-400 font-mono">$${smsSell} / msg</div>
+                  </div>
+                </div>
+                <div class="text-[10px] text-slate-400 pt-1 border-t border-slate-800">
+                  Net Profit: <strong class="text-emerald-300 font-mono">+$${smsProfit}/SMS</strong> sent
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      } catch (err) {
+        cardEl.innerHTML = `<div class="p-4 text-center text-rose-400 text-xs font-semibold">Failed to inspect carrier pricing: ${err.message}</div>`;
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-bolt text-amber-300"></i> <span>Fetch Live Wholesale API</span>';
+        }
+      }
+    }
+
+    // ⚡ 1-Click Apply Inspected Carrier Rates to Database
+    async function applyInspectedCarrierRoute(carrier, countryCode, numCost, numSell, callCost, callSell, smsCost, smsSell) {
+      try {
+        showToast(`⏳ Linking ${carrier} to ${countryCode} route...`, 'info');
+        const res = await adminFetch('/api/admin/rates', {
+          method: 'POST',
+          body: JSON.stringify({
+            countryCode: countryCode,
+            countryName: countryCode === 'GB' ? 'United Kingdom' : (countryCode === 'US' ? 'United States' : (countryCode === 'CA' ? 'Canada' : (countryCode === 'PK' ? 'Pakistan' : (countryCode === 'AU' ? 'Australia' : countryCode)))),
+            dialCode: countryCode === 'GB' ? '+44' : (countryCode === 'US' ? '+1' : (countryCode === 'CA' ? '+1' : (countryCode === 'PK' ? '+92' : (countryCode === 'AU' ? '+61' : '+')))),
+            flagEmoji: countryCode === 'GB' ? '🇬🇧' : (countryCode === 'US' ? '🇺🇸' : (countryCode === 'CA' ? '🇨🇦' : (countryCode === 'PK' ? '🇵🇰' : (countryCode === 'AU' ? '🇦🇺' : '🌐')))),
+            carrier: carrier,
+            numberMonthlySellPrice: parseFloat(numSell),
+            numberWholesaleCost: parseFloat(numCost),
+            callSellPricePerMin: parseFloat(callSell),
+            callWholesaleCostPerMin: parseFloat(callCost),
+            smsSellPrice: parseFloat(smsSell),
+            smsWholesaleCost: parseFloat(smsCost),
+            isActive: true
+          })
+        });
+
+        if (res && res.success) {
+          showToast(`🎉 ${countryCode} route successfully linked to ${carrier} with updated rates!`, 'success');
+          await loadCarriersTab();
+        } else {
+          showToast(res?.error || 'Failed to save rate deck route', 'error');
+        }
+      } catch (err) {
+        showToast('Error saving route: ' + err.message, 'error');
       }
     }
 
@@ -13697,11 +13950,27 @@ setInterval(() => {
           </div>
           <div>
             <label class="block font-semibold text-purple-400 mb-1">Carrier Provider</label>
-            <select id="rateCarrier" class="w-full bg-slate-950 border border-purple-500/40 rounded-xl p-2.5 text-white font-bold focus:outline-none focus:border-purple-400">
-              <option value="TWILIO">🟣 Twilio UK (Active)</option>
+            <select id="rateCarrier" onchange="fetchLiveCarrierRatesForModal()" class="w-full bg-slate-950 border border-purple-500/40 rounded-xl p-2.5 text-white font-bold focus:outline-none focus:border-purple-400">
+              <option value="TWILIO">🟣 Twilio UK & Global</option>
               <option value="TELNYX">🟢 Telnyx Wholesale</option>
               <option value="DIDWW">🔵 DIDWW Global</option>
+              <option value="VONAGE">🟠 Vonage / Nexmo</option>
+              <option value="BANDWIDTH">🔷 Bandwidth Inc</option>
+              <option value="PLIVO">🟣 Plivo</option>
+              <option value="SINCH">🔴 Sinch</option>
             </select>
+          </div>
+        </div>
+
+        <!-- ℹ️ Destination Routing & Carrier Clarification Notice -->
+        <div class="p-3 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-xs flex items-start gap-2.5">
+          <i class="fa-solid fa-circle-info text-indigo-400 text-sm mt-0.5"></i>
+          <div class="space-y-0.5">
+            <span class="text-white font-semibold">How International Telecom Routing Works:</span>
+            <p class="text-[11px] text-slate-300">
+              • <strong>Virtual Number:</strong> Cost to lease and own a virtual line in this country.<br>
+              • <strong>Outbound Voice & SMS:</strong> The termination rates charged when ANY user worldwide calls or texts a phone number in this destination (+Dial Code).
+            </p>
           </div>
         </div>
 
@@ -13709,9 +13978,9 @@ setInterval(() => {
         <div class="p-2.5 rounded-2xl bg-purple-950/20 border border-purple-500/30 flex items-center justify-between gap-2">
           <div class="flex items-center gap-2 text-[11px] text-purple-300">
             <i class="fa-solid fa-cloud-arrow-down text-sm text-purple-400"></i>
-            <span>Fetch official wholesale rates directly from carrier API</span>
+            <span>Fetch official wholesale rates & suggested retail prices</span>
           </div>
-          <button type="button" id="btnFetchModalRates" onclick="fetchLiveCarrierRatesForModal()" class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold text-[11px] shadow-sm flex items-center gap-1.5 transition-all">
+          <button type="button" id="btnFetchModalRates" onclick="fetchLiveCarrierRatesForModal()" class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold text-[11px] shadow-sm flex items-center gap-1.5 transition-all cursor-pointer">
             <i class="fa-solid fa-bolt text-amber-400"></i>
             <span>Fetch Live Carrier Rates</span>
           </button>

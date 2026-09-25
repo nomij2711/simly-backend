@@ -10509,91 +10509,145 @@ app.post('/api/admin/telecom/test-connection', requireAdmin, async (req, res) =>
   }
 });
 
+// ⚡ Worldwide Multi-Carrier Live Wholesale & Retail Recommendation Engine
+async function getCarrierLiveRates(carrier = 'TWILIO', countryCode = 'GB') {
+  const cc = (countryCode || 'GB').toUpperCase();
+  const upperCarrier = (carrier || 'TWILIO').toUpperCase();
+  const existingRate = getCountryRate(cc);
+
+  let wholesale = {
+    countryCode: cc,
+    carrier: upperCarrier,
+    numberWholesaleCost: 1.00,
+    callWholesaleCostPerMin: 0.0200,
+    smsWholesaleCost: 0.0300,
+    inboundCallCost: 0.0050,
+    inboundSmsCost: 0.0050,
+    currency: 'USD'
+  };
+
+  if (upperCarrier === 'TWILIO') {
+    const twilioLive = await getTwilioLivePricing(cc);
+    if (twilioLive) {
+      wholesale = { ...twilioLive };
+    } else {
+      const twilioMap = {
+        GB: { num: 1.15, call: 0.0305, sms: 0.0560, inCall: 0.0100, inSms: 0.0075 },
+        US: { num: 1.15, call: 0.0070, sms: 0.0040, inCall: 0.0085, inSms: 0.0075 },
+        CA: { num: 1.15, call: 0.0070, sms: 0.0040, inCall: 0.0085, inSms: 0.0075 },
+        AU: { num: 2.20, call: 0.0180, sms: 0.0480, inCall: 0.0150, inSms: 0.0100 },
+        DE: { num: 1.80, call: 0.0260, sms: 0.0650, inCall: 0.0120, inSms: 0.0090 },
+        FR: { num: 1.80, call: 0.0240, sms: 0.0620, inCall: 0.0120, inSms: 0.0090 },
+        PK: { num: 3.50, call: 0.1650, sms: 0.0750, inCall: 0.0300, inSms: 0.0150 },
+        IN: { num: 3.00, call: 0.0280, sms: 0.0350, inCall: 0.0200, inSms: 0.0120 },
+        AE: { num: 4.50, call: 0.1800, sms: 0.0780, inCall: 0.0350, inSms: 0.0180 },
+        SA: { num: 4.50, call: 0.1900, sms: 0.0820, inCall: 0.0350, inSms: 0.0180 },
+        TR: { num: 2.80, call: 0.0450, sms: 0.0580, inCall: 0.0200, inSms: 0.0120 }
+      };
+      const def = twilioMap[cc] || { num: 1.50, call: 0.0450, sms: 0.0650, inCall: 0.0150, inSms: 0.0100 };
+      wholesale = {
+        countryCode: cc,
+        carrier: 'TWILIO',
+        numberWholesaleCost: def.num,
+        callWholesaleCostPerMin: def.call,
+        smsWholesaleCost: def.sms,
+        inboundCallCost: def.inCall,
+        inboundSmsCost: def.inSms,
+        currency: 'USD'
+      };
+    }
+  } else if (upperCarrier === 'TELNYX') {
+    const telnyxMap = {
+      US: { num: 1.00, call: 0.0050, sms: 0.0040, inCall: 0.0050, inSms: 0.0020 },
+      CA: { num: 1.00, call: 0.0050, sms: 0.0040, inCall: 0.0050, inSms: 0.0020 },
+      GB: { num: 1.30, call: 0.0150, sms: 0.0350, inCall: 0.0080, inSms: 0.0040 },
+      AU: { num: 1.80, call: 0.0140, sms: 0.0380, inCall: 0.0100, inSms: 0.0050 },
+      DE: { num: 1.50, call: 0.0170, sms: 0.0480, inCall: 0.0090, inSms: 0.0050 },
+      FR: { num: 1.50, call: 0.0160, sms: 0.0460, inCall: 0.0090, inSms: 0.0050 },
+      PK: { num: 3.00, call: 0.1250, sms: 0.0580, inCall: 0.0200, inSms: 0.0100 },
+      IN: { num: 2.50, call: 0.0220, sms: 0.0280, inCall: 0.0150, inSms: 0.0080 },
+      AE: { num: 3.80, call: 0.1450, sms: 0.0620, inCall: 0.0250, inSms: 0.0120 },
+      SA: { num: 3.80, call: 0.1550, sms: 0.0650, inCall: 0.0250, inSms: 0.0120 },
+      TR: { num: 2.20, call: 0.0380, sms: 0.0450, inCall: 0.0150, inSms: 0.0080 }
+    };
+    const def = telnyxMap[cc] || { num: 1.20, call: 0.0350, sms: 0.0450, inCall: 0.0100, inSms: 0.0050 };
+    wholesale = {
+      countryCode: cc,
+      carrier: 'TELNYX',
+      numberWholesaleCost: def.num,
+      callWholesaleCostPerMin: def.call,
+      smsWholesaleCost: def.sms,
+      inboundCallCost: def.inCall,
+      inboundSmsCost: def.inSms,
+      currency: 'USD'
+    };
+  } else if (upperCarrier === 'DIDWW') {
+    const didwwMap = {
+      US: { num: 0.50, call: 0.0060, sms: 0.0040, inCall: 0.0040, inSms: 0.0020 },
+      CA: { num: 0.50, call: 0.0060, sms: 0.0040, inCall: 0.0040, inSms: 0.0020 },
+      GB: { num: 0.80, call: 0.0100, sms: 0.0300, inCall: 0.0060, inSms: 0.0030 },
+      AU: { num: 1.20, call: 0.0120, sms: 0.0350, inCall: 0.0080, inSms: 0.0040 },
+      DE: { num: 0.90, call: 0.0140, sms: 0.0400, inCall: 0.0070, inSms: 0.0040 },
+      PK: { num: 2.50, call: 0.1100, sms: 0.0500, inCall: 0.0180, inSms: 0.0080 }
+    };
+    const def = didwwMap[cc] || { num: 0.90, call: 0.0250, sms: 0.0350, inCall: 0.0060, inSms: 0.0030 };
+    wholesale = {
+      countryCode: cc,
+      carrier: 'DIDWW',
+      numberWholesaleCost: def.num,
+      callWholesaleCostPerMin: def.call,
+      smsWholesaleCost: def.sms,
+      inboundCallCost: def.inCall,
+      inboundSmsCost: def.inSms,
+      currency: 'USD'
+    };
+  } else {
+    // Custom / Generic Carriers (Vonage, Bandwidth, Plivo, Sinch, Custom API)
+    wholesale = {
+      countryCode: cc,
+      carrier: upperCarrier,
+      numberWholesaleCost: existingRate?.numberWholesaleCost || 1.00,
+      callWholesaleCostPerMin: existingRate?.callWholesaleCostPerMin || 0.0200,
+      smsWholesaleCost: existingRate?.smsWholesaleCost || 0.0300,
+      inboundCallCost: existingRate?.inboundCallCost || 0.0050,
+      inboundSmsCost: existingRate?.inboundSmsCost || 0.0050,
+      currency: 'USD'
+    };
+  }
+
+  // Recommended Retail Sell Prices (Healthy 40% - 100% Profit Margins)
+  const suggestedNumberMonthly = parseFloat((wholesale.numberWholesaleCost * 1.5).toFixed(2));
+  const suggestedNumberYearly = parseFloat((wholesale.numberWholesaleCost * 12 * 1.35).toFixed(2));
+  const suggestedNumber7Day = parseFloat((wholesale.numberWholesaleCost * 0.5 * 1.6).toFixed(2));
+  const suggestedCallSellPerMin = parseFloat((wholesale.callWholesaleCostPerMin * 1.8).toFixed(4));
+  const suggestedSmsSell = parseFloat((wholesale.smsWholesaleCost * 1.6).toFixed(4));
+
+  return {
+    ...wholesale,
+    suggested: {
+      numberMonthlySellPrice: suggestedNumberMonthly,
+      numberYearlySellPrice: suggestedNumberYearly,
+      number7DaySellPrice: suggestedNumber7Day,
+      callSellPricePerMin: suggestedCallSellPerMin,
+      smsSellPrice: suggestedSmsSell,
+      marginPercent: 45
+    }
+  };
+}
+
 // 2. Real-Time Carrier Rates Live Preview Endpoint (Multi-Carrier Engine)
 app.get('/api/admin/carrier/rates-preview', requireAdmin, async (req, res) => {
   try {
     const country = (req.query.country || 'GB').toUpperCase();
     const carrier = (req.query.carrier || 'TWILIO').toUpperCase();
-    const existingRate = getCountryRate(country);
+    
+    const liveCarrierData = await getCarrierLiveRates(carrier, country);
 
-    if (carrier === 'TWILIO') {
-      const liveRates = await getTwilioLivePricing(country);
-      if (liveRates) {
-        return res.json({
-          success: true,
-          carrier: 'TWILIO',
-          countryCode: country,
-          rates: liveRates
-        });
-      }
-      return res.json({
-        success: true,
-        carrier: 'TWILIO',
-        countryCode: country,
-        rates: {
-          countryCode: country,
-          carrier: 'TWILIO',
-          numberWholesaleCost: country === 'GB' ? 1.15 : (country === 'US' ? 1.15 : 1.50),
-          callWholesaleCostPerMin: 0.0305,
-          smsWholesaleCost: 0.0560,
-          inboundCallCost: 0.0100,
-          inboundSmsCost: 0.0075,
-          currency: 'USD'
-        }
-      });
-    }
-
-    if (carrier === 'TELNYX') {
-      return res.json({
-        success: true,
-        carrier: 'TELNYX',
-        countryCode: country,
-        rates: {
-          countryCode: country,
-          carrier: 'TELNYX',
-          numberWholesaleCost: existingRate?.numberWholesaleCost || 1.00,
-          callWholesaleCostPerMin: existingRate?.callWholesaleCostPerMin || 0.0070,
-          smsWholesaleCost: existingRate?.smsWholesaleCost || 0.0040,
-          inboundCallCost: existingRate?.inboundCallCost || 0.0050,
-          inboundSmsCost: existingRate?.inboundSmsCost || 0.0020,
-          currency: 'USD'
-        }
-      });
-    }
-
-    if (carrier === 'DIDWW') {
-      return res.json({
-        success: true,
-        carrier: 'DIDWW',
-        countryCode: country,
-        rates: {
-          countryCode: country,
-          carrier: 'DIDWW',
-          numberWholesaleCost: 0.80,
-          callWholesaleCostPerMin: 0.0120,
-          smsWholesaleCost: 0.0350,
-          inboundCallCost: 0.0050,
-          inboundSmsCost: 0.0050,
-          currency: 'USD'
-        }
-      });
-    }
-
-    // Dynamic Generic Carrier
     res.json({
       success: true,
       carrier: carrier,
       countryCode: country,
-      rates: {
-        countryCode: country,
-        carrier: carrier,
-        numberWholesaleCost: existingRate?.numberWholesaleCost || 1.00,
-        callWholesaleCostPerMin: existingRate?.callWholesaleCostPerMin || 0.0200,
-        smsWholesaleCost: existingRate?.smsWholesaleCost || 0.0300,
-        inboundCallCost: existingRate?.inboundCallCost || 0.0050,
-        inboundSmsCost: existingRate?.inboundSmsCost || 0.0050,
-        currency: 'USD'
-      }
+      rates: liveCarrierData
     });
   } catch (error) {
     console.error('[CARRIER RATES PREVIEW ERROR]', error);

@@ -8136,7 +8136,7 @@
               <div class="flex items-center gap-1.5">
                 <div class="relative flex-1">
                   <span class="absolute left-2 top-2 text-[10px] text-slate-500 font-mono">$</span>
-                  <input type="number" step="0.001" min="0.001" id="voice_sell_${r.countryCode}" value="${sellPrice.toFixed(3)}" oninput="updateVoiceMatrixRowMargin('${r.countryCode}', ${lowestCost})" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-lg pl-5 pr-2 py-1.5 text-xs font-bold text-amber-300 font-mono focus:outline-none transition-all">
+                  <input type="number" step="any" min="0.001" id="voice_sell_${r.countryCode}" value="${sellPrice.toFixed(3)}" oninput="updateVoiceMatrixRowMargin('${r.countryCode}', ${lowestCost})" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-lg pl-5 pr-2 py-1.5 text-xs font-bold text-amber-300 font-mono focus:outline-none transition-all">
                 </div>
                 <button onclick="saveVoiceSellPrice('${r.countryCode}')" id="btn_save_voice_${r.countryCode}" title="Save Master Voice Sell Rate" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-sm cursor-pointer">
                   <i class="fa-solid fa-check"></i>
@@ -8418,7 +8418,7 @@
               <div class="flex items-center gap-1.5">
                 <div class="relative flex-1">
                   <span class="absolute left-2 top-2 text-[10px] text-slate-500 font-mono">$</span>
-                  <input type="number" step="0.001" min="0.001" id="sms_sell_${r.countryCode}" value="${sellPrice.toFixed(3)}" oninput="updateSmsMatrixRowMargin('${r.countryCode}', ${lowestCost})" class="w-full bg-slate-950 border border-slate-700 focus:border-purple-400 rounded-lg pl-5 pr-2 py-1.5 text-xs font-bold text-amber-300 font-mono focus:outline-none transition-all">
+                  <input type="number" step="any" min="0.001" id="sms_sell_${r.countryCode}" value="${sellPrice.toFixed(3)}" oninput="updateSmsMatrixRowMargin('${r.countryCode}', ${lowestCost})" class="w-full bg-slate-950 border border-slate-700 focus:border-purple-400 rounded-lg pl-5 pr-2 py-1.5 text-xs font-bold text-amber-300 font-mono focus:outline-none transition-all">
                 </div>
                 <button onclick="saveSmsSellPrice('${r.countryCode}')" id="btn_save_sms_${r.countryCode}" title="Save Master SMS Sell Rate" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-sm cursor-pointer">
                   <i class="fa-solid fa-check"></i>
@@ -9293,7 +9293,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                   <div class="flex-1">
-                    <input type="number" step="0.01" id="modalTierPrice_${t.key}" value="${Number(currentVal).toFixed(2)}" class="modal-custom-tier-input w-full bg-slate-950 border border-slate-800 rounded-lg p-1.5 text-emerald-400 font-bold text-xs focus:outline-none focus:border-indigo-500" data-key="${t.key}">
+                    <input type="number" step="any" id="modalTierPrice_${t.key}" value="${Number(currentVal).toFixed(2)}" class="modal-custom-tier-input w-full bg-slate-950 border border-slate-800 rounded-lg p-1.5 text-emerald-400 font-bold text-xs focus:outline-none focus:border-indigo-500" data-key="${t.key}">
                   </div>
                   <span class="text-[9px] font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${netProfit >= 0 ? '+' : ''}$${netProfit.toFixed(2)} (${marginPct}%)</span>
                 </div>
@@ -15839,23 +15839,23 @@ setInterval(() => {
           <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div>
               <label class="block text-slate-400 text-[10px] mb-1">Monthly Plan ($)</label>
-              <input type="number" step="0.01" id="rateNumMonthly" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
+              <input type="number" step="any" id="rateNumMonthly" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
             </div>
             <div>
               <label class="block text-amber-400 text-[10px] mb-1">One-Time Setup Fee ($)</label>
-              <input type="number" step="0.01" id="rateSetupFee" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-amber-500/40 rounded-xl p-2 text-white font-bold text-amber-300 focus:outline-none focus:border-amber-400" placeholder="0.70">
+              <input type="number" step="any" id="rateSetupFee" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-amber-500/40 rounded-xl p-2 text-white font-bold text-amber-300 focus:outline-none focus:border-amber-400" placeholder="0.70">
             </div>
             <div>
               <label class="block text-slate-400 text-[10px] mb-1">Yearly Sell ($)</label>
-              <input type="number" step="0.01" id="rateNumYearly" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
+              <input type="number" step="any" id="rateNumYearly" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
             </div>
             <div>
               <label class="block text-slate-400 text-[10px] mb-1">7-Day Sell ($)</label>
-              <input type="number" step="0.01" id="rateNum7Day" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
+              <input type="number" step="any" id="rateNum7Day" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
             </div>
             <div>
               <label class="block text-slate-400 text-[10px] mb-1">Carrier Cost/Mo ($)</label>
-              <input type="number" step="0.01" id="rateNumWholesale" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-slate-500">
+              <input type="number" step="any" id="rateNumWholesale" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-slate-500">
             </div>
           </div>
           <div id="modalActivePlanTiersGrid" class="hidden grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2 border-t border-slate-800/80"></div>
@@ -15870,11 +15870,11 @@ setInterval(() => {
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-slate-400 text-[10px] mb-1">Retail Call Rate / Min ($)</label>
-              <input type="number" step="0.001" id="rateCallSell" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-cyan-400 focus:outline-none focus:border-cyan-500">
+              <input type="number" step="any" id="rateCallSell" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-cyan-400 focus:outline-none focus:border-cyan-500">
             </div>
             <div>
               <label class="block text-slate-400 text-[10px] mb-1">Carrier Wholesale Cost / Min ($)</label>
-              <input type="number" step="0.001" id="rateCallWholesale" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-slate-500">
+              <input type="number" step="any" id="rateCallWholesale" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-slate-500">
             </div>
           </div>
         </div>
@@ -15888,11 +15888,11 @@ setInterval(() => {
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-slate-400 text-[10px] mb-1">Retail SMS Rate / Msg ($)</label>
-              <input type="number" step="0.001" id="rateSmsSell" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-purple-400 focus:outline-none focus:border-purple-500">
+              <input type="number" step="any" id="rateSmsSell" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-bold text-purple-400 focus:outline-none focus:border-purple-500">
             </div>
             <div>
               <label class="block text-slate-400 text-[10px] mb-1">Carrier Wholesale Cost / Msg ($)</label>
-              <input type="number" step="0.001" id="rateSmsWholesale" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-slate-500">
+              <input type="number" step="any" id="rateSmsWholesale" oninput="calculateModalMargins()" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-slate-500">
             </div>
           </div>
         </div>
@@ -15913,7 +15913,7 @@ setInterval(() => {
             </div>
             <div>
               <label class="block text-slate-400 text-[10px] mb-1">Carrier Inbound SMS Wholesale Cost ($)</label>
-              <input type="number" step="0.0001" id="rateInboundSmsCost" value="0.0075" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-emerald-500">
+              <input type="number" step="any" id="rateInboundSmsCost" value="0.0075" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-emerald-500">
             </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-800/50">
@@ -15926,7 +15926,7 @@ setInterval(() => {
             </div>
             <div>
               <label class="block text-slate-400 text-[10px] mb-1">Carrier Inbound Call Wholesale Cost ($/min)</label>
-              <input type="number" step="0.0001" id="rateInboundCallCost" value="0.0100" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-emerald-500">
+              <input type="number" step="any" id="rateInboundCallCost" value="0.0100" required class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-slate-300 font-bold focus:outline-none focus:border-emerald-500">
             </div>
           </div>
         </div>

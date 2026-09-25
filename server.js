@@ -5147,7 +5147,9 @@ async function calculateMasterFinancials(carrier = 'all') {
     callTx,
     smsTx,
     allCalls,
-    allSmsOutbound
+    allSmsOutbound,
+    allCallsInbound,
+    allSmsInbound
   ] = await Promise.all([
     prisma.transaction.findMany({
       where: { type: { in: ['topup', 'deposit', 'crypto_deposit', 'stripe_deposit'] } },
@@ -5175,6 +5177,14 @@ async function calculateMasterFinancials(carrier = 'all') {
     }),
     prisma.message.findMany({ 
       where: { direction: 'outbound' },
+      orderBy: { createdAt: 'asc' }
+    }),
+    prisma.callLog.findMany({ 
+      where: { direction: 'inbound' },
+      orderBy: { createdAt: 'asc' }
+    }),
+    prisma.message.findMany({ 
+      where: { direction: 'inbound' },
       orderBy: { createdAt: 'asc' }
     })
   ]);
@@ -5259,8 +5269,36 @@ async function calculateMasterFinancials(carrier = 'all') {
     smsCount++;
   });
 
+  // D. Inbound SMS (Carrier Wholesale Cost for Free Inbound Policy)
+  let wholesaleInboundSmsCost = 0;
+  let inboundSmsCount = 0;
+  allSmsInbound.forEach(m => {
+    const cleanToNumber = (m.toNumber || '').replace(/\s+/g, '');
+    const smsCarrier = phoneCarrierMap[cleanToNumber] || 'TELNYX';
+    if (targetCarrier !== 'ALL' && smsCarrier !== targetCarrier) return;
+    const dest = getRateForDestinationNumber(cleanToNumber);
+    const inCost = Number(dest.inboundSmsCost || (smsCarrier === 'TWILIO' ? 0.0075 : 0.0020));
+    wholesaleInboundSmsCost += inCost;
+    inboundSmsCount++;
+  });
+
+  // E. Inbound Calls (Carrier Wholesale Cost for Free Inbound Policy)
+  let wholesaleInboundCallCost = 0;
+  let inboundCallCount = 0;
+  allCallsInbound.forEach(c => {
+    const cleanMyNumber = (c.myNumber || '').replace(/\s+/g, '');
+    const callCarrier = phoneCarrierMap[cleanMyNumber] || 'TELNYX';
+    if (targetCarrier !== 'ALL' && callCarrier !== targetCarrier) return;
+    const durSec = c.durationSeconds || 0;
+    const minutes = durSec > 0 ? Math.ceil(durSec / 60) : 0;
+    const dest = getRateForDestinationNumber(cleanMyNumber);
+    const inCostPerMin = Number(dest.inboundCallCost || (callCarrier === 'TWILIO' ? 0.0100 : 0.0050));
+    wholesaleInboundCallCost += minutes * inCostPerMin;
+    inboundCallCount++;
+  });
+
   const totalRetailRevenue = retailLineRevenue + retailCallRevenue + retailSmsRevenue;
-  const totalWholesaleCost = wholesaleNumberCost + wholesaleCallCost + wholesaleSmsCost;
+  const totalWholesaleCost = wholesaleNumberCost + wholesaleCallCost + wholesaleSmsCost + wholesaleInboundSmsCost + wholesaleInboundCallCost;
   const netProfit = totalRetailRevenue - totalWholesaleCost;
   const marginPercent = totalRetailRevenue > 0 ? ((netProfit / totalRetailRevenue) * 100) : 0.0;
 
@@ -5288,6 +5326,10 @@ async function calculateMasterFinancials(carrier = 'all') {
     wholesaleCallCostStr: wholesaleCallCost.toFixed(8),
     wholesaleSmsCost: parseFloat(wholesaleSmsCost.toFixed(8)),
     wholesaleSmsCostStr: wholesaleSmsCost.toFixed(8),
+    wholesaleInboundSmsCost: parseFloat(wholesaleInboundSmsCost.toFixed(8)),
+    wholesaleInboundSmsCostStr: wholesaleInboundSmsCost.toFixed(8),
+    wholesaleInboundCallCost: parseFloat(wholesaleInboundCallCost.toFixed(8)),
+    wholesaleInboundCallCostStr: wholesaleInboundCallCost.toFixed(8),
     totalCustomerDeposits: parseFloat(totalCustomerDeposits.toFixed(8)),
     totalCustomerDepositsStr: totalCustomerDeposits.toFixed(8),
     totalUserBalance: parseFloat(totalUserBalance.toFixed(8)),
@@ -5296,6 +5338,8 @@ async function calculateMasterFinancials(carrier = 'all') {
     totalCallMinutes: parseFloat(totalCallMinutes.toFixed(4)),
     totalCallCount: callCount,
     totalSmsSent: smsCount,
+    totalInboundSmsReceived: inboundSmsCount,
+    totalInboundCallsReceived: inboundCallCount,
     activeNumbers: activeNumbersCount
   };
 }

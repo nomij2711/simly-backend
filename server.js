@@ -3153,17 +3153,31 @@ app.post('/api/calls/log', async (req, res) => {
     const cleanContact = normalizePhone(contactNumber);
     const durSec = parseInt(durationSeconds, 10) || 0;
 
-    // Outbound Call Billing (2.5x Wholesale Multiplier)
+    // Outbound Call Billing
     let callCost = 0.0;
     if (direction === 'outbound') {
       const lineOwner = await prisma.purchasedNumber.findFirst({
         where: { phoneNumber: cleanMyNumber, status: 'active' }
       });
 
-      let user = null;
-      if (lineOwner) {
-        user = await prisma.user.findUnique({ where: { id: lineOwner.userId } });
+      if (!lineOwner) {
+        return res.status(403).json({
+          success: false,
+          error: 'You do not have an active virtual line assigned to this number. Outbound calling requires an active virtual line.'
+        });
       }
+
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { id: lineOwner.userId },
+            { email: lineOwner.userId },
+            { email: `${lineOwner.userId}@simlyx.com` },
+            { email: `${lineOwner.userId}@simly.app` }
+          ]
+        }
+      });
+
       if (!user && userId) {
         const cleanUid = userId.toString().trim();
         user = await prisma.user.findFirst({
@@ -3180,7 +3194,7 @@ app.post('/api/calls/log', async (req, res) => {
       if (!user) {
         return res.status(403).json({
           success: false,
-          error: 'You do not have an active virtual line assigned to make outbound calls.'
+          error: 'User account associated with this line was not found.'
         });
       }
 
@@ -3362,25 +3376,22 @@ app.post('/api/calls/conference/initiate', async (req, res) => {
       where: { phoneNumber: cleanMyNumber, status: 'active' }
     });
 
-    let user = null;
-    if (lineOwner) {
-      user = await prisma.user.findUnique({ where: { id: lineOwner.userId } });
-    }
-    if (!user && userId) {
-      const cleanUid = userId.toString().trim();
-      user = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { id: cleanUid },
-            { email: cleanUid.toLowerCase() },
-            { email: `${cleanUid.toLowerCase()}@simlyx.com` }
-          ]
-        }
-      });
+    if (!lineOwner) {
+      return res.status(403).json({ success: false, error: 'You do not have an active virtual line to initiate outbound conference calls.' });
     }
 
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: lineOwner.userId },
+          { email: lineOwner.userId },
+          { email: `${lineOwner.userId}@simlyx.com` }
+        ]
+      }
+    });
+
     if (!user) {
-      return res.status(403).json({ success: false, error: 'You do not have an active virtual line to initiate outbound conference calls.' });
+      return res.status(403).json({ success: false, error: 'User account associated with this line was not found.' });
     }
 
     if (user.isBanned || !user.isVerified || user.isDeleted) {
@@ -3450,25 +3461,23 @@ app.post('/api/calls/conference/log-participant', async (req, res) => {
     const cleanContact = normalizePhone(contactNumber);
     const durSec = parseInt(durationSeconds, 10) || 0;
 
-    let user = null;
     const lineOwner = await prisma.purchasedNumber.findFirst({
       where: { phoneNumber: cleanMyNumber, status: 'active' }
     });
-    if (lineOwner) {
-      user = await prisma.user.findUnique({ where: { id: lineOwner.userId } });
+
+    if (!lineOwner) {
+      return res.status(403).json({ success: false, error: 'You do not have an active virtual line for this number.' });
     }
-    if (!user && userId) {
-      const cleanUid = userId.toString().trim();
-      user = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { id: cleanUid },
-            { email: cleanUid.toLowerCase() },
-            { email: `${cleanUid.toLowerCase()}@simlyx.com` }
-          ]
-        }
-      });
-    }
+
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: lineOwner.userId },
+          { email: lineOwner.userId },
+          { email: `${lineOwner.userId}@simlyx.com` }
+        ]
+      }
+    });
 
     if (!user) {
       return res.status(404).json({ success: false, error: 'User account not found.' });

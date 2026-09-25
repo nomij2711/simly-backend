@@ -1629,15 +1629,17 @@ const getCountryPlans = (countryCode, onlyActive = true, isInitialPurchase = fal
 
     // Calculate initial purchase price (Plan Price + One-Time Setup Fee) vs renewal price (Plan Price only)
     const effectivePrice = (isInitialPurchase && setupFee > 0) ? parseFloat((sellPrice + setupFee).toFixed(2)) : sellPrice;
-    
-    // Construct crystal-clear attractive breakdown for initial buy vs renewal
+
+    // Construct concise, clean & attractive mobile UI breakdown
     let subtitleText = '';
+    const durationLabel = tier.durationDays === 30 ? '/mo' : tier.durationDays === 7 ? '/7d' : tier.durationDays === 90 ? '/3mo' : tier.durationDays === 180 ? '/6mo' : tier.durationDays === 365 ? '/yr' : `/${tier.durationDays}d`;
+
     if (isInitialPurchase && setupFee > 0) {
-      subtitleText = `Retail $${sellPrice.toFixed(2)} + $${setupFee.toFixed(2)} One-Time Setup = $${effectivePrice.toFixed(2)} Total • Renews at $${sellPrice.toFixed(2)} only`;
+      subtitleText = `⚡ $${sellPrice.toFixed(2)}${durationLabel} plan + $${setupFee.toFixed(2)} one-time setup (Renews at $${sellPrice.toFixed(2)})`;
     } else if (isInitialPurchase) {
-      subtitleText = `Retail $${sellPrice.toFixed(2)} • Instant Activation • Zero Setup Fee`;
+      subtitleText = `⚡ $${sellPrice.toFixed(2)}${durationLabel} plan • Instant activation • $0 setup fee`;
     } else {
-      subtitleText = `Renewal Rate: $${sellPrice.toFixed(2)} for ${tier.durationDays} Days • $0 Setup Fee`;
+      subtitleText = `🔄 Renews at $${sellPrice.toFixed(2)}${durationLabel} • $0 renewal fee`;
     }
 
     result.push({

@@ -122,17 +122,42 @@
           </div>
           <span id="sidebarSupportBadge" class="hidden px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px] animate-pulse">0</span>
         </button>
-        <button onclick="switchTab('announcements')" id="tab-btn-announcements" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
-          <i class="fa-solid fa-bullhorn w-5 text-center text-amber-400"></i>
-          <span>App Pop-ups & Push</span>
-        </button>
-        <button onclick="switchTab('pricing')" id="tab-btn-pricing" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
+        <button onclick="switchCarrierRatesTab('ALL')" id="tab-btn-pricing" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
           <i class="fa-solid fa-tags w-5 text-center text-pink-400"></i>
-          <span>Rates & Promos</span>
+          <span>Worldwide Master Rates</span>
         </button>
+
+        <button onclick="switchCarrierRatesTab('TWILIO')" id="tab-btn-carrier-TWILIO" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
+          <i class="fa-solid fa-phone-volume w-5 text-center text-purple-400"></i>
+          <span>Twilio Rates Deck</span>
+        </button>
+
+        <button onclick="switchCarrierRatesTab('TELNYX')" id="tab-btn-carrier-TELNYX" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
+          <i class="fa-solid fa-tower-cell w-5 text-center text-emerald-400"></i>
+          <span>Telnyx Rates Deck</span>
+        </button>
+
+        <button onclick="switchCarrierRatesTab('DIDWW')" id="tab-btn-carrier-DIDWW" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
+          <i class="fa-solid fa-globe w-5 text-center text-cyan-400"></i>
+          <span>DIDWW Rates Deck</span>
+        </button>
+
+        <!-- Container for dynamically added carrier rate tabs -->
+        <div id="sidebarDynamicCarriersList" class="space-y-1.5"></div>
+
         <button onclick="switchTab('carriers')" id="tab-btn-carriers" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
           <i class="fa-solid fa-tower-broadcast w-5 text-center text-purple-400"></i>
           <span>Carriers & API Keys</span>
+        </button>
+
+        <button onclick="switchTab('promos')" id="tab-btn-promos" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
+          <i class="fa-solid fa-gift w-5 text-center text-amber-400"></i>
+          <span>Promo Codes & Vouchers</span>
+        </button>
+
+        <button onclick="switchTab('announcements')" id="tab-btn-announcements" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
+          <i class="fa-solid fa-bullhorn w-5 text-center text-amber-400"></i>
+          <span>App Pop-ups & Push</span>
         </button>
         <button onclick="switchTab('team')" id="tab-btn-team" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
           <i class="fa-solid fa-user-shield w-5 text-center text-amber-400"></i>
@@ -1746,22 +1771,43 @@
         <div id="tab-view-pricing" class="tab-view hidden space-y-6">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 class="text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
+              <h2 id="pricingDeckTitle" class="text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
                 <i class="fa-solid fa-tags text-pink-400"></i>
                 <span>Country Rate Decks, Wholesale Comparison & Margins</span>
               </h2>
-              <p class="text-xs text-slate-400 mt-0.5">Side-by-side comparison of Carrier Wholesale Base Costs vs SimlyX Sell Prices across 7-Day, 30-Day, Yearly, Voice & SMS tiers.</p>
+              <p id="pricingDeckSubtitle" class="text-xs text-slate-400 mt-0.5">Side-by-side comparison of Carrier Wholesale Base Costs vs SimlyX Sell Prices across 7-Day, 30-Day, Yearly, Voice & SMS tiers.</p>
             </div>
             <div class="flex items-center gap-2">
               <button onclick="exportRatesPdf()" title="Download Country Rate Deck & Margins (PDF)" class="px-3.5 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl text-xs font-bold shadow-md shadow-red-600/20 flex items-center gap-2 transition-all">
                 <i class="fa-solid fa-file-pdf text-amber-300"></i>
                 <span>Export Rate Deck PDF</span>
               </button>
-              <button onclick="openAddCountryRateModal()" class="px-4 py-2 bg-gradient-to-r from-pink-500 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all flex items-center gap-2">
+              <button id="pricingAddRouteBtn" onclick="openAddCountryRateModal()" class="px-4 py-2 bg-gradient-to-r from-pink-500 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all flex items-center gap-2">
                 <i class="fa-solid fa-plus"></i>
-                <span>Add New Country Route</span>
+                <span id="pricingAddRouteBtnText">Add New Country Route</span>
               </button>
             </div>
+          </div>
+
+          <!-- 🧭 Dynamic Multi-Carrier Rate Deck Top Navigation Bar -->
+          <div class="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 border-b border-slate-800" id="carrierRatesFilterBar">
+            <button type="button" onclick="filterRatesByCarrier('ALL')" id="pill-rates-carrier-ALL" class="carrier-rate-pill active px-3.5 py-2 rounded-xl text-xs font-bold bg-pink-500/20 text-pink-300 border border-pink-500/30 transition-all flex items-center gap-2 cursor-pointer flex-shrink-0">
+              <i class="fa-solid fa-globe text-pink-400"></i>
+              <span>Master Deck (All 204 Routes)</span>
+            </button>
+            <button type="button" onclick="filterRatesByCarrier('TWILIO')" id="pill-rates-carrier-TWILIO" class="carrier-rate-pill px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-purple-950/40 text-slate-400 hover:text-purple-300 border border-slate-800 transition-all flex items-center gap-2 cursor-pointer flex-shrink-0">
+              <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+              <span>🟣 Twilio UK & Global Rates</span>
+            </button>
+            <button type="button" onclick="filterRatesByCarrier('TELNYX')" id="pill-rates-carrier-TELNYX" class="carrier-rate-pill px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-emerald-950/40 text-slate-400 hover:text-emerald-300 border border-slate-800 transition-all flex items-center gap-2 cursor-pointer flex-shrink-0">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>🟢 Telnyx Wholesale Rates</span>
+            </button>
+            <button type="button" onclick="filterRatesByCarrier('DIDWW')" id="pill-rates-carrier-DIDWW" class="carrier-rate-pill px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-cyan-950/40 text-slate-400 hover:text-cyan-300 border border-slate-800 transition-all flex items-center gap-2 cursor-pointer flex-shrink-0">
+              <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+              <span>🔵 DIDWW Global Rates</span>
+            </button>
+            <!-- Dynamic carrier pills populated by JS -->
           </div>
 
           <!-- Summary KPI Cards -->
@@ -1956,43 +2002,82 @@
               <!-- Dynamically populated by loadPlanTiers() -->
             </div>
           </div>
+        </div>
 
-          <!-- Marketing Promo Vouchers Section (Below) -->
-          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
-                  <i class="fa-solid fa-gift"></i>
-                </div>
-                <div>
-                  <h3 class="text-sm font-bold text-white">Marketing Gift Promo Codes</h3>
-                  <p class="text-[11px] text-slate-400">Generate discount and top-up gift vouchers for users</p>
-                </div>
+        <!-- ============================================================ -->
+        <!-- 🎁 TAB: PROMO CODES & MARKETING GIFT VOUCHERS                -->
+        <!-- ============================================================ -->
+        <div id="tab-view-promos" class="tab-view hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
+                <i class="fa-solid fa-gift text-amber-400"></i>
+                <span>Promo Codes & Gift Vouchers</span>
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">Generate discount and top-up gift vouchers to reward users, drive marketing campaigns, and track redemptions.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="loadPromos()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer">
+                <i class="fa-solid fa-rotate-right"></i> <span>Refresh Vouchers</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Promo Creation Card -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
+            <div class="flex items-center gap-3 pb-2 border-b border-slate-800">
+              <div class="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-white">Create New Gift Promo Voucher</h3>
+                <p class="text-[11px] text-slate-400">Set code name, bonus credit balance to deposit into user's wallet, and maximum total redemptions</p>
               </div>
             </div>
 
-            <form onsubmit="handleCreatePromo(event)" class="flex flex-col sm:flex-row gap-2.5">
-              <input type="text" id="promoCodeInput" placeholder="CODE (e.g. VIP20)" required class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white uppercase placeholder-slate-500 focus:outline-none focus:border-purple-500">
-              <input type="number" step="0.5" id="promoBonusInput" placeholder="Bonus USD $" required class="w-full sm:w-36 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500">
-              <input type="number" id="promoMaxUsesInput" placeholder="Max Uses (Default: 100)" min="1" class="w-full sm:w-44 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500">
-              <button type="submit" id="btnCreatePromo" class="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-purple-600/20 transition-all flex items-center justify-center gap-2">
-                <i class="fa-solid fa-plus"></i> <span>Create Voucher</span>
-              </button>
+            <form onsubmit="handleCreatePromo(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div>
+                <label class="block text-slate-400 text-[10px] font-semibold mb-1 uppercase">Promo Code Name:</label>
+                <input type="text" id="promoCodeInput" placeholder="e.g. VIP2026" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white uppercase font-bold placeholder-slate-600 focus:outline-none focus:border-amber-500">
+              </div>
+              <div>
+                <label class="block text-slate-400 text-[10px] font-semibold mb-1 uppercase">Bonus USD Credit ($):</label>
+                <input type="number" step="0.5" id="promoBonusInput" placeholder="e.g. 10.00" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold placeholder-slate-600 focus:outline-none focus:border-amber-500">
+              </div>
+              <div>
+                <label class="block text-slate-400 text-[10px] font-semibold mb-1 uppercase">Max Uses Limit:</label>
+                <input type="number" id="promoMaxUsesInput" placeholder="Default: 100" min="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold placeholder-slate-600 focus:outline-none focus:border-amber-500">
+              </div>
+              <div class="flex items-end">
+                <button type="submit" id="btnCreatePromo" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                  <i class="fa-solid fa-plus text-sm"></i> <span>Create Promo Voucher</span>
+                </button>
+              </div>
             </form>
+          </div>
+
+          <!-- Active Promos Table Card -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-ticket text-indigo-400"></i>
+                <span>Active & Past Promo Campaign Codes</span>
+              </h3>
+            </div>
 
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs">
-                <thead>
-                  <tr class="text-slate-400 border-b border-slate-800 pb-2 text-[10px] uppercase font-bold">
-                    <th class="py-2 px-3">Voucher Code</th>
-                    <th class="py-2 px-3">Credit Bonus</th>
-                    <th class="py-2 px-3">Redemptions</th>
-                    <th class="py-2 px-3 text-center">Status</th>
-                    <th class="py-2 px-3 text-right">Actions</th>
+                <thead class="bg-slate-950/80 border-b border-slate-800 text-slate-400 uppercase font-semibold text-[10px] tracking-wider">
+                  <tr>
+                    <th class="py-3 px-4">Voucher Code</th>
+                    <th class="py-3 px-4">Wallet Credit Bonus</th>
+                    <th class="py-3 px-4">Redemptions / Limit</th>
+                    <th class="py-3 px-4 text-center">Status</th>
+                    <th class="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="promosTableBody" class="divide-y divide-slate-800/60">
-                  <tr><td colspan="5" class="py-4 text-center text-slate-500">Loading vouchers...</td></tr>
+                  <tr><td colspan="5" class="py-6 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading vouchers...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -4237,6 +4322,7 @@
       else if (currentActiveTab === 'team') loadTeam();
       else if (currentActiveTab === 'audit') loadAuditLogs();
       else if (currentActiveTab === 'pricing') loadPricing();
+      else if (currentActiveTab === 'promos') loadPromos();
       else if (currentActiveTab === 'carriers') loadCarriersTab();
       else if (currentActiveTab === 'blacklist') loadBlacklist();
       else if (currentActiveTab === 'config') loadRemoteConfig();
@@ -6679,12 +6765,126 @@
     // ============================================================
     let cachedCountryRates = [];
     let currentRateFilterMode = 'active'; // 'active', 'disabled', 'all'
+    let currentCarrierFilter = 'ALL'; // 'ALL', 'TWILIO', 'TELNYX', 'DIDWW', etc.
+
+    function getCarrierMeta(carrierCode) {
+      const code = (carrierCode || 'TWILIO').toUpperCase();
+      if (code === 'TWILIO') return { name: 'Twilio', badge: '🟣 Twilio UK & Global', color: 'purple', icon: 'fa-phone-volume' };
+      if (code === 'TELNYX') return { name: 'Telnyx', badge: '🟢 Telnyx Wholesale', color: 'emerald', icon: 'fa-tower-cell' };
+      if (code === 'DIDWW') return { name: 'DIDWW', badge: '🔵 DIDWW Global', color: 'cyan', icon: 'fa-globe' };
+      if (code === 'VONAGE') return { name: 'Vonage', badge: '🟠 Vonage / Nexmo', color: 'amber', icon: 'fa-tower-broadcast' };
+      if (code === 'BANDWIDTH') return { name: 'Bandwidth', badge: '🔷 Bandwidth Inc', color: 'blue', icon: 'fa-network-wired' };
+      if (code === 'PLIVO') return { name: 'Plivo', badge: '🟣 Plivo', color: 'violet', icon: 'fa-sim-card' };
+      if (code === 'SINCH') return { name: 'Sinch', badge: '🔴 Sinch', color: 'rose', icon: 'fa-satellite' };
+      return { name: code, badge: `⚡ ${code}`, color: 'indigo', icon: 'fa-tower-broadcast' };
+    }
+
+    function switchCarrierRatesTab(carrierCode) {
+      currentCarrierFilter = (carrierCode || 'ALL').toUpperCase();
+      switchTab('pricing');
+      filterRatesByCarrier(currentCarrierFilter);
+    }
+    window.switchCarrierRatesTab = switchCarrierRatesTab;
+
+    function filterRatesByCarrier(carrierCode) {
+      currentCarrierFilter = (carrierCode || 'ALL').toUpperCase();
+
+      // 1. Update top pills in rates view
+      document.querySelectorAll('.carrier-rate-pill').forEach(pill => {
+        pill.className = 'carrier-rate-pill px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-all flex items-center gap-2 cursor-pointer flex-shrink-0';
+      });
+      const activePill = document.getElementById(`pill-rates-carrier-${currentCarrierFilter}`);
+      if (activePill) {
+        activePill.className = 'carrier-rate-pill active px-3.5 py-2 rounded-xl text-xs font-bold bg-pink-500/20 text-pink-300 border border-pink-500/30 transition-all flex items-center gap-2 cursor-pointer flex-shrink-0';
+      }
+
+      // 2. Update sidebar navigation tab highlights
+      document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+        btn.classList.remove('active', 'bg-slate-800', 'text-white');
+        btn.classList.add('text-slate-400');
+      });
+
+      if (currentCarrierFilter === 'ALL') {
+        const btnAll = document.getElementById('tab-btn-pricing');
+        if (btnAll) {
+          btnAll.classList.add('active', 'bg-slate-800', 'text-white');
+          btnAll.classList.remove('text-slate-400');
+        }
+      } else {
+        const btnCarrier = document.getElementById(`tab-btn-carrier-${currentCarrierFilter}`);
+        if (btnCarrier) {
+          btnCarrier.classList.add('active', 'bg-slate-800', 'text-white');
+          btnCarrier.classList.remove('text-slate-400');
+        } else {
+          const btnAll = document.getElementById('tab-btn-pricing');
+          if (btnAll) {
+            btnAll.classList.add('active', 'bg-slate-800', 'text-white');
+            btnAll.classList.remove('text-slate-400');
+          }
+        }
+      }
+
+      // 3. Update Title, Subtitle, and Add Route Button based on selected Carrier Deck
+      const titleEl = document.getElementById('pricingDeckTitle');
+      const subEl = document.getElementById('pricingDeckSubtitle');
+      const addBtnTextEl = document.getElementById('pricingAddRouteBtnText');
+      const addBtnEl = document.getElementById('pricingAddRouteBtn');
+
+      if (currentCarrierFilter === 'ALL') {
+        if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-tags text-pink-400 mr-2"></i><span>Worldwide Rate Decks & Margins (Master Deck - All 204 Routes)</span>';
+        if (subEl) subEl.innerText = 'Side-by-side comparison of Carrier Wholesale Base Costs vs SimlyX Sell Prices across all 204 country routes.';
+        if (addBtnTextEl) addBtnTextEl.innerText = 'Add New Country Route';
+        if (addBtnEl) addBtnEl.onclick = () => openAddCountryRateModal();
+      } else {
+        const meta = getCarrierMeta(currentCarrierFilter);
+        if (titleEl) titleEl.innerHTML = `<span class="mr-2">${meta.badge}</span><span>Dedicated Wholesale & Retail Rate Deck</span>`;
+        if (subEl) subEl.innerText = `Dedicated destination routing matrix for ${meta.name}. Live wholesale base costs vs SimlyX retail prices with instant margin recalculation.`;
+        if (addBtnTextEl) addBtnTextEl.innerText = `+ Link Country Route to ${meta.name}`;
+        if (addBtnEl) addBtnEl.onclick = () => openAddCountryRateModal(currentCarrierFilter);
+      }
+
+      applyCurrentRateFilter();
+    }
+    window.filterRatesByCarrier = filterRatesByCarrier;
+
+    function syncDynamicCarrierTabs(carriers) {
+      if (!carriers || !Array.isArray(carriers)) return;
+      const staticKnown = ['TWILIO', 'TELNYX', 'DIDWW'];
+      const extraCarriers = carriers.filter(c => !staticKnown.includes(c.code));
+      
+      const dynamicContainer = document.getElementById('sidebarDynamicCarriersList');
+      if (dynamicContainer) {
+        dynamicContainer.innerHTML = extraCarriers.map(c => `
+          <button onclick="switchCarrierRatesTab('${c.code}')" id="tab-btn-carrier-${c.code}" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
+            <i class="fa-solid ${c.icon || 'fa-tower-broadcast'} w-5 text-center text-${c.color || 'indigo'}-400"></i>
+            <span>${escapeHtml(c.name)} Rates Deck</span>
+          </button>
+        `).join('');
+      }
+
+      const filterBar = document.getElementById('carrierRatesFilterBar');
+      if (filterBar) {
+        const existingDynamicPills = filterBar.querySelectorAll('.dynamic-carrier-pill');
+        existingDynamicPills.forEach(p => p.remove());
+
+        extraCarriers.forEach(c => {
+          const pill = document.createElement('button');
+          pill.type = 'button';
+          pill.onclick = () => filterRatesByCarrier(c.code);
+          pill.id = `pill-rates-carrier-${c.code}`;
+          pill.className = `dynamic-carrier-pill carrier-rate-pill px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-all flex items-center gap-2 cursor-pointer flex-shrink-0`;
+          pill.innerHTML = `<span class="w-2 h-2 rounded-full bg-${c.color || 'indigo'}-400"></span><span>${escapeHtml(c.name)} Rates</span>`;
+          filterBar.appendChild(pill);
+        });
+      }
+    }
 
     async function loadPricing() {
       try {
-        const [ratesData, tiersData] = await Promise.all([
+        const [ratesData, tiersData, carriersData] = await Promise.all([
           adminFetch('/api/admin/rates'),
-          adminFetch('/api/admin/plan-tiers')
+          adminFetch('/api/admin/plan-tiers'),
+          adminFetch('/api/admin/telecom/carriers-config').catch(() => null)
         ]);
 
         if (tiersData && tiersData.success) {
@@ -6692,13 +6892,14 @@
           renderPlanTiersGrid(cachedPlanTiers);
         }
 
+        if (carriersData && carriersData.success && Array.isArray(carriersData.carriers)) {
+          syncDynamicCarrierTabs(carriersData.carriers);
+        }
+
         if (ratesData && ratesData.success) {
           cachedCountryRates = ratesData.rates || [];
           applyCurrentRateFilter();
-          updatePricingSummaryKPIs(cachedCountryRates);
         }
-
-        loadPromos();
       } catch (err) {
         console.error('Failed to load country rates:', err);
       }
@@ -6852,8 +7053,15 @@
     }
 
     function applyCurrentRateFilter() {
-      const activeCount = cachedCountryRates.filter(r => r.isActive).length;
-      const disabledCount = cachedCountryRates.filter(r => !r.isActive).length;
+      let filtered = cachedCountryRates;
+
+      // Filter by carrier if a specific carrier deck is chosen
+      if (currentCarrierFilter && currentCarrierFilter !== 'ALL') {
+        filtered = filtered.filter(r => (r.carrier || 'TWILIO').toUpperCase() === currentCarrierFilter.toUpperCase());
+      }
+
+      const activeCount = filtered.filter(r => r.isActive).length;
+      const disabledCount = filtered.filter(r => !r.isActive).length;
 
       const elActive = document.getElementById('countTabActive');
       const elDisabled = document.getElementById('countTabDisabled');
@@ -6861,13 +7069,12 @@
 
       if (elActive) elActive.innerText = activeCount;
       if (elDisabled) elDisabled.innerText = disabledCount;
-      if (elAll) elAll.innerText = cachedCountryRates.length;
+      if (elAll) elAll.innerText = filtered.length;
 
-      let filtered = cachedCountryRates;
       if (currentRateFilterMode === 'active') {
-        filtered = cachedCountryRates.filter(r => r.isActive);
+        filtered = filtered.filter(r => r.isActive);
       } else if (currentRateFilterMode === 'disabled') {
-        filtered = cachedCountryRates.filter(r => !r.isActive);
+        filtered = filtered.filter(r => !r.isActive);
       }
 
       const searchVal = document.getElementById('countryRateSearch')?.value.trim().toLowerCase();
@@ -6880,6 +7087,7 @@
       }
 
       renderCountryRatesTable(filtered);
+      updatePricingSummaryKPIs(filtered);
     }
 
     function renderTrendIcon(trend = 'stable') {
@@ -6963,10 +7171,13 @@
 
     function getFilteredRates() {
       let filtered = cachedCountryRates;
+      if (currentCarrierFilter && currentCarrierFilter !== 'ALL') {
+        filtered = filtered.filter(r => (r.carrier || 'TWILIO').toUpperCase() === currentCarrierFilter.toUpperCase());
+      }
       if (currentRateFilterMode === 'active') {
-        filtered = cachedCountryRates.filter(r => r.isActive);
+        filtered = filtered.filter(r => r.isActive);
       } else if (currentRateFilterMode === 'disabled') {
-        filtered = cachedCountryRates.filter(r => !r.isActive);
+        filtered = filtered.filter(r => !r.isActive);
       }
       const searchVal = document.getElementById('countryRateSearch')?.value.trim().toLowerCase();
       if (searchVal) {
@@ -7508,14 +7719,15 @@
       document.getElementById('editCountryRateModal').classList.remove('hidden');
     }
 
-    function openAddCountryRateModal() {
+    function openAddCountryRateModal(preselectedCarrier = null) {
       document.getElementById('rateCountryCode').value = '';
       document.getElementById('rateCountryName').value = '';
       document.getElementById('rateFlagEmoji').value = '🌐';
       document.getElementById('rateDialCode').value = '+';
       
+      const targetCarrier = (preselectedCarrier || (currentCarrierFilter !== 'ALL' ? currentCarrierFilter : 'TWILIO')).toUpperCase();
       const carrierEl = document.getElementById('rateCarrier');
-      if (carrierEl) carrierEl.value = 'TWILIO';
+      if (carrierEl) carrierEl.value = targetCarrier;
 
       document.getElementById('rateNumMonthly').value = '1.99';
       document.getElementById('rateNumYearly').value = '20.00';
@@ -7547,8 +7759,8 @@
       document.getElementById('rateAllowSms').checked = true;
 
       document.getElementById('modalCountryFlag').innerText = '🌐';
-      document.getElementById('modalCountryTitle').innerText = 'Add New Country Route';
-      document.getElementById('modalCountrySubtitle').innerText = 'Configure pricing, carrier provider, and wholesale base costs';
+      document.getElementById('modalCountryTitle').innerText = (targetCarrier && targetCarrier !== 'ALL') ? `Link Country Route to ${targetCarrier}` : 'Add New Country Route';
+      document.getElementById('modalCountrySubtitle').innerText = `Configure pricing, carrier provider (${targetCarrier}), and wholesale base costs`;
       document.getElementById('btnDeleteRateDeck').classList.add('hidden');
 
       const customTiersGrid = document.getElementById('modalActivePlanTiersGrid');
@@ -7559,6 +7771,7 @@
 
       calculateModalMargins();
       document.getElementById('editCountryRateModal').classList.remove('hidden');
+      fetchLiveCarrierRatesForModal();
     }
 
     function closeEditCountryRateModal() {

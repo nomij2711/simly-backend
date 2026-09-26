@@ -5250,7 +5250,7 @@ async function calculateUserTelecomPnL(user, preloadedData = null) {
   let outboundCallCount = 0;
 
   const callTransactions = transactions.filter(t => t.type === 'call' || t.type === 'call_charge');
-  const outboundCalls = calls.filter(c => c.direction === 'outbound' || userPhoneNumbers.includes((c.myNumber || '').replace(/\s+/g, '')));
+  const outboundCalls = calls.filter(c => c.direction === 'outbound' || (!c.direction && userPhoneNumbers.includes((c.myNumber || '').replace(/\s+/g, ''))));
 
   outboundCalls.forEach((c, idx) => {
     const durSec = c.durationSeconds || 0;
@@ -5274,7 +5274,7 @@ async function calculateUserTelecomPnL(user, preloadedData = null) {
   let outboundSmsCount = 0;
 
   const smsTransactions = transactions.filter(t => t.type === 'sms' || t.type === 'sms_charge');
-  const outboundMessages = messages.filter(m => m.direction === 'outbound' || userPhoneNumbers.includes((m.fromNumber || '').replace(/\s+/g, '')));
+  const outboundMessages = messages.filter(m => m.direction === 'outbound' || (!m.direction && userPhoneNumbers.includes((m.fromNumber || '').replace(/\s+/g, ''))));
 
   outboundMessages.forEach((m, idx) => {
     const dest = getRateForDestinationNumber(m.toNumber);
@@ -5291,7 +5291,7 @@ async function calculateUserTelecomPnL(user, preloadedData = null) {
   let wholesaleInboundSmsCost = 0;
   let inboundSmsCount = 0;
 
-  const inboundMessages = messages.filter(m => m.direction === 'inbound' || userPhoneNumbers.includes((m.toNumber || '').replace(/\s+/g, '')));
+  const inboundMessages = messages.filter(m => m.direction === 'inbound');
   inboundMessages.forEach(m => {
     const cleanTo = (m.toNumber || '').replace(/\s+/g, '');
     const carrier = phoneCarrierMap[cleanTo] || (numbers.find(n => (n.phoneNumber || '').replace(/\s+/g, '') === cleanTo)?.carrier || 'TELNYX').toUpperCase();
@@ -5306,9 +5306,9 @@ async function calculateUserTelecomPnL(user, preloadedData = null) {
   let inboundCallDurationSec = 0;
   let inboundCallCount = 0;
 
-  const inboundCalls = calls.filter(c => c.direction === 'inbound' || userPhoneNumbers.includes((c.myNumber || '').replace(/\s+/g, '')));
+  const inboundCalls = calls.filter(c => c.direction === 'inbound');
   inboundCalls.forEach(c => {
-    const cleanMy = (c.myNumber || '').replace(/\s+/g, '');
+    const cleanMy = (c.myNumber || c.toNumber || '').replace(/\s+/g, '');
     const carrier = phoneCarrierMap[cleanMy] || (numbers.find(n => (n.phoneNumber || '').replace(/\s+/g, '') === cleanMy)?.carrier || 'TELNYX').toUpperCase();
     const durSec = c.durationSeconds || 0;
     inboundCallDurationSec += durSec;

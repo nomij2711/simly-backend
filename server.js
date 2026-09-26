@@ -5091,19 +5091,37 @@ function parseLineTxDetails(t, userMap = {}) {
   if (desc.includes('+44')) cc = 'GB';
   else if (desc.includes('+49')) cc = 'DE';
   else if (desc.includes('+61')) cc = 'AU';
-  else if (desc.includes('+1')) cc = 'US';
+  else if (desc.includes('+1')) {
+    const phoneMatch = (t.description || '').match(/\+1(\d{3})\d{7}/);
+    if (phoneMatch && CANADA_AREA_CODES && CANADA_AREA_CODES.includes(phoneMatch[1])) {
+      cc = 'CA';
+    } else {
+      cc = 'US';
+    }
+  }
 
   let plan = '30_days';
   let planDaysLabel = '30 Days Monthly';
-  if (desc.includes('7 days') || desc.includes('7_days') || desc.includes('weekly')) {
+  let durationDays = 30;
+  if (desc.includes('7 days') || desc.includes('7_days') || desc.includes('weekly') || desc.includes('+7 days')) {
     plan = '7_days';
-    planDaysLabel = '7 Days Weekly';
-  } else if (desc.includes('365') || desc.includes('1 year') || desc.includes('yearly') || retail >= 10) {
+    planDaysLabel = '7 Days (Weekly)';
+    durationDays = 7;
+  } else if (desc.includes('90 days') || desc.includes('90_days') || desc.includes('3 month') || desc.includes('quarterly') || desc.includes('+90 days')) {
+    plan = '90_days';
+    planDaysLabel = '90 Days (3 Months)';
+    durationDays = 90;
+  } else if (desc.includes('180 days') || desc.includes('180_days') || desc.includes('6 month') || desc.includes('half year') || desc.includes('+180 days')) {
+    plan = '180_days';
+    planDaysLabel = '180 Days (6 Months)';
+    durationDays = 180;
+  } else if (desc.includes('365') || desc.includes('1 year') || desc.includes('yearly') || desc.includes('12 month') || desc.includes('+365 days') || retail >= 10) {
     plan = '365_days';
-    planDaysLabel = '365 Days Yearly';
+    planDaysLabel = '365 Days (1 Year)';
+    durationDays = 365;
   }
 
-  const wholesale = calculateNumberWholesaleCost(cc, plan);
+  const wholesale = calculateNumberWholesaleCost(cc, plan, durationDays);
   const profit = retail - wholesale;
   const margin = retail > 0 ? ((profit / retail) * 100).toFixed(2) : '0.00';
   
@@ -5117,6 +5135,7 @@ function parseLineTxDetails(t, userMap = {}) {
     phoneNumber: phone,
     countryCode: cc,
     planType: plan,
+    durationDays,
     planDaysLabel: isRenewal ? `${planDaysLabel} (Renewal)` : planDaysLabel,
     isRenewal,
     status: 'active',
@@ -5129,6 +5148,251 @@ function parseLineTxDetails(t, userMap = {}) {
     profit: parseFloat(profit.toFixed(8)),
     marginPercent: margin,
     createdAt: t.createdAt
+  };
+}
+
+// ============================================================
+// 📊 PER-USER TELECOM PROFIT & LOSS (P&L) FINANCIAL ENGINE
+// ============================================================
+async function calculateUserTelecomPnL(user, preloadedData = null) {
+  if (dynamicRatesCache.length === 0) {
+    await refreshDynamicCaches();
+  }
+
+  const userId = user.id;
+  const userEmail = (user.email || '').toLowerCase();
+  const userFilters = [{ userId }];
+  if (userEmail) {
+    userFilters.push({ userId: userEmail });
+  }
+
+  let numbers = preloadedData?.numbers;
+  let transactions = preloadedData?.transactions;
+  let calls = preloadedData?.calls;
+  let messages = preloadedData?.messages;
+
+  if (!numbers) {
+    numbers = await prisma.purchasedNumber.findMany({
+      where: { OR: userFilters },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  const userPhoneNumbers = numbers.map(n => (n.phoneNumber || '').replace(/\s+/g, '')).filter(Boolean);
+  const phoneCarrierMap = {};
+  numbers.forEach(n => {
+    const clean = (n.phoneNumber || '').replace(/\s+/g, '');
+    if (clean) phoneCarrierMap[clean] = (n.carrier || 'TELNYX').toUpperCase();
+  });
+
+  if (!transactions) {
+    transactions = await prisma.transaction.findMany({
+      where: { OR: userFilters },
+      orderBy: { createdAt: 'asc' }
+    });
+  }
+
+  if (!calls) {
+    calls = userPhoneNumbers.length > 0 ? await prisma.callLog.findMany({
+      where: {
+        OR: [
+          { myNumber: { in: userPhoneNumbers } },
+          { contactNumber: { in: userPhoneNumbers } }
+        ]
+      },
+      orderBy: { createdAt: 'asc' }
+    }) : [];
+  }
+
+  if (!messages) {
+    messages = userPhoneNumbers.length > 0 ? await prisma.message.findMany({
+      where: {
+        OR: [
+          { fromNumber: { in: userPhoneNumbers } },
+          { toNumber: { in: userPhoneNumbers } }
+        ]
+      },
+      orderBy: { createdAt: 'asc' }
+    }) : [];
+  }
+
+  // 1. Line Purchases & Renewals Accounting
+  let retailLineRevenue = 0;
+  let wholesaleLineCost = 0;
+  let lineTxCount = 0;
+
+  const lineTransactions = transactions.filter(t => 
+    t.type === 'number_purchase' || 
+    t.type === 'renewal' || 
+    t.type === 'number_renewal' ||
+    (t.description && (t.description.toLowerCase().includes('line purchase') || t.description.toLowerCase().includes('line renewal') || t.description.toLowerCase().includes('number renewal')))
+  );
+
+  lineTransactions.forEach(t => {
+    const item = parseLineTxDetails(t);
+    retailLineRevenue += item.retailCharge;
+    wholesaleLineCost += item.wholesaleCost;
+    lineTxCount++;
+  });
+
+  // If no transactions exist but user owns numbers, account for baseline cost
+  if (lineTxCount === 0 && numbers.length > 0) {
+    numbers.forEach(n => {
+      const wholesale = calculateNumberWholesaleCost(n.countryCode, n.planType);
+      wholesaleLineCost += wholesale;
+    });
+  }
+
+  // 2. Outbound Voice Calls Accounting
+  let retailCallRevenue = 0;
+  let wholesaleCallCost = 0;
+  let outboundCallDurationSec = 0;
+  let outboundCallCount = 0;
+
+  const callTransactions = transactions.filter(t => t.type === 'call' || t.type === 'call_charge');
+  const outboundCalls = calls.filter(c => c.direction === 'outbound' || userPhoneNumbers.includes((c.myNumber || '').replace(/\s+/g, '')));
+
+  outboundCalls.forEach((c, idx) => {
+    const durSec = c.durationSeconds || 0;
+    outboundCallDurationSec += durSec;
+    const dest = getRateForDestinationNumber(c.contactNumber);
+    const minutes = durSec > 0 ? Math.ceil(durSec / 60) : (c.status === 'completed' ? 1 : 0);
+    const wholesaleRate = Number(dest.callWholesaleCostPerMin != null ? dest.callWholesaleCostPerMin : ((dest.callSellPricePerMin || dest.callRatePerMin || 0.05) / CALLING_RETAIL_MULTIPLIER));
+    const wholesale = minutes * wholesaleRate;
+    wholesaleCallCost += wholesale;
+
+    const retailRate = Number(dest.callSellPricePerMin || dest.callRatePerMin || 0.05);
+    const matchedTx = (callTransactions[idx] && idx < callTransactions.length) ? callTransactions[idx] : null;
+    const retail = matchedTx ? Math.abs(matchedTx.amount) : (minutes * retailRate);
+    retailCallRevenue += retail;
+    outboundCallCount++;
+  });
+
+  // 3. Outbound SMS Accounting
+  let retailSmsRevenue = 0;
+  let wholesaleSmsCost = 0;
+  let outboundSmsCount = 0;
+
+  const smsTransactions = transactions.filter(t => t.type === 'sms' || t.type === 'sms_charge');
+  const outboundMessages = messages.filter(m => m.direction === 'outbound' || userPhoneNumbers.includes((m.fromNumber || '').replace(/\s+/g, '')));
+
+  outboundMessages.forEach((m, idx) => {
+    const dest = getRateForDestinationNumber(m.toNumber);
+    const wholesaleRate = Number(dest.smsWholesaleCost != null ? dest.smsWholesaleCost : ((dest.smsSellPrice || dest.smsRate || 0.05) / NUMBER_RETAIL_MULTIPLIER));
+    wholesaleSmsCost += wholesaleRate;
+
+    const matchedTx = (smsTransactions[idx] && idx < smsTransactions.length) ? smsTransactions[idx] : smsTransactions.find(t => t.description && t.description.includes(m.toNumber));
+    const retail = matchedTx ? Math.abs(matchedTx.amount) : Number(dest.smsSellPrice || dest.smsRate || 0.05);
+    retailSmsRevenue += retail;
+    outboundSmsCount++;
+  });
+
+  // 4. Inbound SMS Carrier Wholesale Cost (FREE to User, SimlyX Pays Wholesale Carrier)
+  let wholesaleInboundSmsCost = 0;
+  let inboundSmsCount = 0;
+
+  const inboundMessages = messages.filter(m => m.direction === 'inbound' || userPhoneNumbers.includes((m.toNumber || '').replace(/\s+/g, '')));
+  inboundMessages.forEach(m => {
+    const cleanTo = (m.toNumber || '').replace(/\s+/g, '');
+    const carrier = phoneCarrierMap[cleanTo] || (numbers.find(n => (n.phoneNumber || '').replace(/\s+/g, '') === cleanTo)?.carrier || 'TELNYX').toUpperCase();
+    const dest = getRateForDestinationNumber(cleanTo);
+    const inCost = Number(dest.inboundSmsCost || (carrier === 'TWILIO' ? 0.0075 : 0.0020));
+    wholesaleInboundSmsCost += inCost;
+    inboundSmsCount++;
+  });
+
+  // 5. Inbound Calls Carrier Wholesale Cost (FREE to User, SimlyX Pays Wholesale Carrier)
+  let wholesaleInboundCallCost = 0;
+  let inboundCallDurationSec = 0;
+  let inboundCallCount = 0;
+
+  const inboundCalls = calls.filter(c => c.direction === 'inbound' || userPhoneNumbers.includes((c.myNumber || '').replace(/\s+/g, '')));
+  inboundCalls.forEach(c => {
+    const cleanMy = (c.myNumber || '').replace(/\s+/g, '');
+    const carrier = phoneCarrierMap[cleanMy] || (numbers.find(n => (n.phoneNumber || '').replace(/\s+/g, '') === cleanMy)?.carrier || 'TELNYX').toUpperCase();
+    const durSec = c.durationSeconds || 0;
+    inboundCallDurationSec += durSec;
+    const minutes = durSec > 0 ? Math.ceil(durSec / 60) : 0;
+    const dest = getRateForDestinationNumber(cleanMy);
+    const inCostPerMin = Number(dest.inboundCallCost || (carrier === 'TWILIO' ? 0.0100 : 0.0050));
+    wholesaleInboundCallCost += minutes * inCostPerMin;
+    inboundCallCount++;
+  });
+
+  // 6. Lifetime Deposits & Total Financial Aggregations
+  const depositTransactions = transactions.filter(t => ['topup', 'deposit', 'crypto_deposit', 'stripe_deposit'].includes(t.type) || t.amount > 0);
+  const totalDeposited = depositTransactions.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+
+  const totalRetailRevenue = retailLineRevenue + retailCallRevenue + retailSmsRevenue;
+  const totalWholesaleCost = wholesaleLineCost + wholesaleCallCost + wholesaleSmsCost + wholesaleInboundSmsCost + wholesaleInboundCallCost;
+  const netProfit = totalRetailRevenue - totalWholesaleCost;
+  
+  let marginPercent = 0;
+  if (totalRetailRevenue > 0) {
+    marginPercent = (netProfit / totalRetailRevenue) * 100;
+  } else if (totalWholesaleCost > 0) {
+    marginPercent = -100;
+  }
+
+  const isLoss = netProfit < -0.0001;
+  const inboundWholesaleCost = wholesaleInboundSmsCost + wholesaleInboundCallCost;
+  const inboundCostSharePercent = totalWholesaleCost > 0 ? (inboundWholesaleCost / totalWholesaleCost) * 100 : 0;
+
+  let statusBadge = 'neutral';
+  let statusText = 'INACTIVE / ZERO';
+  let statusColor = 'slate';
+
+  if (isLoss) {
+    statusBadge = 'loss';
+    statusText = 'LOSS-MAKING 🔴';
+    statusColor = 'rose';
+  } else if (totalRetailRevenue > 0 && marginPercent < 25) {
+    statusBadge = 'low_margin';
+    statusText = 'LOW MARGIN 🟡';
+    statusColor = 'amber';
+  } else if (totalRetailRevenue > 0) {
+    statusBadge = 'profit';
+    statusText = 'PROFITABLE 🟢';
+    statusColor = 'emerald';
+  }
+
+  const isHighInboundRisk = inboundSmsCount >= 20 || (inboundCallDurationSec / 60) >= 20 || (isLoss && inboundWholesaleCost > 0.10);
+
+  return {
+    userId: user.id,
+    userEmail: user.email,
+    userName: user.name,
+    totalRevenue: parseFloat(totalRetailRevenue.toFixed(4)),
+    totalWholesaleCost: parseFloat(totalWholesaleCost.toFixed(4)),
+    netProfit: parseFloat(netProfit.toFixed(4)),
+    marginPercent: parseFloat(marginPercent.toFixed(2)),
+    isLoss,
+    statusBadge,
+    statusText,
+    statusColor,
+    isHighInboundRisk,
+    totalDeposited: parseFloat(totalDeposited.toFixed(4)),
+    walletBalance: user.walletBalance || 0,
+    breakdown: {
+      lineRevenue: parseFloat(retailLineRevenue.toFixed(4)),
+      lineCost: parseFloat(wholesaleLineCost.toFixed(4)),
+      lineCount: numbers.length,
+      lineTxCount,
+      outboundCallRevenue: parseFloat(retailCallRevenue.toFixed(4)),
+      outboundCallCost: parseFloat(wholesaleCallCost.toFixed(4)),
+      outboundCallMinutes: parseFloat((outboundCallDurationSec / 60).toFixed(2)),
+      outboundCallCount,
+      outboundSmsRevenue: parseFloat(retailSmsRevenue.toFixed(4)),
+      outboundSmsCost: parseFloat(wholesaleSmsCost.toFixed(4)),
+      outboundSmsCount,
+      inboundSmsCost: parseFloat(wholesaleInboundSmsCost.toFixed(4)),
+      inboundSmsCount,
+      inboundCallCost: parseFloat(wholesaleInboundCallCost.toFixed(4)),
+      inboundCallMinutes: parseFloat((inboundCallDurationSec / 60).toFixed(2)),
+      inboundCallCount,
+      inboundTotalWholesaleCost: parseFloat(inboundWholesaleCost.toFixed(4)),
+      inboundCostSharePercent: parseFloat(inboundCostSharePercent.toFixed(1))
+    }
   };
 }
 
@@ -5688,7 +5952,7 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   }
 });
 
-// 3. Users CRM List, Search & Filter (with Erased & Soft-Deleted Support & Multi-Line Search)
+// 3. Users CRM List, Search & Filter (with Erased & Soft-Deleted Support & Multi-Line Search & Per-User Telecom P&L)
 app.get('/api/admin/users', requireStaffPermission(['can_view_users', 'can_manage_users', 'can_handle_support', 'all']), async (req, res) => {
   try {
     const rawSearch = req.query.search ? req.query.search.trim() : '';
@@ -5700,7 +5964,9 @@ app.get('/api/admin/users', requireStaffPermission(['can_view_users', 'can_manag
 
     const andConditions = [];
 
-    if (query) {
+    const isSpecialPnlQuery = ['loss', 'loss-making', 'loss_making', 'profit', 'profitable', 'inbound_risk', 'risk', 'high_inbound'].includes(query);
+
+    if (query && !isSpecialPnlQuery) {
       const cleanDigits = rawSearch.replace(/[^0-9]/g, '');
 
       // 1. Search in Purchased Numbers (Virtual Lines)
@@ -5762,26 +6028,26 @@ app.get('/api/admin/users', requireStaffPermission(['can_view_users', 'can_manag
       prisma.user.count({ where: { isDeleted: true } })
     ]);
 
-    const [filteredTotal, users] = await Promise.all([
-      prisma.user.count({ where }),
-      prisma.user.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' }
-      })
-    ]);
+    const users = await prisma.user.findMany({
+      where,
+      orderBy: { createdAt: 'desc' }
+    });
 
     const now = new Date();
-    const usersWithMeta = await Promise.all(
+    let usersWithMeta = await Promise.all(
       users.map(async (u) => {
         const userNumbers = await prisma.purchasedNumber.findMany({
-          where: { userId: u.id },
+          where: {
+            OR: [
+              { userId: u.id },
+              ...(u.email ? [{ userId: u.email }, { userId: u.email.toLowerCase() }] : [])
+            ]
+          },
           orderBy: { createdAt: 'desc' }
         });
 
         const formattedNumbers = userNumbers.map(n => {
-          const planDays = n.planType === '7_days' ? 7 : (n.planType === '365_days' ? 365 : 30);
+          const planDays = n.planType === '7_days' ? 7 : (n.planType === '365_days' ? 365 : (n.planType === '90_days' ? 90 : (n.planType === '180_days' ? 180 : 30)));
           const computedExpiry = n.expiresAt || new Date(new Date(n.createdAt).getTime() + planDays * 24 * 60 * 60 * 1000);
           const isExpired = n.status === 'expired' || (computedExpiry && new Date(computedExpiry) < now);
           return {
@@ -5789,6 +6055,7 @@ app.get('/api/admin/users', requireStaffPermission(['can_view_users', 'can_manag
             phoneNumber: n.phoneNumber,
             countryCode: n.countryCode,
             planType: n.planType || '30_days',
+            carrier: n.carrier || 'TELNYX',
             status: isExpired ? 'expired' : (n.status || 'active'),
             isExpired,
             expiresAt: computedExpiry
@@ -5817,7 +6084,10 @@ app.get('/api/admin/users', requireStaffPermission(['can_view_users', 'can_manag
           statusColor = 'rose';
         }
 
-        const riskData = await calculateUserRiskScore(u);
+        const [riskData, pnl] = await Promise.all([
+          calculateUserRiskScore(u),
+          calculateUserTelecomPnL(u, { numbers: userNumbers })
+        ]);
 
         const accountId = getCustomerAccountId(u);
         const clientIp = u.lastLoginIp || null;
@@ -5839,30 +6109,56 @@ app.get('/api/admin/users', requireStaffPermission(['can_view_users', 'can_manag
           riskReasons: riskData.reasons,
           numbersCount: activeNumbersCount,
           totalNumbersCount: formattedNumbers.length,
-          virtualNumbers: formattedNumbers
+          virtualNumbers: formattedNumbers,
+          pnl
         };
       })
     );
+
+    // Compute P&L summary filter counts across fetched population
+    const profitableCount = usersWithMeta.filter(u => u.pnl && u.pnl.netProfit > 0).length;
+    const lossCount = usersWithMeta.filter(u => u.pnl && u.pnl.isLoss).length;
+    const inboundRiskCount = usersWithMeta.filter(u => u.pnl && u.pnl.isHighInboundRisk).length;
+
+    // Apply P&L / Loss filter if requested
+    const isLossFilter = filter === 'loss' || filter === 'loss_making' || filter === 'loss-making' || query === 'loss' || query === 'loss-making' || query === 'loss_making';
+    const isProfitFilter = filter === 'profit' || filter === 'profitable' || query === 'profit' || query === 'profitable';
+    const isInboundRiskFilter = filter === 'inbound_risk' || filter === 'high_inbound' || query === 'inbound_risk' || query === 'risk';
+
+    if (isLossFilter) {
+      usersWithMeta = usersWithMeta.filter(u => u.pnl && u.pnl.isLoss);
+    } else if (isProfitFilter) {
+      usersWithMeta = usersWithMeta.filter(u => u.pnl && u.pnl.netProfit > 0);
+    } else if (isInboundRiskFilter) {
+      usersWithMeta = usersWithMeta.filter(u => u.pnl && u.pnl.isHighInboundRisk);
+    }
+
+    const filteredTotal = usersWithMeta.length;
+    const paginatedUsers = usersWithMeta.slice(skip, skip + limit);
 
     res.json({
       success: true,
       total: filteredTotal,
       page,
-      totalPages: Math.ceil(filteredTotal / limit),
+      totalPages: Math.ceil(filteredTotal / limit) || 1,
       counts: {
         total: totalUsers,
         active: activeCount,
         blocked: blockedCount,
-        erased: erasedCount
+        erased: erasedCount,
+        profitable: profitableCount,
+        loss: lossCount,
+        inboundRisk: inboundRiskCount
       },
-      users: usersWithMeta
+      users: paginatedUsers
     });
   } catch (error) {
+    console.error('[ADMIN USERS CRM ERROR]', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// 3.5 360-Degree Deep User Profile Dossier (Numbers, Calls, SMS, Balance, Audit)
+// 3.5 360-Degree Deep User Profile Dossier (Numbers, Calls, SMS, Balance, Audit, Telecom P&L)
 app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_users', 'can_manage_users', 'can_handle_support', 'all']), async (req, res) => {
   try {
     const rawId = req.params.id;
@@ -5930,7 +6226,7 @@ app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_u
 
     // Mark displayStatus, calculate accurate computed expiry if missing, & isExpired
     numbers = numbers.map(n => {
-      const planDays = n.planType === '7_days' ? 7 : (n.planType === '365_days' ? 365 : 30);
+      const planDays = n.planType === '7_days' ? 7 : (n.planType === '365_days' ? 365 : (n.planType === '90_days' ? 90 : (n.planType === '180_days' ? 180 : 30)));
       const computedExpiry = n.expiresAt || new Date(new Date(n.createdAt).getTime() + planDays * 24 * 60 * 60 * 1000);
       const isExpired = n.status === 'expired' || (computedExpiry && new Date(computedExpiry) < now);
       return {
@@ -5965,7 +6261,10 @@ app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_u
       orderBy: { createdAt: 'desc' }
     });
 
-    // 5. Fetch User's Support Chat History
+    // 5. Calculate Comprehensive Per-User Telecom P&L
+    const pnl = await calculateUserTelecomPnL(user, { numbers, transactions, calls, messages });
+
+    // 6. Fetch User's Support Chat History
     const supportMessages = await prisma.supportMessage.findMany({
       where: {
         OR: [
@@ -5976,7 +6275,7 @@ app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_u
       orderBy: { createdAt: 'asc' }
     });
 
-    // 6. Fetch User's Support Tickets
+    // 7. Fetch User's Support Tickets
     const supportTickets = await prisma.supportTicket.findMany({
       where: {
         OR: [
@@ -5988,7 +6287,7 @@ app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_u
       orderBy: { createdAt: 'desc' }
     });
 
-    // 7. Fetch Support CSAT Ratings
+    // 8. Fetch Support CSAT Ratings
     const supportRatings = await prisma.supportRating.findMany({
       where: {
         OR: [
@@ -5999,7 +6298,7 @@ app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_u
       orderBy: { createdAt: 'desc' }
     });
 
-    // 8. Fetch Voicemails on user's lines
+    // 9. Fetch Voicemails on user's lines
     const voicemails = await prisma.voicemail.findMany({
       where: {
         OR: [
@@ -6010,7 +6309,7 @@ app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_u
       orderBy: { createdAt: 'desc' }
     });
 
-    // 9. Fetch Audit Logs for this user
+    // 10. Fetch Audit Logs for this user
     const auditLogs = await prisma.auditLog.findMany({
       where: {
         OR: [
@@ -6023,7 +6322,7 @@ app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_u
       take: 50
     });
 
-    // 10. Fetch Device Push Tokens
+    // 11. Fetch Device Push Tokens
     const pushTokens = await prisma.devicePushToken.findMany({
       where: {
         OR: [
@@ -6059,6 +6358,7 @@ app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_u
         lastLoginIp: clientIp,
         avatarUrl: user.avatarUrl || null
       },
+      pnl,
       metrics: {
         totalSpent: parseFloat(totalSpent.toFixed(2)),
         totalDeposited: parseFloat(totalDeposited.toFixed(2)),
@@ -6084,6 +6384,59 @@ app.get('/api/admin/users/:id/full-profile', requireStaffPermission(['can_view_u
     });
   } catch (error) {
     console.error('[ADMIN USER PROFILE ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3.55 Dedicated User Telecom P&L Deep-Dive Endpoint
+app.get('/api/admin/users/:id/pnl', requireStaffPermission(['can_view_users', 'can_manage_users', 'can_handle_support', 'all']), async (req, res) => {
+  try {
+    const rawId = req.params.id;
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: rawId },
+          { email: rawId.toLowerCase() },
+          { phone: normalizePhone(rawId) },
+          { phone: rawId }
+        ]
+      }
+    });
+
+    if (!user && (rawId.toUpperCase().startsWith('SIM-') || /^\d{6}$/.test(rawId))) {
+      const allUsers = await prisma.user.findMany();
+      user = allUsers.find(u => {
+        const acc = getCustomerAccountId(u).toUpperCase();
+        return acc === rawId.toUpperCase() || acc.replace('SIM-', '') === rawId;
+      });
+    }
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    const pnl = await calculateUserTelecomPnL(user);
+    const clientIp = user.lastLoginIp || null;
+    const geo = clientIp ? getGeoFromIp(clientIp) : null;
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        accountId: getCustomerAccountId(user),
+        walletBalance: user.walletBalance,
+        isBanned: user.isBanned,
+        isDeleted: user.isDeleted,
+        createdAt: user.createdAt,
+        geo
+      },
+      pnl
+    });
+  } catch (error) {
+    console.error('[ADMIN USER PNL ERROR]', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

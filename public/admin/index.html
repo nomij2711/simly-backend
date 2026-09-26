@@ -616,20 +616,29 @@
             </div>
           </div>
 
-          <!-- CRM Filter Tabs (All, Active, Blocked, Erased) -->
+          <!-- CRM Filter Tabs (All, Profitable, Loss-Making, Inbound Risk, Active, Blocked, Erased) -->
           <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/60 p-2 rounded-2xl border border-slate-800/80">
             <div class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
               <button onclick="setUserFilter('all')" id="filter-btn-all" class="crm-filter-btn active px-3 py-1.5 rounded-xl text-xs font-semibold transition-all bg-slate-800 text-white">
                 All Users <span id="filterCountAll" class="ml-1 opacity-70">(0)</span>
               </button>
+              <button onclick="setUserFilter('profit')" id="filter-btn-profit" class="crm-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition-all text-emerald-400 hover:text-white hover:bg-slate-800/40 border border-emerald-500/20">
+                🟢 Profitable <span id="filterCountProfit" class="ml-1 font-bold">(0)</span>
+              </button>
+              <button onclick="setUserFilter('loss')" id="filter-btn-loss" class="crm-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition-all text-rose-400 hover:text-white hover:bg-slate-800/40 border border-rose-500/20">
+                🔴 Loss-Making <span id="filterCountLoss" class="ml-1 font-extrabold">(0)</span>
+              </button>
+              <button onclick="setUserFilter('inbound_risk')" id="filter-btn-inbound_risk" class="crm-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition-all text-amber-400 hover:text-white hover:bg-slate-800/40 border border-amber-500/20">
+                📥 Inbound Risk <span id="filterCountInboundRisk" class="ml-1 font-bold">(0)</span>
+              </button>
               <button onclick="setUserFilter('active')" id="filter-btn-active" class="crm-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800/40">
-                🟢 Active <span id="filterCountActive" class="ml-1 opacity-70">(0)</span>
+                ⚡ Active <span id="filterCountActive" class="ml-1 opacity-70">(0)</span>
               </button>
               <button onclick="setUserFilter('blocked')" id="filter-btn-blocked" class="crm-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800/40">
-                🔴 Blocked <span id="filterCountBlocked" class="ml-1 opacity-70">(0)</span>
+                🚫 Blocked <span id="filterCountBlocked" class="ml-1 opacity-70">(0)</span>
               </button>
               <button onclick="setUserFilter('erased')" id="filter-btn-erased" class="crm-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800/40">
-                ⚠️ Self-Erased & Archived <span id="filterCountErased" class="ml-1 opacity-70">(0)</span>
+                ⚠️ Erased <span id="filterCountErased" class="ml-1 opacity-70">(0)</span>
               </button>
             </div>
           </div>
@@ -686,16 +695,17 @@
                     <th class="py-3 px-4 w-10 text-center">
                       <input type="checkbox" id="selectAllUsersHeader" onchange="toggleSelectAllUsers(this.checked)" class="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4">
                     </th>
-                    <th class="py-3 px-4">User Name & Email</th>
+                    <th class="py-3 px-4">User Name & Account ID</th>
                     <th class="py-3 px-4">Wallet Balance</th>
                     <th class="py-3 px-4">Lines Fleet</th>
+                    <th class="py-3 px-4">Telecom P&L (Margin)</th>
                     <th class="py-3 px-4">Lifecycle Status</th>
                     <th class="py-3 px-4">Joined Date</th>
                     <th class="py-3 px-4 text-right">Inspect & Actions</th>
                   </tr>
                 </thead>
                 <tbody id="usersTableBody" class="divide-y divide-slate-800/60">
-                  <tr><td colspan="7" class="py-8 text-center text-slate-500">Loading user database...</td></tr>
+                  <tr><td colspan="8" class="py-8 text-center text-slate-500">Loading user database...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -823,6 +833,48 @@
               <div>
                 <div class="text-[11px] text-slate-400">Total Call Minutes</div>
                 <div id="udTotalCallMins" class="text-sm font-bold text-amber-400">0.0 mins</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Telecom P&L Ledger & Margin Card in 360 Dossier -->
+          <div class="bg-gradient-to-r from-slate-900 via-indigo-950/30 to-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
+            <div class="flex items-center justify-between flex-wrap gap-2 border-b border-slate-800 pb-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-bold">
+                  <i class="fa-solid fa-chart-pie"></i>
+                </div>
+                <div>
+                  <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <span>Telecom Profit & Loss Ledger</span>
+                    <span id="udPnlStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">PROFITABLE 🟢</span>
+                  </h3>
+                  <p class="text-[11px] text-slate-400">Dynamic wholesale carrier breakdown (Lines, Outbound, and Free Inbound SMS / Voice expenses)</p>
+                </div>
+              </div>
+              <button onclick="openUserPnlModal(currentInspectedUserId)" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/30 flex items-center gap-1.5 transition-all">
+                <i class="fa-solid fa-up-right-from-square text-[10px]"></i>
+                <span>Open Full P&L Modal</span>
+              </button>
+            </div>
+
+            <!-- 4 Mini Metrics for P&L in Dossier -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div class="p-3 bg-slate-950/80 rounded-2xl border border-slate-800">
+                <div class="text-[10px] text-slate-400 uppercase font-semibold">Total Revenue</div>
+                <div id="udPnlRevenue" class="text-sm font-bold font-mono text-white">$0.00</div>
+              </div>
+              <div class="p-3 bg-slate-950/80 rounded-2xl border border-slate-800">
+                <div class="text-[10px] text-slate-400 uppercase font-semibold">Carrier Cost</div>
+                <div id="udPnlWholesale" class="text-sm font-bold font-mono text-rose-400">$0.00</div>
+              </div>
+              <div class="p-3 bg-slate-950/80 rounded-2xl border border-slate-800">
+                <div class="text-[10px] text-slate-400 uppercase font-semibold">Net P&L Margin</div>
+                <div id="udPnlNetProfit" class="text-sm font-bold font-mono text-emerald-400">+$0.00 (0%)</div>
+              </div>
+              <div class="p-3 bg-slate-950/80 rounded-2xl border border-slate-800">
+                <div class="text-[10px] text-slate-400 uppercase font-semibold">Inbound Usage (Free)</div>
+                <div id="udPnlInboundUsage" class="text-sm font-bold font-mono text-amber-400">0 SMS / 0m Call</div>
               </div>
             </div>
           </div>
@@ -3016,6 +3068,154 @@
     </main> <!-- END OF MAIN -->
   </div> <!-- END OF #adminApp -->
   
+  <!-- 📊 USER TELECOM PROFIT & LOSS (P&L) DEEP-DIVE MODAL -->
+  <div id="userPnlModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl p-5 sm:p-7 shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto custom-scrollbar my-auto">
+      <!-- Modal Header -->
+      <div class="flex items-start justify-between border-b border-slate-800 pb-4">
+        <div class="flex items-center gap-3">
+          <div id="pnlModalAvatar" class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-indigo-600 flex items-center justify-center text-white text-lg font-black shadow-lg">
+            U
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 id="pnlModalUserName" class="text-base font-bold text-white">SimlyX Customer</h3>
+              <span id="pnlModalAccountId" class="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">SIM-100000</span>
+              <span id="pnlModalStatusBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">PROFITABLE 🟢</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-slate-400 mt-1 font-mono flex-wrap">
+              <span id="pnlModalEmail">customer@simlyx.com</span>
+              <span>•</span>
+              <span id="pnlModalPhone" class="text-indigo-400">+1234567890</span>
+            </div>
+          </div>
+        </div>
+        <button onclick="closeUserPnlModal()" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-all">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- 4 High-Impact KPI Highlight Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <!-- 1. Total Lifetime Revenue -->
+        <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 space-y-1">
+          <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+            <i class="fa-solid fa-receipt text-indigo-400 text-[10px]"></i> Total Revenue
+          </div>
+          <div id="pnlKpiRevenue" class="text-base font-mono font-black text-white">$0.0000</div>
+          <div class="text-[10px] text-indigo-300/80">Paid by customer</div>
+        </div>
+
+        <!-- 2. Carrier Wholesale Expense -->
+        <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 space-y-1">
+          <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+            <i class="fa-solid fa-tower-broadcast text-purple-400 text-[10px]"></i> Carrier Cost
+          </div>
+          <div id="pnlKpiWholesale" class="text-base font-mono font-black text-rose-400">$0.0000</div>
+          <div class="text-[10px] text-slate-500">Twilio / Telnyx fee</div>
+        </div>
+
+        <!-- 3. Net Telecom Profit / Loss -->
+        <div id="pnlKpiNetCard" class="bg-emerald-950/30 border border-emerald-500/40 rounded-2xl p-3.5 space-y-1">
+          <div class="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+            <i class="fa-solid fa-chart-line text-[10px]"></i> Net Margin
+          </div>
+          <div id="pnlKpiNetProfit" class="text-base font-mono font-black text-emerald-300">+$0.0000</div>
+          <div id="pnlKpiMarginPercent" class="text-[10px] font-bold text-emerald-400">0.00% Margin</div>
+        </div>
+
+        <!-- 4. Free Inbound Burn Share -->
+        <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 space-y-1">
+          <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+            <i class="fa-solid fa-inbox text-amber-400 text-[10px]"></i> Inbound Burn
+          </div>
+          <div id="pnlKpiInboundBurn" class="text-base font-mono font-black text-amber-400">$0.0000</div>
+          <div id="pnlKpiInboundShare" class="text-[10px] text-amber-300/80">0% carrier burn</div>
+        </div>
+      </div>
+
+      <!-- Loss-Making Warning Alert Banner (Visible only when user is in net loss) -->
+      <div id="pnlLossAlertBanner" class="hidden p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-3">
+        <div class="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center flex-shrink-0 text-base animate-pulse">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div>
+          <div class="font-bold text-rose-200 text-xs">Telecom Loss Alert: Wholesale Costs Exceed Customer Revenue!</div>
+          <div class="text-[11px] text-rose-300/80 mt-0.5">This user has consumed more wholesale carrier services (free inbound SMS/calls or outbound) than the revenue generated. Review itemized traffic below.</div>
+        </div>
+      </div>
+
+      <!-- Telecom Ledger Itemized Breakdown Table -->
+      <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+          <div class="text-xs font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-table-list text-indigo-400"></i>
+            <span>Itemized Telecom Financial Ledger</span>
+          </div>
+          <span class="text-[10px] font-mono text-slate-400">8-Decimal Dynamic Precision</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="text-slate-400 border-b border-slate-800 text-[10px] uppercase font-semibold">
+                <th class="py-2 px-2">Telecom Service</th>
+                <th class="py-2 px-2 text-center">Volume / Units</th>
+                <th class="py-2 px-2 text-right">Retail Revenue</th>
+                <th class="py-2 px-2 text-right">Wholesale Cost</th>
+                <th class="py-2 px-2 text-right">Net Profit / Loss</th>
+              </tr>
+            </thead>
+            <tbody id="pnlLedgerTableBody" class="divide-y divide-slate-800/60 font-mono">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Dynamic Rates Applied Reference Card -->
+      <div class="bg-slate-950/50 border border-slate-800/80 rounded-2xl p-3.5 text-[11px] text-slate-400 space-y-1.5">
+        <div class="font-bold text-slate-300 flex items-center gap-1.5 text-xs">
+          <i class="fa-solid fa-sliders text-cyan-400"></i>
+          <span>Dynamic Telecom Wholesale Rates Deck:</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] text-slate-400 pt-1">
+          <div class="flex items-center justify-between p-2 rounded-xl bg-slate-900 border border-slate-800/60">
+            <span>🟣 Twilio UK Inbound SMS Rate:</span>
+            <span class="font-mono font-bold text-white">$0.0075 / msg</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded-xl bg-slate-900 border border-slate-800/60">
+            <span>🟢 Telnyx Inbound SMS Rate:</span>
+            <span class="font-mono font-bold text-white">$0.0020 / msg</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded-xl bg-slate-900 border border-slate-800/60">
+            <span>🟣 Twilio UK Inbound Voice Rate:</span>
+            <span class="font-mono font-bold text-white">$0.0100 / min</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded-xl bg-slate-900 border border-slate-800/60">
+            <span>🟢 Telnyx Inbound Voice Rate:</span>
+            <span class="font-mono font-bold text-white">$0.0050 / min</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer Actions -->
+      <div class="flex items-center justify-between pt-2 border-t border-slate-800 flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+          <button id="pnlBtnInspectDossier" onclick="inspectUserFromPnlModal()" class="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
+            <i class="fa-solid fa-eye text-[11px]"></i> <span>Inspect 360 Dossier</span>
+          </button>
+          <button id="pnlBtnAdjustBalance" onclick="adjustBalanceFromPnlModal()" class="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
+            <i class="fa-solid fa-hand-holding-dollar text-[11px]"></i> <span>Adjust Balance</span>
+          </button>
+        </div>
+        <button onclick="closeUserPnlModal()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- 🛡️ ADD TO BLACKLIST MODAL -->
   <div id="addBlacklistModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
     <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar my-auto">
@@ -5278,6 +5478,9 @@
       }
     }
 
+    let currentPnlModalUserId = null;
+    let currentPnlUserEmail = null;
+
     async function loadUsers() {
       const search = document.getElementById('userSearchInput')?.value || '';
       try {
@@ -5286,10 +5489,21 @@
 
         currentLoadedUsers = data.users || [];
 
-        // Update counts
+        // Update counts across all filter badges
         const c = data.counts || {};
         if (document.getElementById('crmTotalUsersBadge')) document.getElementById('crmTotalUsersBadge').innerText = c.total || data.total || 0;
         if (document.getElementById('filterCountAll')) document.getElementById('filterCountAll').innerText = `(${c.total || 0})`;
+        if (document.getElementById('filterCountProfit')) document.getElementById('filterCountProfit').innerText = `(${c.profitable || 0})`;
+        if (document.getElementById('filterCountLoss')) {
+          const lossBadge = document.getElementById('filterCountLoss');
+          lossBadge.innerText = `(${c.loss || 0})`;
+          if ((c.loss || 0) > 0) {
+            lossBadge.classList.add('text-rose-400', 'animate-pulse');
+          } else {
+            lossBadge.classList.remove('text-rose-400', 'animate-pulse');
+          }
+        }
+        if (document.getElementById('filterCountInboundRisk')) document.getElementById('filterCountInboundRisk').innerText = `(${c.inboundRisk || 0})`;
         if (document.getElementById('filterCountActive')) document.getElementById('filterCountActive').innerText = `(${c.active || 0})`;
         if (document.getElementById('filterCountBlocked')) document.getElementById('filterCountBlocked').innerText = `(${c.blocked || 0})`;
         if (document.getElementById('filterCountErased')) document.getElementById('filterCountErased').innerText = `(${c.erased || 0})`;
@@ -5307,6 +5521,61 @@
             badgeHTML = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 w-fit">${u.isBanned || u.displayStatus === 'banned' ? 'BANNED 🛑' : 'BLOCKED 🔴'}</span>`;
           } else {
             badgeHTML = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 w-fit">ACTIVE 🟢</span>`;
+          }
+
+          // Telecom P&L Card rendering
+          let pnlHTML = '';
+          if (u.pnl) {
+            const p = u.pnl;
+            const isLoss = p.isLoss;
+            const netSign = p.netProfit >= 0 ? '+' : '-';
+            const absNet = Math.abs(p.netProfit).toFixed(2);
+            const marginStr = (p.marginPercent || 0).toFixed(1);
+            const inSms = p.breakdown?.inboundSmsCount || 0;
+
+            if (isLoss) {
+              pnlHTML = `
+                <div onclick="event.stopPropagation(); openUserPnlModal('${u.id}')" title="Click to inspect deep telecom P&L ledger" class="cursor-pointer group/pnl p-2 rounded-xl bg-rose-500/10 border border-rose-500/40 hover:border-rose-400 hover:bg-rose-500/20 transition-all shadow-sm">
+                  <div class="flex items-center justify-between gap-1.5">
+                    <span class="font-mono font-black text-rose-400 text-xs flex items-center gap-1">
+                      <i class="fa-solid fa-triangle-exclamation text-[10px] text-rose-400 animate-pulse"></i>
+                      -$${absNet}
+                    </span>
+                    <span class="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-rose-500/25 text-rose-300 border border-rose-500/40 uppercase">LOSS</span>
+                  </div>
+                  <div class="text-[10px] text-rose-300/80 font-mono mt-0.5 flex items-center justify-between gap-1">
+                    <span>Exp: $${(p.totalWholesaleCost || 0).toFixed(2)}</span>
+                    <span class="text-amber-300 font-bold" title="Free Inbound Usage">📥 ${inSms} in</span>
+                  </div>
+                </div>
+              `;
+            } else if (p.netProfit > 0) {
+              const isLowMargin = p.marginPercent < 25;
+              pnlHTML = `
+                <div onclick="event.stopPropagation(); openUserPnlModal('${u.id}')" title="Click to inspect deep telecom P&L ledger" class="cursor-pointer group/pnl p-2 rounded-xl ${isLowMargin ? 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20' : 'bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20'} border transition-all shadow-sm">
+                  <div class="flex items-center justify-between gap-1.5">
+                    <span class="font-mono font-bold ${isLowMargin ? 'text-amber-400' : 'text-emerald-400'} text-xs">+$${absNet}</span>
+                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold ${isLowMargin ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'} font-mono">${marginStr}%</span>
+                  </div>
+                  <div class="text-[10px] text-slate-400 font-mono mt-0.5 flex items-center justify-between gap-1">
+                    <span>Rev: $${(p.totalRevenue || 0).toFixed(2)}</span>
+                    <span class="text-slate-400">📥 ${inSms} in</span>
+                  </div>
+                </div>
+              `;
+            } else {
+              pnlHTML = `
+                <div onclick="event.stopPropagation(); openUserPnlModal('${u.id}')" title="Click to inspect telecom ledger" class="cursor-pointer p-2 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-all text-slate-400">
+                  <div class="flex items-center justify-between gap-1">
+                    <span class="font-mono font-semibold text-slate-400 text-xs">$0.00</span>
+                    <span class="px-1 py-0.2 rounded text-[9px] bg-slate-800 text-slate-400">0.0%</span>
+                  </div>
+                  <div class="text-[10px] text-slate-500 font-mono mt-0.5">No Activity</div>
+                </div>
+              `;
+            }
+          } else {
+            pnlHTML = `<span class="text-slate-500 font-mono text-xs">N/A</span>`;
           }
 
           return `
@@ -5389,11 +5658,17 @@
                 ${u.numbersCount || 0} Lines
               </span>
             </td>
+            <td class="py-3 px-4">
+              ${pnlHTML}
+            </td>
             <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4">
               ${badgeHTML}
             </td>
             <td onclick="inspectUserDossier('${u.id}')" class="py-3 px-4 text-slate-400 text-[11px]">${new Date(u.createdAt).toLocaleDateString()}</td>
             <td class="py-3 px-4 text-right space-x-1" onclick="event.stopPropagation()">
+              <button onclick="openUserPnlModal('${u.id}')" title="Inspect Telecom P&L Breakdown" class="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-xs">
+                <i class="fa-solid fa-chart-line"></i>
+              </button>
               <button onclick="openCustomExportModal('${u.id}')" title="Export Custom User Data (PDF/CSV/JSON)" class="px-2 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-purple-600/30">
                 <i class="fa-solid fa-file-pdf text-amber-300"></i>
               </button>
@@ -5418,14 +5693,241 @@
             </td>
           </tr>
         `;
-        }).join('') || '<tr><td colspan="7" class="py-8 text-center text-slate-500">No users found for this filter.</td></tr>';
+        }).join('') || '<tr><td colspan="8" class="py-8 text-center text-slate-500">No users found for this filter.</td></tr>';
 
         updateBulkActionBar();
       } catch (err) {
         console.error(err);
         const tbody = document.getElementById('usersTableBody');
-        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-rose-400 text-xs"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i> ${escapeHtml(err.message || 'Error loading users database.')}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-rose-400 text-xs"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i> ${escapeHtml(err.message || 'Error loading users database.')}</td></tr>`;
       }
+    }
+
+    // ============================================================
+    // 📊 USER TELECOM PROFIT & LOSS (P&L) DEEP-DIVE MODAL CONTROLLERS
+    // ============================================================
+    async function openUserPnlModal(userId) {
+      currentPnlModalUserId = userId;
+      const modal = document.getElementById('userPnlModal');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+
+      // Populate loading skeleton
+      document.getElementById('pnlModalUserName').innerText = 'Loading Customer P&L...';
+      document.getElementById('pnlModalAccountId').innerText = 'SIM-......';
+      document.getElementById('pnlModalEmail').innerText = '...';
+      document.getElementById('pnlModalPhone').innerText = '...';
+      document.getElementById('pnlKpiRevenue').innerText = '$...';
+      document.getElementById('pnlKpiWholesale').innerText = '$...';
+      document.getElementById('pnlKpiNetProfit').innerText = '$...';
+      document.getElementById('pnlKpiInboundBurn').innerText = '$...';
+      document.getElementById('pnlLedgerTableBody').innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-500">Calculating real-time dynamic P&L ledger...</td></tr>';
+
+      try {
+        const res = await adminFetch(`/api/admin/users/${userId}/pnl`);
+        if (!res.success) {
+          alert(res.error || 'Failed to calculate user telecom P&L.');
+          closeUserPnlModal();
+          return;
+        }
+
+        const { user, pnl } = res;
+        currentPnlUserEmail = user.email;
+
+        // User info
+        document.getElementById('pnlModalUserName').innerText = user.name || 'SimlyX User';
+        document.getElementById('pnlModalAccountId').innerText = user.accountId || 'SIM-100000';
+        document.getElementById('pnlModalEmail').innerText = user.email || 'N/A';
+        document.getElementById('pnlModalPhone').innerText = user.phone || 'No phone verified';
+        
+        const avatarEl = document.getElementById('pnlModalAvatar');
+        if (avatarEl) {
+          avatarEl.innerText = (user.name || 'U')[0].toUpperCase();
+        }
+
+        // Status badge
+        const badgeEl = document.getElementById('pnlModalStatusBadge');
+        if (pnl.isLoss) {
+          badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse';
+          badgeEl.innerText = 'LOSS-MAKING 🔴';
+        } else if (pnl.totalRevenue > 0 && pnl.marginPercent < 25) {
+          badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40';
+          badgeEl.innerText = 'LOW MARGIN 🟡';
+        } else if (pnl.totalRevenue > 0) {
+          badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+          badgeEl.innerText = 'PROFITABLE 🟢';
+        } else {
+          badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700';
+          badgeEl.innerText = 'INACTIVE / ZERO ⚪';
+        }
+
+        // KPI Cards
+        document.getElementById('pnlKpiRevenue').innerText = `$${(pnl.totalRevenue || 0).toFixed(4)}`;
+        document.getElementById('pnlKpiWholesale').innerText = `$${(pnl.totalWholesaleCost || 0).toFixed(4)}`;
+        
+        const netCard = document.getElementById('pnlKpiNetCard');
+        const netEl = document.getElementById('pnlKpiNetProfit');
+        const marginEl = document.getElementById('pnlKpiMarginPercent');
+
+        if (pnl.isLoss) {
+          netCard.className = 'bg-rose-950/40 border border-rose-500/50 rounded-2xl p-3.5 space-y-1 shadow-lg shadow-rose-900/20';
+          netEl.className = 'text-base font-mono font-black text-rose-300';
+          netEl.innerText = `-$${Math.abs(pnl.netProfit).toFixed(4)}`;
+          marginEl.className = 'text-[10px] font-extrabold text-rose-400';
+          marginEl.innerText = `${pnl.marginPercent.toFixed(2)}% Deficit`;
+        } else {
+          netCard.className = 'bg-emerald-950/30 border border-emerald-500/40 rounded-2xl p-3.5 space-y-1';
+          netEl.className = 'text-base font-mono font-black text-emerald-300';
+          netEl.innerText = `+$${Math.abs(pnl.netProfit).toFixed(4)}`;
+          marginEl.className = 'text-[10px] font-bold text-emerald-400';
+          marginEl.innerText = `${pnl.marginPercent.toFixed(2)}% Margin`;
+        }
+
+        const inCost = pnl.breakdown?.inboundTotalWholesaleCost || 0;
+        const inShare = pnl.breakdown?.inboundCostSharePercent || 0;
+        document.getElementById('pnlKpiInboundBurn').innerText = `$${inCost.toFixed(4)}`;
+        document.getElementById('pnlKpiInboundShare').innerText = `${inShare.toFixed(1)}% carrier burn`;
+
+        // Loss alert banner
+        const lossBanner = document.getElementById('pnlLossAlertBanner');
+        if (lossBanner) {
+          if (pnl.isLoss) lossBanner.classList.remove('hidden');
+          else lossBanner.classList.add('hidden');
+        }
+
+        // Itemized Ledger Breakdown
+        const b = pnl.breakdown || {};
+        const lineNet = (b.lineRevenue || 0) - (b.lineCost || 0);
+        const callNet = (b.outboundCallRevenue || 0) - (b.outboundCallCost || 0);
+        const smsNet = (b.outboundSmsRevenue || 0) - (b.outboundSmsCost || 0);
+        const inSmsCost = b.inboundSmsCost || 0;
+        const inCallCost = b.inboundCallCost || 0;
+
+        document.getElementById('pnlLedgerTableBody').innerHTML = `
+          <!-- 1. Virtual Lines Subscriptions -->
+          <tr class="hover:bg-slate-900/60">
+            <td class="py-2.5 px-2">
+              <div class="font-bold text-white flex items-center gap-1.5 font-sans">
+                <i class="fa-solid fa-sim-card text-cyan-400 text-xs"></i>
+                <span>Virtual Line Numbers</span>
+              </div>
+              <div class="text-[10px] text-slate-400 font-sans">Purchases, Setups & Renewals</div>
+            </td>
+            <td class="py-2.5 px-2 text-center text-slate-300 font-semibold">${b.lineCount || 0} Lines (${b.lineTxCount || 0} Tx)</td>
+            <td class="py-2.5 px-2 text-right text-indigo-300 font-bold">$${(b.lineRevenue || 0).toFixed(4)}</td>
+            <td class="py-2.5 px-2 text-right text-slate-400">$${(b.lineCost || 0).toFixed(4)}</td>
+            <td class="py-2.5 px-2 text-right ${lineNet >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold">
+              ${lineNet >= 0 ? '+' : '-'}$${Math.abs(lineNet).toFixed(4)}
+            </td>
+          </tr>
+
+          <!-- 2. Outbound Voice Calls -->
+          <tr class="hover:bg-slate-900/60">
+            <td class="py-2.5 px-2">
+              <div class="font-bold text-white flex items-center gap-1.5 font-sans">
+                <i class="fa-solid fa-phone-volume text-indigo-400 text-xs"></i>
+                <span>Outbound Voice Calls</span>
+              </div>
+              <div class="text-[10px] text-slate-400 font-sans">Customer Outgoing Voice Calls</div>
+            </td>
+            <td class="py-2.5 px-2 text-center text-slate-300 font-semibold">${(b.outboundCallMinutes || 0).toFixed(1)} mins (${b.outboundCallCount || 0} calls)</td>
+            <td class="py-2.5 px-2 text-right text-indigo-300 font-bold">$${(b.outboundCallRevenue || 0).toFixed(4)}</td>
+            <td class="py-2.5 px-2 text-right text-slate-400">$${(b.outboundCallCost || 0).toFixed(4)}</td>
+            <td class="py-2.5 px-2 text-right ${callNet >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold">
+              ${callNet >= 0 ? '+' : '-'}$${Math.abs(callNet).toFixed(4)}
+            </td>
+          </tr>
+
+          <!-- 3. Outbound SMS Messaging -->
+          <tr class="hover:bg-slate-900/60">
+            <td class="py-2.5 px-2">
+              <div class="font-bold text-white flex items-center gap-1.5 font-sans">
+                <i class="fa-solid fa-comment-dots text-purple-400 text-xs"></i>
+                <span>Outbound SMS Messaging</span>
+              </div>
+              <div class="text-[10px] text-slate-400 font-sans">Customer Outgoing Text Messages</div>
+            </td>
+            <td class="py-2.5 px-2 text-center text-slate-300 font-semibold">${b.outboundSmsCount || 0} Sent</td>
+            <td class="py-2.5 px-2 text-right text-indigo-300 font-bold">$${(b.outboundSmsRevenue || 0).toFixed(4)}</td>
+            <td class="py-2.5 px-2 text-right text-slate-400">$${(b.outboundSmsCost || 0).toFixed(4)}</td>
+            <td class="py-2.5 px-2 text-right ${smsNet >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold">
+              ${smsNet >= 0 ? '+' : '-'}$${Math.abs(smsNet).toFixed(4)}
+            </td>
+          </tr>
+
+          <!-- 4. Inbound SMS (FREE for User, Paid by SimlyX) -->
+          <tr class="hover:bg-slate-900/60 bg-amber-500/[0.03]">
+            <td class="py-2.5 px-2">
+              <div class="font-bold text-amber-300 flex items-center gap-1.5 font-sans">
+                <i class="fa-solid fa-inbox text-amber-400 text-xs"></i>
+                <span>Inbound SMS Receiving</span>
+              </div>
+              <div class="text-[10px] text-amber-300/70 font-sans">FREE for user • Wholesale fee paid to carrier</div>
+            </td>
+            <td class="py-2.5 px-2 text-center text-slate-300 font-semibold">${b.inboundSmsCount || 0} Messages</td>
+            <td class="py-2.5 px-2 text-right text-emerald-400 font-bold font-sans text-[11px]">$0.00 (FREE)</td>
+            <td class="py-2.5 px-2 text-right text-rose-400 font-bold">$${inSmsCost.toFixed(4)}</td>
+            <td class="py-2.5 px-2 text-right text-rose-400 font-bold">
+              -$${inSmsCost.toFixed(4)}
+            </td>
+          </tr>
+
+          <!-- 5. Inbound Voice Calls (FREE for User, Paid by SimlyX) -->
+          <tr class="hover:bg-slate-900/60 bg-amber-500/[0.03]">
+            <td class="py-2.5 px-2">
+              <div class="font-bold text-amber-300 flex items-center gap-1.5 font-sans">
+                <i class="fa-solid fa-phone-arrow-down-left text-amber-400 text-xs"></i>
+                <span>Inbound Voice Calls</span>
+              </div>
+              <div class="text-[10px] text-amber-300/70 font-sans">FREE for user • Wholesale fee paid to carrier</div>
+            </td>
+            <td class="py-2.5 px-2 text-center text-slate-300 font-semibold">${(b.inboundCallMinutes || 0).toFixed(1)} mins (${b.inboundCallCount || 0} calls)</td>
+            <td class="py-2.5 px-2 text-right text-emerald-400 font-bold font-sans text-[11px]">$0.00 (FREE)</td>
+            <td class="py-2.5 px-2 text-right text-rose-400 font-bold">$${inCallCost.toFixed(4)}</td>
+            <td class="py-2.5 px-2 text-right text-rose-400 font-bold">
+              -$${inCallCost.toFixed(4)}
+            </td>
+          </tr>
+
+          <!-- TOTAL SUMMARY ROW -->
+          <tr class="bg-slate-900 border-t-2 border-slate-700 font-bold text-xs">
+            <td class="py-3 px-2 text-white font-sans">
+              <span>Lifetime Net Telecom Ledger</span>
+            </td>
+            <td class="py-3 px-2 text-center text-slate-400 font-mono text-[11px]">Total Operations</td>
+            <td class="py-3 px-2 text-right text-white font-black">$${(pnl.totalRevenue || 0).toFixed(4)}</td>
+            <td class="py-3 px-2 text-right text-rose-400 font-black">$${(pnl.totalWholesaleCost || 0).toFixed(4)}</td>
+            <td class="py-3 px-2 text-right ${pnl.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-black text-sm">
+              ${pnl.netProfit >= 0 ? '+' : '-'}$${Math.abs(pnl.netProfit).toFixed(4)}
+            </td>
+          </tr>
+        `;
+
+      } catch (err) {
+        console.error(err);
+        alert(err.message || 'Error loading user P&L.');
+        closeUserPnlModal();
+      }
+    }
+
+    function closeUserPnlModal() {
+      const modal = document.getElementById('userPnlModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function inspectUserFromPnlModal() {
+      if (!currentPnlModalUserId) return;
+      const uid = currentPnlModalUserId;
+      closeUserPnlModal();
+      inspectUserDossier(uid);
+    }
+
+    function adjustBalanceFromPnlModal() {
+      if (!currentPnlModalUserId) return;
+      const uid = currentPnlModalUserId;
+      const email = currentPnlUserEmail || uid;
+      closeUserPnlModal();
+      openBalanceModal(uid, email);
     }
 
     // ============================================================
@@ -5568,6 +6070,43 @@
         document.getElementById('udTotalSpent').innerText = formatUSD8(metrics.totalSpent);
         document.getElementById('udActiveLinesCount').innerText = `${numbers.length} Lines (${metrics.activeNumbersCount} Active)`;
         document.getElementById('udTotalCallMins').innerText = `${metrics.totalCallMinutes} mins (${metrics.totalCallsCount} calls)`;
+
+        // Populate P&L in User Dossier
+        if (res.pnl) {
+          const p = res.pnl;
+          const pnlBadge = document.getElementById('udPnlStatusBadge');
+          if (pnlBadge) {
+            if (p.isLoss) {
+              pnlBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse';
+              pnlBadge.innerText = 'LOSS-MAKING 🔴';
+            } else if (p.totalRevenue > 0 && p.marginPercent < 25) {
+              pnlBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40';
+              pnlBadge.innerText = 'LOW MARGIN 🟡';
+            } else if (p.totalRevenue > 0) {
+              pnlBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+              pnlBadge.innerText = 'PROFITABLE 🟢';
+            } else {
+              pnlBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700';
+              pnlBadge.innerText = 'INACTIVE / ZERO ⚪';
+            }
+          }
+
+          if (document.getElementById('udPnlRevenue')) document.getElementById('udPnlRevenue').innerText = `$${(p.totalRevenue || 0).toFixed(2)}`;
+          if (document.getElementById('udPnlWholesale')) document.getElementById('udPnlWholesale').innerText = `$${(p.totalWholesaleCost || 0).toFixed(2)}`;
+          if (document.getElementById('udPnlNetProfit')) {
+            const el = document.getElementById('udPnlNetProfit');
+            if (p.isLoss) {
+              el.className = 'text-sm font-bold font-mono text-rose-400';
+              el.innerText = `-$${Math.abs(p.netProfit).toFixed(2)} (${p.marginPercent.toFixed(1)}%)`;
+            } else {
+              el.className = 'text-sm font-bold font-mono text-emerald-400';
+              el.innerText = `+$${Math.abs(p.netProfit).toFixed(2)} (${p.marginPercent.toFixed(1)}%)`;
+            }
+          }
+          if (document.getElementById('udPnlInboundUsage')) {
+            document.getElementById('udPnlInboundUsage').innerText = `${p.breakdown?.inboundSmsCount || 0} SMS / ${(p.breakdown?.inboundCallMinutes || 0).toFixed(1)}m Call`;
+          }
+        }
 
         // Render Numbers (Active & Expired with Distinct Badges and Renewal Controller)
         document.getElementById('udNumbersBadge').innerText = numbers.length;

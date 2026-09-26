@@ -5625,7 +5625,7 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
       if (p.phoneNumber) phoneCarrierMap[p.phoneNumber.replace(/\s+/g, '')] = (p.carrier || 'TELNYX').toUpperCase();
     });
 
-    const [lineTx, callTx, smsTx, allCalls, allSmsOutbound, deposits, retailCharges, allUsers] = await Promise.all([
+    const [lineTx, callTx, smsTx, allCalls, allSmsOutbound, allCallsInbound, allSmsInbound, deposits, retailCharges, allUsers] = await Promise.all([
       prisma.transaction.findMany({
         where: { type: { in: ['number_purchase', 'renewal', 'number_renewal'] } },
         orderBy: { createdAt: 'desc' }
@@ -5644,6 +5644,14 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
       }),
       prisma.message.findMany({
         where: { direction: 'outbound' },
+        orderBy: { createdAt: 'asc' }
+      }),
+      prisma.callLog.findMany({
+        where: { direction: 'inbound' },
+        orderBy: { createdAt: 'asc' }
+      }),
+      prisma.message.findMany({
+        where: { direction: 'inbound' },
         orderBy: { createdAt: 'asc' }
       }),
       prisma.transaction.findMany({
@@ -5759,7 +5767,72 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
       };
     }).reverse();
 
-    // 4. Deposits
+    // 4. Inbound Calls (Carrier Wholesale Cost for Free Inbound Policy)
+    const filteredInboundCalls = allCallsInbound.filter(c => {
+      if (targetCarrier === 'ALL') return true;
+      const cleanMy = (c.myNumber || '').replace(/\s+/g, '');
+      const carrier = phoneCarrierMap[cleanMy] || 'TELNYX';
+      return carrier === targetCarrier;
+    });
+
+    const inboundCallsDetailed = filteredInboundCalls.map(c => {
+      const durSec = c.durationSeconds || 0;
+      const minutes = durSec > 0 ? Math.ceil(durSec / 60) : 0;
+      const cleanMy = (c.myNumber || '').replace(/\s+/g, '');
+      const carrier = phoneCarrierMap[cleanMy] || 'TELNYX';
+      const dest = getRateForDestinationNumber(cleanMy);
+      const inRate = Number(dest.inboundCallCost || (carrier === 'TWILIO' ? 0.0100 : 0.0050));
+      const wholesale = minutes * inRate;
+
+      return {
+        id: c.id,
+        myNumber: c.myNumber,
+        contactNumber: c.contactNumber,
+        carrier,
+        direction: 'inbound',
+        status: c.status,
+        durationSeconds: durSec,
+        durationFormatted: Math.floor(durSec / 60) + 'm ' + (durSec % 60) + 's',
+        wholesaleRate: inRate,
+        wholesaleCost: parseFloat(wholesale.toFixed(8)),
+        retailCharge: 0.00,
+        netProfit: parseFloat((-wholesale).toFixed(8)),
+        profit: parseFloat((-wholesale).toFixed(8)),
+        createdAt: c.createdAt
+      };
+    }).reverse();
+
+    // 5. Inbound SMS (Carrier Wholesale Cost for Free Inbound Policy)
+    const filteredInboundSms = allSmsInbound.filter(m => {
+      if (targetCarrier === 'ALL') return true;
+      const cleanTo = (m.toNumber || '').replace(/\s+/g, '');
+      const carrier = phoneCarrierMap[cleanTo] || 'TELNYX';
+      return carrier === targetCarrier;
+    });
+
+    const inboundSmsDetailed = filteredInboundSms.map(m => {
+      const cleanTo = (m.toNumber || '').replace(/\s+/g, '');
+      const carrier = phoneCarrierMap[cleanTo] || 'TELNYX';
+      const dest = getRateForDestinationNumber(cleanTo);
+      const inRate = Number(dest.inboundSmsCost || (carrier === 'TWILIO' ? 0.0075 : 0.0020));
+
+      return {
+        id: m.id,
+        fromNumber: m.fromNumber,
+        toNumber: m.toNumber,
+        carrier,
+        direction: 'inbound',
+        text: m.text,
+        status: m.status,
+        wholesaleCost: parseFloat(inRate.toFixed(8)),
+        retailCharge: 0.00,
+        netProfit: parseFloat((-inRate).toFixed(8)),
+        profit: parseFloat((-inRate).toFixed(8)),
+        createdAt: m.createdAt
+      };
+    }).reverse();
+
+    // 6. Deposits
     const depositsDetailed = deposits.map(d => {
       const u = userMap[d.userId] || { name: 'Customer', email: d.userId, walletBalance: 0 };
       return {
@@ -5775,7 +5848,7 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
       };
     });
 
-    // 5. Retail Charges (Filtered by carrier)
+    // 7. Retail Charges (Filtered by carrier)
     const filteredRetailCharges = retailCharges.filter(r => {
       if (targetCarrier === 'ALL') return true;
       const cleanPhone = (r.description || '').match(/\+?\d{8,15}/)?.[0] || '';
@@ -5808,6 +5881,8 @@ app.get('/api/admin/financials/breakdown', requireAdmin, async (req, res) => {
       numbers: numbersDetailed,
       calls: callsDetailed,
       sms: smsDetailed,
+      inboundCalls: inboundCallsDetailed,
+      inboundSms: inboundSmsDetailed,
       deposits: depositsDetailed,
       retailCharges: retailDetailed
     });
@@ -6535,6 +6610,8 @@ app.post('/api/admin/users/bulk-full-profile', requireStaffPermission(['can_view
       const clientIp = user.lastLoginIp || user.ip || null;
       const geo = clientIp ? getGeoFromIp(clientIp) : null;
 
+      const pnl = await calculateUserTelecomPnL(user, { numbers, transactions, calls, messages });
+
       profiles.push({
         user: {
           ...user,
@@ -6544,6 +6621,7 @@ app.post('/api/admin/users/bulk-full-profile', requireStaffPermission(['can_view
           lastLoginIp: clientIp,
           avatarUrl: user.avatarUrl || null
         },
+        pnl,
         metrics: {
           totalSpent: parseFloat(totalSpent.toFixed(2)),
           totalDeposited: parseFloat(totalDeposited.toFixed(2)),

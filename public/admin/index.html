@@ -3201,12 +3201,15 @@
 
       <!-- Modal Footer Actions -->
       <div class="flex items-center justify-between pt-2 border-t border-slate-800 flex-wrap gap-2">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
           <button id="pnlBtnInspectDossier" onclick="inspectUserFromPnlModal()" class="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
             <i class="fa-solid fa-eye text-[11px]"></i> <span>Inspect 360 Dossier</span>
           </button>
           <button id="pnlBtnAdjustBalance" onclick="adjustBalanceFromPnlModal()" class="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
             <i class="fa-solid fa-hand-holding-dollar text-[11px]"></i> <span>Adjust Balance</span>
+          </button>
+          <button id="pnlBtnExportPdf" onclick="exportUserPnlPdf()" class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-purple-600/20 transition-all cursor-pointer">
+            <i class="fa-solid fa-file-pdf text-amber-300 text-[11px]"></i> <span>Export P&L Statement (PDF)</span>
           </button>
         </div>
         <button onclick="closeUserPnlModal()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">
@@ -5915,6 +5918,179 @@
       if (modal) modal.classList.add('hidden');
     }
 
+    async function exportUserPnlPdf(userId) {
+      const uid = userId || currentPnlModalUserId;
+      if (!uid) return;
+
+      const btn = document.getElementById('pnlBtnExportPdf');
+      const origHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-300"></i> Generating PDF...';
+        btn.disabled = true;
+      }
+
+      try {
+        const res = await adminFetch(`/api/admin/users/${uid}/pnl`);
+        if (!res.success) {
+          throw new Error(res.error || 'Failed to fetch P&L data for PDF export.');
+        }
+
+        const { user, pnl } = res;
+        const b = pnl.breakdown || {};
+
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+          throw new Error('PDF Engine is still loading. Please try again.');
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'pt',
+          format: 'a4'
+        });
+
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 36;
+        const contentWidth = pageWidth - (margin * 2);
+
+        // Header Banner
+        doc.setFillColor(15, 23, 42); // slate-900
+        doc.rect(0, 0, pageWidth, 74, 'F');
+        doc.setFillColor(16, 185, 129); // emerald-500 accent bar
+        doc.rect(0, 72, pageWidth, 2.5, 'F');
+
+        doc.setTextColor(16, 185, 129);
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.text('SIMLYX GLOBAL TELECOMMUNICATIONS NETWORK', margin, 24);
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('CUSTOMER TELECOM PROFIT & LOSS (P&L) FINANCIAL STATEMENT', margin, 38);
+
+        doc.setTextColor(148, 163, 184);
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Customer: ${user.name || 'SimlyX User'} • Email: ${user.email || 'N/A'} • Account ID: ${user.accountId || 'SIM-100000'}`, margin, 50);
+        doc.text(`Statement Date: ${new Date().toUTCString()} • Financial Precision: 8-Decimal Telecom Ledger`, margin, 61);
+
+        // Status Badge in Header
+        const isLoss = pnl.isLoss || pnl.netProfit < 0;
+        doc.setFillColor(isLoss ? 225 : 16, isLoss ? 29 : 185, isLoss ? 72 : 129);
+        doc.roundedRect(pageWidth - margin - 110, 18, 110, 32, 4, 4, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.text(pnl.statusText || (isLoss ? 'LOSS-MAKING 🔴' : 'PROFITABLE 🟢'), pageWidth - margin - 98, 32);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Net Margin: ${(pnl.marginPercent || 0).toFixed(2)}%`, pageWidth - margin - 98, 43);
+
+        // 4 KPI Cards
+        const cardWidth = (contentWidth - 24) / 4;
+        const cardY = 86;
+        const cardH = 44;
+
+        const kpis = [
+          { label: 'Total Revenue', value: `$${(pnl.totalRevenue || 0).toFixed(4)}`, sub: 'Paid by customer', color: [99, 102, 241] },
+          { label: 'Carrier Wholesale Cost', value: `$${(pnl.totalWholesaleCost || 0).toFixed(4)}`, sub: 'Twilio / Telnyx fees', color: [225, 29, 72] },
+          { label: 'Net Profit / Loss', value: `${pnl.netProfit >= 0 ? '+' : '-'}$${Math.abs(pnl.netProfit || 0).toFixed(4)}`, sub: `${(pnl.marginPercent || 0).toFixed(2)}% margin`, color: isLoss ? [225, 29, 72] : [16, 185, 129] },
+          { label: 'Inbound Carrier Burn', value: `$${(b.inboundTotalWholesaleCost || 0).toFixed(4)}`, sub: `${(b.inboundCostSharePercent || 0).toFixed(1)}% burn share`, color: [217, 119, 6] }
+        ];
+
+        kpis.forEach((kpi, idx) => {
+          const cx = margin + (idx * (cardWidth + 8));
+          doc.setFillColor(248, 250, 252);
+          doc.setDrawColor(226, 232, 240);
+          doc.roundedRect(cx, cardY, cardWidth, cardH, 3, 3, 'FD');
+
+          doc.setTextColor(100, 116, 139);
+          doc.setFontSize(6.5);
+          doc.setFont('helvetica', 'bold');
+          doc.text(kpi.label.toUpperCase(), cx + 6, cardY + 12);
+
+          doc.setTextColor(kpi.color[0], kpi.color[1], kpi.color[2]);
+          doc.setFontSize(9.5);
+          doc.setFont('helvetica', 'bold');
+          doc.text(kpi.value, cx + 6, cardY + 26);
+
+          doc.setTextColor(148, 163, 184);
+          doc.setFontSize(6);
+          doc.setFont('helvetica', 'normal');
+          doc.text(kpi.sub, cx + 6, cardY + 37);
+        });
+
+        // Itemized Table
+        const lineNet = (b.lineRevenue || 0) - (b.lineCost || 0);
+        const callNet = (b.outboundCallRevenue || 0) - (b.outboundCallCost || 0);
+        const smsNet = (b.outboundSmsRevenue || 0) - (b.outboundSmsCost || 0);
+        const inSmsCost = b.inboundSmsCost || 0;
+        const inCallCost = b.inboundCallCost || 0;
+        const netTotal = pnl.netProfit || 0;
+
+        const tableRows = [
+          ['Virtual Line Numbers (Subscriptions & Renewals)', `${b.lineCount || 0} Lines (${b.lineTxCount || 0} Tx)`, `$${(b.lineRevenue || 0).toFixed(4)}`, `$${(b.lineCost || 0).toFixed(4)}`, `${lineNet >= 0 ? '+' : '-'}$${Math.abs(lineNet).toFixed(4)}`],
+          ['Outbound Voice Calls (Customer Outgoing)', `${(b.outboundCallMinutes || 0).toFixed(1)} mins (${b.outboundCallCount || 0} calls)`, `$${(b.outboundCallRevenue || 0).toFixed(4)}`, `$${(b.outboundCallCost || 0).toFixed(4)}`, `${callNet >= 0 ? '+' : '-'}$${Math.abs(callNet).toFixed(4)}`],
+          ['Outbound SMS Messaging (Customer Sent)', `${b.outboundSmsCount || 0} Sent`, `$${(b.outboundSmsRevenue || 0).toFixed(4)}`, `$${(b.outboundSmsCost || 0).toFixed(4)}`, `${smsNet >= 0 ? '+' : '-'}$${Math.abs(smsNet).toFixed(4)}`],
+          ['Inbound SMS Receiving (FREE for User • SimlyX Pays)', `${b.inboundSmsCount || 0} Messages`, '$0.00 (FREE)', `$${inSmsCost.toFixed(4)}`, `-$${inSmsCost.toFixed(4)}`],
+          ['Inbound Voice Calls (FREE for User • SimlyX Pays)', `${(b.inboundCallMinutes || 0).toFixed(1)} mins (${b.inboundCallCount || 0} calls)`, '$0.00 (FREE)', `$${inCallCost.toFixed(4)}`, `-$${inCallCost.toFixed(4)}`],
+          ['LIFETIME NET TELECOM FINANCIAL TOTAL', 'All Operations', `$${(pnl.totalRevenue || 0).toFixed(4)}`, `$${(pnl.totalWholesaleCost || 0).toFixed(4)}`, `${netTotal >= 0 ? '+' : '-'}$${Math.abs(netTotal).toFixed(4)} (${(pnl.marginPercent || 0).toFixed(1)}%)`]
+        ];
+
+        doc.autoTable({
+          startY: 142,
+          margin: { left: margin, right: margin },
+          theme: 'grid',
+          head: [['Telecom Service & Policy', 'Volume / Units', 'Retail Revenue', 'Wholesale Cost', 'Net Profit / Loss']],
+          body: tableRows,
+          styles: { fontSize: 7.5, cellPadding: 5, textColor: [30, 41, 59] },
+          headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
+          columnStyles: {
+            0: { cellWidth: 190, fontStyle: 'bold' },
+            1: { cellWidth: 100, halign: 'center' },
+            2: { cellWidth: 75, halign: 'right', textColor: [99, 102, 241], fontStyle: 'bold' },
+            3: { cellWidth: 75, halign: 'right', textColor: [225, 29, 72] },
+            4: { cellWidth: 83, halign: 'right', fontStyle: 'bold' }
+          }
+        });
+
+        // Wholesale Rates Reference Deck at Bottom
+        let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 16 : 280;
+        doc.setFillColor(241, 245, 249);
+        doc.roundedRect(margin, finalY, contentWidth, 38, 3, 3, 'F');
+        doc.setTextColor(71, 85, 105);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.text('DYNAMIC TELECOM WHOLESALE RATES REFERENCE APPLIED:', margin + 8, finalY + 12);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.text('• Twilio UK Inbound SMS: $0.0075/msg | Inbound Voice: $0.0100/min', margin + 8, finalY + 22);
+        doc.text('• Telnyx US Inbound SMS: $0.0020/msg | Inbound Voice: $0.0050/min', margin + 8, finalY + 31);
+
+        // Footer
+        doc.setFillColor(241, 245, 249);
+        doc.rect(0, pageHeight - 22, pageWidth, 22, 'F');
+        doc.setTextColor(100, 116, 139);
+        doc.setFontSize(6.5);
+        doc.text(`SimlyX Core Financial Engine • Generated automatically for Account ${user.accountId || 'SIM-100000'} • Confidential`, margin, pageHeight - 9);
+        doc.text(`Page 1 of 1`, pageWidth - margin - 40, pageHeight - 9);
+
+        doc.save(`SimlyX-PnL-Statement-${user.accountId || 'Customer'}-${new Date().toISOString().slice(0, 10)}.pdf`);
+        showToast('📄 Customer P&L Statement PDF downloaded successfully!', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to generate P&L PDF: ' + err.message, 'error');
+      } finally {
+        if (btn) {
+          btn.innerHTML = origHtml;
+          btn.disabled = false;
+        }
+      }
+    }
+
     function inspectUserFromPnlModal() {
       if (!currentPnlModalUserId) return;
       const uid = currentPnlModalUserId;
@@ -6806,10 +6982,53 @@
               });
             }
 
-            // SECTION 2: FINANCIAL AUDIT & TRANSACTIONS
+            // SECTION 1.5: TELECOM PROFIT & LOSS (P&L) FINANCIAL LEDGER
+            if (profileItem.pnl || includeWallet || includeTransactions) {
+              const pnl = profileItem.pnl || {};
+              const b = pnl.breakdown || {};
+              currentY = checkAddPage(110);
+              const pnlTitle = `2. TELECOM PROFIT & LOSS (P&L) FINANCIAL LEDGER • ${pnl.statusText || (pnl.netProfit >= 0 ? 'PROFITABLE 🟢' : 'LOSS-MAKING 🔴')} (Margin: ${(pnl.marginPercent || 0).toFixed(2)}%)`;
+              currentY = drawSectionHeader(pnlTitle, currentY);
+
+              const lineNet = (b.lineRevenue || 0) - (b.lineCost || 0);
+              const callNet = (b.outboundCallRevenue || 0) - (b.outboundCallCost || 0);
+              const smsNet = (b.outboundSmsRevenue || 0) - (b.outboundSmsCost || 0);
+              const inSmsCost = b.inboundSmsCost || 0;
+              const inCallCost = b.inboundCallCost || 0;
+              const netTotal = pnl.netProfit || 0;
+
+              const pnlRows = [
+                ['Virtual Lines Subscriptions', `${b.lineCount || 0} Lines (${b.lineTxCount || 0} Tx)`, `$${(b.lineRevenue || 0).toFixed(4)}`, `$${(b.lineCost || 0).toFixed(4)}`, `${lineNet >= 0 ? '+' : '-'}$${Math.abs(lineNet).toFixed(4)}`],
+                ['Outbound Voice Calls', `${(b.outboundCallMinutes || 0).toFixed(1)} mins (${b.outboundCallCount || 0} calls)`, `$${(b.outboundCallRevenue || 0).toFixed(4)}`, `$${(b.outboundCallCost || 0).toFixed(4)}`, `${callNet >= 0 ? '+' : '-'}$${Math.abs(callNet).toFixed(4)}`],
+                ['Outbound SMS Messaging', `${b.outboundSmsCount || 0} Sent`, `$${(b.outboundSmsRevenue || 0).toFixed(4)}`, `$${(b.outboundSmsCost || 0).toFixed(4)}`, `${smsNet >= 0 ? '+' : '-'}$${Math.abs(smsNet).toFixed(4)}`],
+                ['Inbound SMS Receiving (Free)', `${b.inboundSmsCount || 0} Messages`, '$0.00 (FREE)', `$${inSmsCost.toFixed(4)}`, `-$${inSmsCost.toFixed(4)}`],
+                ['Inbound Voice Calls (Free)', `${(b.inboundCallMinutes || 0).toFixed(1)} mins (${b.inboundCallCount || 0} calls)`, '$0.00 (FREE)', `$${inCallCost.toFixed(4)}`, `-$${inCallCost.toFixed(4)}`],
+                ['LIFETIME NET TELECOM TOTAL', 'All Operations', `$${(pnl.totalRevenue || 0).toFixed(4)}`, `$${(pnl.totalWholesaleCost || 0).toFixed(4)}`, `${netTotal >= 0 ? '+' : '-'}$${Math.abs(netTotal).toFixed(4)} (${(pnl.marginPercent || 0).toFixed(1)}%)`]
+              ];
+
+              doc.autoTable({
+                startY: currentY,
+                margin: { left: margin, right: margin },
+                theme: 'grid',
+                head: [['Telecom Service', 'Volume / Units', 'Retail Customer Billed', 'Carrier Wholesale Cost', 'Net Profit / Loss']],
+                body: pnlRows,
+                styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59] },
+                headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                columnStyles: {
+                  0: { cellWidth: 140, fontStyle: 'bold' },
+                  1: { cellWidth: 100, halign: 'center' },
+                  2: { cellWidth: 95, halign: 'right', textColor: [99, 102, 241], fontStyle: 'bold' },
+                  3: { cellWidth: 95, halign: 'right', textColor: [225, 29, 72] },
+                  4: { cellWidth: 93, halign: 'right', fontStyle: 'bold' }
+                }
+              });
+            }
+
+            // SECTION 3: FINANCIAL AUDIT & TRANSACTIONS
             if (includeWallet || includeTransactions) {
               currentY = checkAddPage(80);
-              const walletTitle = `2. FINANCIAL AUDIT & TRANSACTIONS LEDGER (Balance: $${(user.walletBalance || 0).toFixed(2)} | Deposited: $${(metrics.totalDeposited || 0).toFixed(2)} | Spent: $${(metrics.totalSpent || 0).toFixed(2)})`;
+              const walletTitle = `3. FINANCIAL AUDIT & TRANSACTIONS LEDGER (Balance: $${(user.walletBalance || 0).toFixed(2)} | Deposited: $${(metrics.totalDeposited || 0).toFixed(2)} | Spent: $${(metrics.totalSpent || 0).toFixed(2)})`;
               currentY = drawSectionHeader(walletTitle, currentY);
 
               if (includeTransactions) {
@@ -14919,6 +15138,32 @@ function exportData(type) {
             });
           });
 
+          (data.inboundCalls || []).forEach(c => {
+            allRecords.push({
+              category: 'Inbound Voice (Free)',
+              customer: c.myNumber || 'Virtual Line',
+              details: `${c.contactNumber} -> ${c.myNumber} (${c.durationFormatted || (c.durationSeconds + 's')})`,
+              wholesale: Number(c.wholesaleCost || 0),
+              retail: 0.00,
+              profit: -Number(c.wholesaleCost || 0),
+              margin: '-100%',
+              date: new Date(c.createdAt || Date.now())
+            });
+          });
+
+          (data.inboundSms || []).forEach(s => {
+            allRecords.push({
+              category: 'Inbound SMS (Free)',
+              customer: s.toNumber || 'Virtual Line',
+              details: `${s.fromNumber} -> ${s.toNumber}`,
+              wholesale: Number(s.wholesaleCost || 0),
+              retail: 0.00,
+              profit: -Number(s.wholesaleCost || 0),
+              margin: '-100%',
+              date: new Date(s.createdAt || Date.now())
+            });
+          });
+
           allRecords.sort((a, b) => a.date - b.date);
 
           let runningProfit = 0;
@@ -14946,8 +15191,8 @@ function exportData(type) {
           allRecords.reverse(); // Newest first
 
           if (filter === 'numbers') allRecords = allRecords.filter(r => r.category === 'Line Subscription');
-          if (filter === 'calls') allRecords = allRecords.filter(r => r.category === 'VoIP Call');
-          if (filter === 'sms') allRecords = allRecords.filter(r => r.category === 'Outbound SMS');
+          if (filter === 'calls') allRecords = allRecords.filter(r => r.category === 'VoIP Call' || r.category === 'Inbound Voice (Free)');
+          if (filter === 'sms') allRecords = allRecords.filter(r => r.category === 'Outbound SMS' || r.category === 'Inbound SMS (Free)');
 
           const tableRows = allRecords.map(r => [
             r.category,
@@ -14994,7 +15239,7 @@ function exportData(type) {
         // ==========================================
         if (type === 'wholesale_cost') {
           const { doc, margin, contentWidth } = initSimlyPdf(
-            'Wholesale Telecom Carrier Costs (Telnyx Direct)',
+            'Wholesale Telecom Carrier Costs (Carrier Direct)',
             'Direct wholesale expense statement for virtual DIDs, voice minutes, and SMS routing'
           );
 
@@ -15002,6 +15247,8 @@ function exportData(type) {
           let numbersWholesaleSum = 0;
           let callsWholesaleSum = 0;
           let smsWholesaleSum = 0;
+          let inboundCallsWholesaleSum = 0;
+          let inboundSmsWholesaleSum = 0;
 
           (data.numbers || []).forEach(n => {
             const cost = Number(n.wholesaleCost || 0);
@@ -15021,7 +15268,7 @@ function exportData(type) {
             const cost = Number(c.wholesaleCost || 0);
             callsWholesaleSum += cost;
             allWholesale.push({
-              category: 'Voice Minutes',
+              category: 'Voice Minutes (Outbound)',
               service: `${c.myNumber} -> ${c.contactNumber} (${c.destinationCountry || 'Intl'})`,
               details: `${c.durationSeconds || 0}s (${c.durationFormatted || '0m'}) @ ${formatUSD8(c.wholesaleRate || (cost / (c.durationSeconds > 0 ? Math.ceil(c.durationSeconds / 60) : 1)))}/min`,
               rate: formatUSD8(c.wholesaleRate || (cost / (c.durationSeconds > 0 ? Math.ceil(c.durationSeconds / 60) : 1))),
@@ -15034,7 +15281,33 @@ function exportData(type) {
             const cost = Number(s.wholesaleCost || 0);
             smsWholesaleSum += cost;
             allWholesale.push({
-              category: 'SMS Routing',
+              category: 'SMS Routing (Outbound)',
+              service: `${s.fromNumber} -> ${s.toNumber}`,
+              details: '1 Segment',
+              rate: formatUSD8(cost),
+              cost: cost,
+              date: new Date(s.createdAt || Date.now())
+            });
+          });
+
+          (data.inboundCalls || []).forEach(c => {
+            const cost = Number(c.wholesaleCost || 0);
+            inboundCallsWholesaleSum += cost;
+            allWholesale.push({
+              category: 'Inbound Voice Termination (Free for User)',
+              service: `${c.contactNumber} -> ${c.myNumber}`,
+              details: `${c.durationSeconds || 0}s (${c.durationFormatted || '0m'}) @ ${formatUSD8(c.wholesaleRate)}/min`,
+              rate: formatUSD8(c.wholesaleRate),
+              cost: cost,
+              date: new Date(c.createdAt || Date.now())
+            });
+          });
+
+          (data.inboundSms || []).forEach(s => {
+            const cost = Number(s.wholesaleCost || 0);
+            inboundSmsWholesaleSum += cost;
+            allWholesale.push({
+              category: 'Inbound SMS Receiving (Free for User)',
               service: `${s.fromNumber} -> ${s.toNumber}`,
               details: '1 Segment',
               rate: formatUSD8(cost),
@@ -15051,13 +15324,13 @@ function exportData(type) {
             w.runningCost = runningWholesale;
           });
 
-          const totalWholesale = numbersWholesaleSum + callsWholesaleSum + smsWholesaleSum;
+          const totalWholesale = numbersWholesaleSum + callsWholesaleSum + smsWholesaleSum + inboundCallsWholesaleSum + inboundSmsWholesaleSum;
 
           const summaryCards = [
             { label: 'Total Wholesale Costs', value: formatUSD8(totalWholesale), color: [6, 182, 212] },
             { label: 'DIDs Lease Expense', value: formatUSD8(numbersWholesaleSum), color: [6, 182, 212] },
-            { label: 'Voice Termination', value: formatUSD8(callsWholesaleSum), color: [6, 182, 212] },
-            { label: 'SMS Carrier Fees', value: formatUSD8(smsWholesaleSum), color: [6, 182, 212] }
+            { label: 'Voice Termination', value: formatUSD8(callsWholesaleSum + inboundCallsWholesaleSum), color: [6, 182, 212] },
+            { label: 'SMS Carrier Fees', value: formatUSD8(smsWholesaleSum + inboundSmsWholesaleSum), color: [6, 182, 212] }
           ];
 
           const startTableY = drawPdfSummaryCards(doc, summaryCards, 64, margin, contentWidth);

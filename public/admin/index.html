@@ -4879,6 +4879,12 @@
             el.classList.add('hidden');
           }
         });
+        // Mobile bottom navigation bar filter
+        const mobOverview = document.getElementById('mob-btn-overview');
+        const mobNumbers = document.getElementById('mob-btn-numbers');
+        if (mobOverview) mobOverview.classList.add('hidden');
+        if (mobNumbers) mobNumbers.classList.add('hidden');
+
         // Default agent to support desk tab if current tab is not allowed
         if (!['users', 'support'].includes(currentActiveTab)) {
           switchTab('support');
@@ -4888,11 +4894,25 @@
         allNavBtns.forEach(el => {
           if (hideIds.includes(el.id)) el.classList.add('hidden');
         });
+        const mobOverview = document.getElementById('mob-btn-overview');
+        if (mobOverview) mobOverview.classList.add('hidden');
       } else if (staff.role === 'finance_manager') {
         const hideIds = ['tab-btn-numbers', 'tab-btn-cdr', 'tab-btn-support', 'tab-btn-announcements', 'tab-btn-carrier-TWILIO', 'tab-btn-carrier-TELNYX', 'tab-btn-carrier-DIDWW', 'sidebarDynamicCarriersList', 'tab-btn-carriers', 'tab-btn-team', 'tab-btn-audit', 'tab-btn-blacklist', 'tab-btn-config'];
         allNavBtns.forEach(el => {
           if (hideIds.includes(el.id)) el.classList.add('hidden');
         });
+        const mobNumbers = document.getElementById('mob-btn-numbers');
+        const mobSupport = document.getElementById('mob-btn-support');
+        if (mobNumbers) mobNumbers.classList.add('hidden');
+        if (mobSupport) mobSupport.classList.add('hidden');
+      } else {
+        // Super Admin: Ensure all mobile bottom nav tabs visible
+        const mobOverview = document.getElementById('mob-btn-overview');
+        const mobNumbers = document.getElementById('mob-btn-numbers');
+        const mobSupport = document.getElementById('mob-btn-support');
+        if (mobOverview) mobOverview.classList.remove('hidden');
+        if (mobNumbers) mobNumbers.classList.remove('hidden');
+        if (mobSupport) mobSupport.classList.remove('hidden');
       }
     }
 
@@ -5232,32 +5252,37 @@
       if (ownerBadge) ownerBadge.innerText = res.stats?.ownerChatsCount || 0;
 
       // Real-time Sound Chime & Floating Messenger Bubble Alert
+      const totalPending = newUnassigned > 0 ? newUnassigned : unreadCount;
+      const floatingBadge = document.getElementById('floatingMessengerUnreadBadge');
+      if (floatingBadge) {
+        if (totalPending > 0) {
+          floatingBadge.innerText = totalPending;
+          floatingBadge.classList.remove('hidden');
+        } else {
+          floatingBadge.classList.add('hidden');
+        }
+      }
+
+      // Update latest ticket for Floating Drawer
+      const latestTicket = (res.unassigned && res.unassigned[0]) || (res.unassignedTickets && res.unassignedTickets[0]) || (res.myChats && res.myChats[0]) || (res.myClaimedTickets && res.myClaimedTickets[0]) || (res.allChats && res.allChats[0]);
+      if (latestTicket) {
+        updateFloatingMessengerTicket(latestTicket, latestTicket.messages || [{
+          sender: 'user',
+          text: latestTicket.lastMessageText || 'Customer waiting in queue',
+          createdAt: latestTicket.lastMessageAt || new Date()
+        }]);
+      }
+
+      // Check if we should ring the chime
       const isInitialRun = floatingLastKnownUnassignedCount === -1;
-      const hasNewIncoming = !isInitialRun && (newUnassigned > floatingLastKnownUnassignedCount || unreadCount > floatingLastKnownUnreadMsgCount);
+      const hasNewIncoming = (!isInitialRun && (newUnassigned > floatingLastKnownUnassignedCount || unreadCount > floatingLastKnownUnreadMsgCount)) || (isInitialRun && totalPending > 0);
 
       if (hasNewIncoming) {
         playSupportChime();
 
-        // Animate Floating Messenger Bubble
-        const badge = document.getElementById('floatingMessengerUnreadBadge');
-        if (badge) {
-          badge.innerText = newUnassigned > 0 ? newUnassigned : unreadCount;
-          badge.classList.remove('hidden');
-        }
-
-        // Update latest ticket in floating drawer
-        const latestTicket = (res.unassigned && res.unassigned[0]) || (res.unassignedTickets && res.unassignedTickets[0]) || (res.myChats && res.myChats[0]) || (res.myClaimedTickets && res.myClaimedTickets[0]);
-        if (latestTicket) {
-          updateFloatingMessengerTicket(latestTicket, [{
-            sender: 'user',
-            text: latestTicket.lastMessageText || 'New customer message received',
-            createdAt: latestTicket.lastMessageAt || new Date()
-          }]);
-        }
-
         showLiveToast(
-          '🔔 New Customer Support Message!',
-          `${newUnassigned} customer${newUnassigned > 1 ? 's are' : ' is'} waiting in queue.`,
+          '🔔 Customer Support Alert!',
+          `${totalPending} customer message waiting in queue.`,
           'headset',
           'amber',
           () => switchTab('support')
@@ -16238,6 +16263,8 @@ function updateStaffRingerUi() {
 }
 
 // 🔊 Crisp Dual-Tone Support Chime (Web Audio API - 100% Cross-Browser / Mobile)
+let hasPlayedInitialChimeOnUnlock = false;
+
 function unlockMobileAudioContext() {
   try {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -16246,7 +16273,15 @@ function unlockMobileAudioContext() {
         audioCtx = new AudioContextClass();
       }
       if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
+        audioCtx.resume().then(() => {
+          if (!hasPlayedInitialChimeOnUnlock && floatingLastKnownUnassignedCount > 0 && staffRingerEnabled) {
+            hasPlayedInitialChimeOnUnlock = true;
+            playSupportChime();
+          }
+        });
+      } else if (!hasPlayedInitialChimeOnUnlock && floatingLastKnownUnassignedCount > 0 && staffRingerEnabled) {
+        hasPlayedInitialChimeOnUnlock = true;
+        playSupportChime();
       }
     }
   } catch (e) {}
@@ -16272,7 +16307,7 @@ function playSupportChime() {
     const gain1 = audioCtx.createGain();
     osc1.type = 'sine';
     osc1.frequency.setValueAtTime(880, now);
-    gain1.gain.setValueAtTime(0.45, now);
+    gain1.gain.setValueAtTime(0.5, now);
     gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
     osc1.connect(gain1);
     gain1.connect(audioCtx.destination);
@@ -16284,7 +16319,7 @@ function playSupportChime() {
     const gain2 = audioCtx.createGain();
     osc2.type = 'sine';
     osc2.frequency.setValueAtTime(1318.5, now + 0.12);
-    gain2.gain.setValueAtTime(0.55, now + 0.12);
+    gain2.gain.setValueAtTime(0.6, now + 0.12);
     gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
     osc2.connect(gain2);
     gain2.connect(audioCtx.destination);
@@ -16292,7 +16327,7 @@ function playSupportChime() {
     osc2.stop(now + 0.65);
 
     if (navigator.vibrate) {
-      navigator.vibrate([250, 100, 250]);
+      navigator.vibrate([300, 100, 300]);
     }
   } catch (err) {
     console.warn('Audio chime notice:', err.message);
@@ -16309,6 +16344,12 @@ function toggleFloatingMessengerDrawer(forceState) {
   const nextOpen = forceState !== undefined ? forceState : !isCurrentlyOpen;
 
   if (nextOpen) {
+    if (!activeFloatingTicket && rawQueueData) {
+      const topTicket = (rawQueueData.unassigned && rawQueueData.unassigned[0]) || (rawQueueData.unassignedTickets && rawQueueData.unassignedTickets[0]) || (rawQueueData.myChats && rawQueueData.myChats[0]) || (rawQueueData.myClaimedTickets && rawQueueData.myClaimedTickets[0]) || (rawQueueData.allChats && rawQueueData.allChats[0]);
+      if (topTicket) {
+        updateFloatingMessengerTicket(topTicket, topTicket.messages || []);
+      }
+    }
     drawer.classList.remove('hidden');
     if (badge) badge.classList.add('hidden');
     setTimeout(() => {
@@ -16344,14 +16385,16 @@ function updateFloatingMessengerTicket(ticket, messages = []) {
     }
   }
 
-  if (listEl && messages && messages.length > 0) {
-    listEl.innerHTML = messages.slice(-5).map(m => {
+  const effectiveMessages = (messages && messages.length > 0) ? messages : (ticket.messages && ticket.messages.length > 0) ? ticket.messages : (ticket.lastMessageText ? [{ sender: 'user', text: ticket.lastMessageText, createdAt: ticket.lastMessageAt || new Date() }] : []);
+
+  if (listEl && effectiveMessages.length > 0) {
+    listEl.innerHTML = effectiveMessages.slice(-5).map(m => {
       const isAgent = m.sender === 'agent';
       return `
         <div class="flex ${isAgent ? 'justify-end' : 'justify-start'}">
           <div class="max-w-[80%] p-2 rounded-xl text-xs ${isAgent ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'} shadow-sm">
             <p>${escapeHtml(m.text || '')}</p>
-            <span class="text-[9px] ${isAgent ? 'text-indigo-200' : 'text-slate-400'} block text-right mt-0.5">${new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <span class="text-[9px] ${isAgent ? 'text-indigo-200' : 'text-slate-400'} block text-right mt-0.5">${m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}</span>
           </div>
         </div>
       `;
@@ -17437,7 +17480,7 @@ setTimeout(initStaffNotifBell, 400);
   <!-- ========================================== -->
   <!-- FLOATING MESSENGER / CHAT HEAD (FB STYLE)  -->
   <!-- ========================================== -->
-  <div id="floatingMessengerContainer" class="fixed bottom-5 right-5 z-50 flex flex-col items-end">
+  <div id="floatingMessengerContainer" class="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end">
     <!-- Floating Drawer / Quick Reply Window -->
     <div id="floatingMessengerDrawer" class="hidden mb-3 w-[92vw] sm:w-[380px] bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all transform origin-bottom-right duration-200">
       <!-- Header -->

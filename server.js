@@ -2140,6 +2140,22 @@ app.get('/api/numbers/my-numbers', async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
+    const configMap = await getSystemConfigsMap();
+    const voiceMarginThreshold = parseFloat(configMap.fup_voice_margin_threshold || '10');
+    const smsMarginThreshold = parseFloat(configMap.fup_sms_margin_threshold || '1');
+    const isShieldEnabled = configMap.fup_shield_enabled !== 'false';
+
+    let userPnL = null;
+    const userRecord = await prisma.user.findFirst({
+      where: { OR: [{ id: cleanUserId }, { email: cleanUserId }] }
+    });
+    if (userRecord) {
+      try {
+        userPnL = await calculateUserTelecomPnL(userRecord, { numbers: rawNumbers });
+      } catch (_) {}
+    }
+    const userMargin = userPnL ? userPnL.marginPercent : 100;
+
     const now = Date.now();
     const numbers = rawNumbers.map(num => {
       const expDate = num.expiresAt ? new Date(num.expiresAt) : new Date(new Date(num.createdAt).getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -2160,6 +2176,27 @@ app.get('/api/numbers/my-numbers', async (req, res) => {
         cleanProfileName = null;
       }
 
+      const cleanPhone = normalizePhone(num.phoneNumber);
+      const cooldown = cleanPhone ? inboundCooldownMap.get(cleanPhone) : null;
+      const isCooldown = cooldown && (now < cooldown.cooldownUntil);
+      const cooldownRemainingMin = isCooldown ? Math.ceil((cooldown.cooldownUntil - now) / 60000) : 0;
+
+      const isVoiceRestricted = isShieldEnabled && (isCooldown || (userMargin <= voiceMarginThreshold));
+      const isSmsRestricted = isShieldEnabled && (isCooldown || (userMargin <= smsMarginThreshold));
+
+      let shieldBadge = 'ACTIVE';
+      let shieldNotice = 'All incoming calls & SMS are active.';
+      if (isCooldown) {
+        shieldBadge = 'COOLDOWN';
+        shieldNotice = `Temporary incoming cooldown active (${cooldownRemainingMin}m remaining).`;
+      } else if (isSmsRestricted) {
+        shieldBadge = 'INBOUND_PAUSED';
+        shieldNotice = 'Incoming calls & SMS paused due to low usage margin. Renew subscription to reactivate.';
+      } else if (isVoiceRestricted) {
+        shieldBadge = 'VOICE_PAUSED';
+        shieldNotice = 'Incoming voice calls paused. Outbound calls & SMS remain fully active.';
+      }
+
       const { carrier: _c, ...safeNumberData } = num;
 
       return {
@@ -2167,7 +2204,16 @@ app.get('/api/numbers/my-numbers', async (req, res) => {
         profileName: cleanProfileName,
         expiresAt: expDate.toISOString(),
         daysRemaining,
-        status: computedStatus
+        status: computedStatus,
+        inboundShield: {
+          voiceAllowed: !isVoiceRestricted,
+          smsAllowed: !isSmsRestricted,
+          isCooldown: !!isCooldown,
+          cooldownRemainingMinutes: cooldownRemainingMin,
+          userMarginPercent: Number(userMargin.toFixed(1)),
+          shieldBadge,
+          shieldNotice
+        }
       };
     });
 
@@ -2871,6 +2917,146 @@ app.post('/api/sms/simulate-inbound', async (req, res) => {
   }
 });
 
+// ============================================================
+// 🛡️ AUTONOMOUS TELECOM MARGIN & INBOUND SHIELD (FUP) ENGINE
+// ============================================================
+const inboundFloodWindowMap = new Map();
+const inboundCooldownMap = new Map();
+
+async function evaluateInboundShieldGate(rawPhoneNumber, eventType = 'sms', carrier = 'TELNYX') {
+  try {
+    const cleanPhone = normalizePhone(rawPhoneNumber);
+    if (!cleanPhone) {
+      return { allowed: true, reason: 'NO_PHONE_SPECIFIED' };
+    }
+
+    const configMap = await getSystemConfigsMap();
+    const isShieldEnabled = configMap.fup_shield_enabled !== 'false';
+    if (!isShieldEnabled) {
+      return { allowed: true, reason: 'SHIELD_DISABLED' };
+    }
+
+    const now = Date.now();
+
+    // 1. Check Active Flood Cooldown
+    const activeCooldown = inboundCooldownMap.get(cleanPhone);
+    if (activeCooldown) {
+      if (now < activeCooldown.cooldownUntil) {
+        const remainingSec = Math.ceil((activeCooldown.cooldownUntil - now) / 1000);
+        return {
+          allowed: false,
+          reason: 'FLOOD_COOLDOWN',
+          cooldownActive: true,
+          cooldownUntil: activeCooldown.cooldownUntil,
+          cooldownRemainingSec: remainingSec,
+          cooldownRemainingMinutes: Math.ceil(remainingSec / 60),
+          action: 'REJECT'
+        };
+      } else {
+        // Cooldown period expired! Auto-clear
+        inboundCooldownMap.delete(cleanPhone);
+      }
+    }
+
+    // 2. Flood Burst Detection (Sliding Window)
+    const burstWindowSec = parseInt(configMap.fup_burst_window_seconds || '60', 10);
+    const burstLimitCount = parseInt(configMap.fup_burst_limit_count || '10', 10);
+    const cooldownMins = parseInt(configMap.fup_cooldown_duration_minutes || '120', 10);
+
+    const windowMs = burstWindowSec * 1000;
+    let recentEvents = inboundFloodWindowMap.get(cleanPhone) || [];
+    recentEvents = recentEvents.filter(t => now - t <= windowMs);
+    recentEvents.push(now);
+    inboundFloodWindowMap.set(cleanPhone, recentEvents);
+
+    if (recentEvents.length > burstLimitCount) {
+      const cooldownUntil = now + (cooldownMins * 60 * 1000);
+      inboundCooldownMap.set(cleanPhone, {
+        cooldownUntil,
+        reason: `Exceeded ${burstLimitCount} inbound events in ${burstWindowSec}s`,
+        triggeredAt: now
+      });
+      inboundFloodWindowMap.delete(cleanPhone);
+
+      console.warn(`🚨 [FUP FLOOD DETECTED] Number ${cleanPhone} received >${burstLimitCount} events in ${burstWindowSec}s. Cooldown triggered for ${cooldownMins} minutes!`);
+      return {
+        allowed: false,
+        reason: 'FLOOD_COOLDOWN_TRIGGERED',
+        cooldownActive: true,
+        cooldownUntil,
+        cooldownRemainingMinutes: cooldownMins,
+        action: 'REJECT'
+      };
+    }
+
+    // 3. Find Line Owner User
+    const lineOwner = await prisma.purchasedNumber.findFirst({
+      where: { phoneNumber: cleanPhone, status: 'active' }
+    });
+
+    if (!lineOwner || !lineOwner.userId) {
+      return { allowed: false, reason: 'UNASSIGNED_OR_INACTIVE_LINE', action: 'REJECT' };
+    }
+
+    const ownerUser = await prisma.user.findFirst({
+      where: { OR: [{ id: lineOwner.userId }, { email: lineOwner.userId }] }
+    });
+
+    if (!ownerUser) {
+      return { allowed: false, reason: 'OWNER_USER_NOT_FOUND', action: 'REJECT' };
+    }
+
+    // 4. Live Telecom Margin Evaluation
+    const pnl = await calculateUserTelecomPnL(ownerUser);
+    const currentMargin = pnl.marginPercent;
+    const voiceMarginThreshold = parseFloat(configMap.fup_voice_margin_threshold || '10');
+    const smsMarginThreshold = parseFloat(configMap.fup_sms_margin_threshold || '1');
+
+    // Rule A: Voice Gate (<= 10% Margin)
+    if (eventType === 'voice' || eventType === 'call') {
+      if (currentMargin <= voiceMarginThreshold) {
+        console.warn(`🟠 [FUP VOICE LOCK] Number ${cleanPhone} (User: ${ownerUser.email}) margin is ${currentMargin.toFixed(1)}% <= ${voiceMarginThreshold}%. Inbound voice calls paused.`);
+        return {
+          allowed: false,
+          reason: 'LOW_MARGIN_VOICE_LOCK',
+          marginPercent: currentMargin,
+          threshold: voiceMarginThreshold,
+          action: 'REJECT',
+          ownerUser,
+          lineOwner
+        };
+      }
+    }
+
+    // Rule B: SMS Gate (<= 1% Margin)
+    if (eventType === 'sms') {
+      if (currentMargin <= smsMarginThreshold) {
+        console.warn(`🔴 [FUP SMS LOCK] Number ${cleanPhone} (User: ${ownerUser.email}) margin is ${currentMargin.toFixed(1)}% <= ${smsMarginThreshold}%. Inbound SMS receiving paused.`);
+        return {
+          allowed: false,
+          reason: 'LOW_MARGIN_SMS_LOCK',
+          marginPercent: currentMargin,
+          threshold: smsMarginThreshold,
+          action: 'PAUSE_SMS',
+          ownerUser,
+          lineOwner
+        };
+      }
+    }
+
+    return {
+      allowed: true,
+      reason: 'ALLOWED',
+      marginPercent: currentMargin,
+      ownerUser,
+      lineOwner
+    };
+  } catch (err) {
+    console.error('[INBOUND SHIELD GATE ERROR]', err.message);
+    return { allowed: true, reason: 'GATE_ERROR_FALLBACK', error: err.message };
+  }
+}
+
 // 8. Endpoint: Webhook Listener for Inbound SMS & Calls
 app.post('/api/telnyx/webhook', async (req, res) => {
   try {
@@ -2888,8 +3074,15 @@ app.post('/api/telnyx/webhook', async (req, res) => {
       if (to && from) {
         console.log(`📩 [INBOUND SMS] To: ${to} | From: ${from} | Text: ${text}`);
 
+        // 🛡️ Evaluate FUP Shield Gate
+        const shield = await evaluateInboundShieldGate(to, 'sms', 'TELNYX');
+        if (!shield.allowed) {
+          console.warn(`⚠️ [TELNYX INBOUND SMS SHIELD BLOCK] To: ${to} | Reason: ${shield.reason} (Margin: ${shield.marginPercent != null ? shield.marginPercent.toFixed(1) + '%' : 'N/A'})`);
+          return res.sendStatus(200);
+        }
+
         // Verify active virtual line ownership
-        const lineOwner = await prisma.purchasedNumber.findFirst({
+        const lineOwner = shield.lineOwner || await prisma.purchasedNumber.findFirst({
           where: { phoneNumber: to, status: 'active' }
         });
 
@@ -2907,7 +3100,7 @@ app.post('/api/telnyx/webhook', async (req, res) => {
 
           // 🔔 Send Lockscreen / Heads-up Push Notification to Line Owner
           if (lineOwner.userId) {
-            const ownerUser = await prisma.user.findFirst({
+            const ownerUser = shield.ownerUser || await prisma.user.findFirst({
               where: { OR: [{ id: lineOwner.userId }, { email: lineOwner.userId }] },
               select: { id: true, email: true }
             });
@@ -2942,7 +3135,23 @@ app.post('/api/telnyx/webhook', async (req, res) => {
       if (to && from) {
         console.log(`📲 [INBOUND CALL] To: ${to} | From: ${from} | Call ID: ${callControlId}`);
 
-        const lineOwner = await prisma.purchasedNumber.findFirst({
+        // 🛡️ Evaluate FUP Shield Gate
+        const shield = await evaluateInboundShieldGate(to, 'voice', 'TELNYX');
+        if (!shield.allowed) {
+          console.warn(`⚠️ [TELNYX INBOUND CALL SHIELD REJECT] To: ${to} | Reason: ${shield.reason} (Margin: ${shield.marginPercent != null ? shield.marginPercent.toFixed(1) + '%' : 'N/A'})`);
+          if (callControlId) {
+            try {
+              await telnyx.calls.create({
+                call_control_id: callControlId,
+                action: 'reject',
+                cause: 'USER_BUSY'
+              }).catch(() => {});
+            } catch (_) {}
+          }
+          return res.sendStatus(200);
+        }
+
+        const lineOwner = shield.lineOwner || await prisma.purchasedNumber.findFirst({
           where: { phoneNumber: to, status: 'active' }
         });
 
@@ -2970,7 +3179,7 @@ app.post('/api/telnyx/webhook', async (req, res) => {
 
           // 🔔 Send Lockscreen / Heads-up Push Notification for Inbound Call
           if (lineOwner.userId) {
-            const ownerUser = await prisma.user.findFirst({
+            const ownerUser = shield.ownerUser || await prisma.user.findFirst({
               where: { OR: [{ id: lineOwner.userId }, { email: lineOwner.userId }] },
               select: { id: true, email: true }
             });
@@ -3023,7 +3232,14 @@ app.post(['/api/twilio/sms', '/api/twilio/webhook'], async (req, res) => {
     if (to && from) {
       console.log(`📩 [TWILIO INBOUND SMS] To: ${to} | From: ${from} | Text: ${text}`);
 
-      const lineOwner = await prisma.purchasedNumber.findFirst({
+      // 🛡️ Evaluate FUP Shield Gate
+      const shield = await evaluateInboundShieldGate(to, 'sms', 'TWILIO');
+      if (!shield.allowed) {
+        console.warn(`⚠️ [TWILIO INBOUND SMS SHIELD BLOCK] To: ${to} | Reason: ${shield.reason} (Margin: ${shield.marginPercent != null ? shield.marginPercent.toFixed(1) + '%' : 'N/A'})`);
+        return res.type('text/xml').send('<Response></Response>');
+      }
+
+      const lineOwner = shield.lineOwner || await prisma.purchasedNumber.findFirst({
         where: { phoneNumber: to, status: 'active' }
       });
 
@@ -3041,7 +3257,7 @@ app.post(['/api/twilio/sms', '/api/twilio/webhook'], async (req, res) => {
 
         // 🔔 Send Push Notification
         if (lineOwner.userId) {
-          const ownerUser = await prisma.user.findFirst({
+          const ownerUser = shield.ownerUser || await prisma.user.findFirst({
             where: { OR: [{ id: lineOwner.userId }, { email: lineOwner.userId }] },
             select: { id: true, email: true }
           });
@@ -3081,7 +3297,15 @@ app.post('/api/twilio/voice', async (req, res) => {
     if (to && from) {
       console.log(`📲 [TWILIO INBOUND CALL] To: ${to} | From: ${from} | CallSid: ${callSid}`);
 
-      const lineOwner = await prisma.purchasedNumber.findFirst({
+      // 🛡️ Evaluate FUP Shield Gate
+      const shield = await evaluateInboundShieldGate(to, 'voice', 'TWILIO');
+      if (!shield.allowed) {
+        console.warn(`⚠️ [TWILIO INBOUND CALL SHIELD REJECT] To: ${to} | Reason: ${shield.reason} (Margin: ${shield.marginPercent != null ? shield.marginPercent.toFixed(1) + '%' : 'N/A'})`);
+        // Instant <Reject> returns $0 bill from Twilio!
+        return res.type('text/xml').send('<Response><Reject reason="busy"/></Response>');
+      }
+
+      const lineOwner = shield.lineOwner || await prisma.purchasedNumber.findFirst({
         where: { phoneNumber: to, status: 'active' }
       });
 
@@ -3097,7 +3321,7 @@ app.post('/api/twilio/voice', async (req, res) => {
         });
 
         if (lineOwner.userId) {
-          const ownerUser = await prisma.user.findFirst({
+          const ownerUser = shield.ownerUser || await prisma.user.findFirst({
             where: { OR: [{ id: lineOwner.userId }, { email: lineOwner.userId }] },
             select: { id: true, email: true }
           });
@@ -11571,7 +11795,15 @@ const DEFAULT_SYSTEM_CONFIGS = {
   allow_sms: { value: 'true', desc: 'Emergency SMS sending switch' },
   allow_deposits: { value: 'true', desc: 'Emergency wallet recharge & payments switch' },
   support_email: { value: 'support@simlyx.com', desc: 'Official customer support email' },
-  support_phone: { value: '+1 (800) 555-SIMLY', desc: 'Official customer support phone' }
+  support_phone: { value: '+1 (800) 555-SIMLY', desc: 'Official customer support phone' },
+  fup_shield_enabled: { value: 'true', desc: 'Autonomous Telecom Margin & Inbound Anti-Abuse Shield Master Switch (true = active, false = disabled)' },
+  fup_burst_limit_count: { value: '10', desc: 'Max inbound events (SMS/Calls) within burst window before flood cooldown is triggered' },
+  fup_burst_window_seconds: { value: '60', desc: 'Sliding time window in seconds for flood burst detection' },
+  fup_cooldown_duration_minutes: { value: '120', desc: 'Duration in minutes to freeze inbound receiving during flood cooldown (default: 2 hours)' },
+  fup_voice_margin_threshold: { value: '10', desc: 'User net telecom profit margin percentage threshold to pause/reject inbound voice calls' },
+  fup_sms_margin_threshold: { value: '1', desc: 'User net telecom profit margin percentage threshold to pause inbound SMS receiving' },
+  fup_overage_charge_enabled: { value: 'false', desc: 'Automatically deduct carrier wholesale fee from wallet if user margin <= 1% and balance > 0' },
+  fup_overage_sms_price: { value: '0.0050', desc: 'Overage charge per inbound SMS when over-quota' }
 };
 
 // Helper to get all configs with defaults
@@ -11737,6 +11969,142 @@ app.post('/api/admin/config', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('[ADMIN CONFIG POST ERROR]', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// 🛡️ AUTONOMOUS TELECOM MARGIN & INBOUND SHIELD (FUP) ADMIN API
+// ============================================================
+
+// 1. Get Live FUP Configuration & Active Cooldown Status
+app.get('/api/admin/fup-config', requireAdmin, async (req, res) => {
+  try {
+    const configMap = await getSystemConfigsMap();
+    const now = Date.now();
+    const activeCooldowns = [];
+
+    for (const [phone, data] of inboundCooldownMap.entries()) {
+      if (now < data.cooldownUntil) {
+        activeCooldowns.push({
+          phoneNumber: phone,
+          reason: data.reason,
+          triggeredAt: new Date(data.triggeredAt).toISOString(),
+          cooldownUntil: new Date(data.cooldownUntil).toISOString(),
+          remainingSeconds: Math.ceil((data.cooldownUntil - now) / 1000),
+          remainingMinutes: Math.ceil((data.cooldownUntil - now) / 60000)
+        });
+      } else {
+        inboundCooldownMap.delete(phone);
+      }
+    }
+
+    res.json({
+      success: true,
+      config: {
+        fup_shield_enabled: configMap.fup_shield_enabled !== 'false',
+        fup_burst_limit_count: parseInt(configMap.fup_burst_limit_count || '10', 10),
+        fup_burst_window_seconds: parseInt(configMap.fup_burst_window_seconds || '60', 10),
+        fup_cooldown_duration_minutes: parseInt(configMap.fup_cooldown_duration_minutes || '120', 10),
+        fup_voice_margin_threshold: parseFloat(configMap.fup_voice_margin_threshold || '10'),
+        fup_sms_margin_threshold: parseFloat(configMap.fup_sms_margin_threshold || '1'),
+        fup_overage_charge_enabled: configMap.fup_overage_charge_enabled === 'true',
+        fup_overage_sms_price: parseFloat(configMap.fup_overage_sms_price || '0.0050')
+      },
+      activeCooldowns,
+      cooldownCount: activeCooldowns.length
+    });
+  } catch (err) {
+    console.error('[ADMIN FUP CONFIG GET ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. Update Live FUP Shield Dynamic Configuration
+app.post('/api/admin/fup-config', requireAdmin, async (req, res) => {
+  try {
+    const {
+      fup_shield_enabled,
+      fup_burst_limit_count,
+      fup_burst_window_seconds,
+      fup_cooldown_duration_minutes,
+      fup_voice_margin_threshold,
+      fup_sms_margin_threshold,
+      fup_overage_charge_enabled,
+      fup_overage_sms_price
+    } = req.body;
+
+    const updates = {};
+    if (fup_shield_enabled !== undefined) updates.fup_shield_enabled = String(fup_shield_enabled);
+    if (fup_burst_limit_count !== undefined) updates.fup_burst_limit_count = String(fup_burst_limit_count);
+    if (fup_burst_window_seconds !== undefined) updates.fup_burst_window_seconds = String(fup_burst_window_seconds);
+    if (fup_cooldown_duration_minutes !== undefined) updates.fup_cooldown_duration_minutes = String(fup_cooldown_duration_minutes);
+    if (fup_voice_margin_threshold !== undefined) updates.fup_voice_margin_threshold = String(fup_voice_margin_threshold);
+    if (fup_sms_margin_threshold !== undefined) updates.fup_sms_margin_threshold = String(fup_sms_margin_threshold);
+    if (fup_overage_charge_enabled !== undefined) updates.fup_overage_charge_enabled = String(fup_overage_charge_enabled);
+    if (fup_overage_sms_price !== undefined) updates.fup_overage_sms_price = String(fup_overage_sms_price);
+
+    for (const [k, v] of Object.entries(updates)) {
+      await prisma.systemConfig.upsert({
+        where: { key: k },
+        update: { value: v, updatedBy: req.staffUser?.name || 'Super Admin' },
+        create: { key: k, value: v, description: DEFAULT_SYSTEM_CONFIGS[k]?.desc || 'FUP Shield Config', updatedBy: req.staffUser?.name || 'Super Admin' }
+      });
+    }
+
+    await refreshDynamicCaches();
+    await logAuditEvent(req, 'UPDATE_CONFIG', 'fup_shield', 'config', `Updated Autonomous FUP Shield parameters: ${JSON.stringify(updates)}`);
+
+    res.json({
+      success: true,
+      message: 'Autonomous FUP Shield dynamic parameters updated successfully!',
+      updates
+    });
+  } catch (err) {
+    console.error('[ADMIN FUP CONFIG POST ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3. Reset Active Cooldown for a Number or All Numbers
+app.post('/api/admin/fup/reset-cooldown', requireAdmin, async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber || phoneNumber === 'ALL') {
+      const count = inboundCooldownMap.size;
+      inboundCooldownMap.clear();
+      inboundFloodWindowMap.clear();
+      await logAuditEvent(req, 'UPDATE_CONFIG', 'fup_shield', 'config', `Reset all ${count} active FUP cooldowns`);
+      return res.json({ success: true, message: `Reset all ${count} active cooldowns successfully.` });
+    }
+
+    const clean = normalizePhone(phoneNumber);
+    const hadCooldown = inboundCooldownMap.has(clean);
+    inboundCooldownMap.delete(clean);
+    inboundFloodWindowMap.delete(clean);
+
+    await logAuditEvent(req, 'UPDATE_CONFIG', clean, 'number', `Reset FUP cooldown for line ${clean}`);
+
+    res.json({
+      success: true,
+      message: hadCooldown ? `Cooldown for ${clean} reset successfully.` : `No active cooldown found for ${clean}.`
+    });
+  } catch (err) {
+    console.error('[ADMIN FUP RESET COOLDOWN ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 4. Real-time Simulator / Gate Inspector
+app.post('/api/admin/fup/test-gate', requireAdmin, async (req, res) => {
+  try {
+    const { phoneNumber, eventType = 'voice', carrier = 'TELNYX' } = req.body;
+    if (!phoneNumber) return res.status(400).json({ success: false, error: 'phoneNumber is required' });
+
+    const result = await evaluateInboundShieldGate(phoneNumber, eventType, carrier);
+    res.json({ success: true, gateResult: result });
+  } catch (err) {
+    console.error('[ADMIN FUP TEST GATE ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

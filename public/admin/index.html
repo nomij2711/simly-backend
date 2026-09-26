@@ -233,6 +233,12 @@
             <span id="carrierStatusBadge" class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-semibold uppercase">Healthy</span>
           </div>
 
+          <!-- Support Live Ring Bell Toggle -->
+          <button id="btnStaffNotifToggle" onclick="toggleStaffNotifBell()" title="Toggle Support Sound & Floating Alerts" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 text-xs font-semibold transition-all cursor-pointer">
+            <i id="staffNotifBellIcon" class="fa-solid fa-bell text-amber-400"></i>
+            <span id="staffNotifBellText" class="text-[11px] hidden sm:inline">Ringer: ON</span>
+          </button>
+
           <!-- Owner Alert Settings Bell -->
           <button onclick="openAlertSettingsModal()" title="Owner Multi-Channel Alert Settings" class="p-2 rounded-xl text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-all relative">
             <i class="fa-solid fa-bell text-sm"></i>
@@ -16163,17 +16169,277 @@ function exportData(type) {
       }
     };
 
+// =========================================================================
+// 🔔 STAFF SOUND NOTIFICATIONS & FLOATING MESSENGER CHAT HEAD CONTROLLER
+// =========================================================================
+let staffRingerEnabled = localStorage.getItem('simlyx_staff_ringer') !== 'OFF';
+let audioCtx = null;
+let lastKnownUnassignedCount = -1;
+let lastKnownUnreadMsgCount = -1;
+let activeFloatingTicket = null;
+
+function initStaffNotifBell() {
+  const isOff = localStorage.getItem('simlyx_staff_ringer') === 'OFF';
+  staffRingerEnabled = !isOff;
+  updateStaffRingerUi();
+}
+
+function toggleStaffNotifBell() {
+  staffRingerEnabled = !staffRingerEnabled;
+  localStorage.setItem('simlyx_staff_ringer', staffRingerEnabled ? 'ON' : 'OFF');
+  updateStaffRingerUi();
+  if (staffRingerEnabled) {
+    playSupportChime();
+    showToast('🔔 Support Ringer ON: Sound & Alerts Active', 'success');
+  } else {
+    showToast('🔕 Support Ringer OFF: Muted Mode Active', 'info');
+  }
+}
+
+function updateStaffRingerUi() {
+  const btn = document.getElementById('btnStaffNotifToggle');
+  const icon = document.getElementById('staffNotifBellIcon');
+  const text = document.getElementById('staffNotifBellText');
+  if (!btn || !icon || !text) return;
+
+  if (staffRingerEnabled) {
+    btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 text-xs font-semibold transition-all cursor-pointer shadow-sm shadow-amber-500/10';
+    icon.className = 'fa-solid fa-bell text-amber-400';
+    text.innerText = 'Ringer: ON';
+  } else {
+    btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700 text-xs font-semibold transition-all cursor-pointer';
+    icon.className = 'fa-solid fa-bell-slash text-slate-500';
+    text.innerText = 'Ringer: OFF';
+  }
+}
+
+// 🔊 Crisp Dual-Tone Support Chime (Web Audio API - 100% Cross-Browser / Mobile)
+function playSupportChime() {
+  try {
+    if (!staffRingerEnabled) return;
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+
+    const now = audioCtx.currentTime;
+
+    // Tone 1: High crisp ding (880Hz - A5)
+    const osc1 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(880, now);
+    gain1.gain.setValueAtTime(0.25, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc1.connect(gain1);
+    gain1.connect(audioCtx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.35);
+
+    // Tone 2: Harmonious dong (1318.5Hz - E6)
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1318.5, now + 0.12);
+    gain2.gain.setValueAtTime(0.3, now + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+    osc2.start(now + 0.12);
+    osc2.stop(now + 0.65);
+
+    if (navigator.vibrate) {
+      navigator.vibrate([200, 100, 200]);
+    }
+  } catch (err) {
+    console.warn('Audio chime notice:', err.message);
+  }
+}
+
+// Floating Messenger Drawer Toggle
+function toggleFloatingMessengerDrawer(forceState) {
+  const drawer = document.getElementById('floatingMessengerDrawer');
+  const badge = document.getElementById('floatingMessengerUnreadBadge');
+  if (!drawer) return;
+
+  const isCurrentlyOpen = !drawer.classList.contains('hidden');
+  const nextOpen = forceState !== undefined ? forceState : !isCurrentlyOpen;
+
+  if (nextOpen) {
+    drawer.classList.remove('hidden');
+    if (badge) badge.classList.add('hidden');
+    setTimeout(() => {
+      document.getElementById('fmReplyInput')?.focus();
+    }, 100);
+  } else {
+    drawer.classList.add('hidden');
+  }
+}
+
+function updateFloatingMessengerTicket(ticket, messages = []) {
+  if (!ticket) return;
+  activeFloatingTicket = ticket;
+
+  const nameEl = document.getElementById('fmUserName');
+  const avatarEl = document.getElementById('fmAvatar');
+  const subEl = document.getElementById('fmUserSub');
+  const badgeEl = document.getElementById('fmStatusBadge');
+  const listEl = document.getElementById('fmMessagesList');
+
+  const displayName = ticket.userName || ticket.userEmail || 'Customer';
+  if (nameEl) nameEl.innerText = displayName;
+  if (avatarEl) avatarEl.innerText = (displayName[0] || 'U').toUpperCase();
+  if (subEl) subEl.innerText = ticket.userEmail ? ticket.userEmail : `User ID: ${ticket.userId}`;
+
+  if (badgeEl) {
+    if (ticket.status === 'unassigned') {
+      badgeEl.innerText = 'QUEUE';
+      badgeEl.className = 'px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+    } else {
+      badgeEl.innerText = ticket.assignedStaffName || 'CLAIMED';
+      badgeEl.className = 'px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+    }
+  }
+
+  if (listEl && messages && messages.length > 0) {
+    listEl.innerHTML = messages.slice(-5).map(m => {
+      const isAgent = m.sender === 'agent';
+      return `
+        <div class="flex ${isAgent ? 'justify-end' : 'justify-start'}">
+          <div class="max-w-[80%] p-2 rounded-xl text-xs ${isAgent ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'} shadow-sm">
+            <p>${escapeHtml(m.text || '')}</p>
+            <span class="text-[9px] ${isAgent ? 'text-indigo-200' : 'text-slate-400'} block text-right mt-0.5">${new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+    listEl.scrollTop = listEl.scrollHeight;
+  }
+}
+
+async function sendQuickFloatingReply(text) {
+  if (!activeFloatingTicket || !text) return;
+  const input = document.getElementById('fmReplyInput');
+  if (input) input.value = text;
+  handleFloatingReplySubmit(new Event('submit'));
+}
+
+async function handleFloatingReplySubmit(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const input = document.getElementById('fmReplyInput');
+  const text = input ? input.value.trim() : '';
+  if (!text || !activeFloatingTicket) return;
+
+  try {
+    input.value = '';
+    const res = await adminFetch('/api/admin/support/reply', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: activeFloatingTicket.userId,
+        text,
+        senderName: CURRENT_STAFF?.chatDisplayName || CURRENT_STAFF?.name || 'Support Agent'
+      })
+    });
+
+    if (res && res.success) {
+      const listEl = document.getElementById('fmMessagesList');
+      if (listEl) {
+        const row = document.createElement('div');
+        row.className = 'flex justify-end';
+        row.innerHTML = `
+          <div class="max-w-[80%] p-2 rounded-xl text-xs bg-indigo-600 text-white rounded-tr-none shadow-sm animate-scale-up">
+            <p>${escapeHtml(text)}</p>
+            <span class="text-[9px] text-indigo-200 block text-right mt-0.5">Just now</span>
+          </div>
+        `;
+        listEl.appendChild(row);
+        listEl.scrollTop = listEl.scrollHeight;
+      }
+      showToast('Message sent to customer!', 'success');
+      loadSupportQueue();
+    } else {
+      showToast(res?.error || 'Failed to send reply', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to send reply: ' + err.message, 'error');
+  }
+}
+
+function goToFullSupportDeskFromFloating() {
+  toggleFloatingMessengerDrawer(false);
+  switchTab('support');
+  if (activeFloatingTicket) {
+    selectSupportTicket(activeFloatingTicket.userId);
+  }
+}
+
+// Global Real-time Support Poller with Ring Chime & Messenger Popups
+async function pollSupportAlertsAndQueue() {
+  if (!ADMIN_TOKEN) return;
+  try {
+    const res = await adminFetch('/api/admin/support/queue');
+    if (res && res.success) {
+      const unassigned = res.stats?.unassignedCount || 0;
+      const unreadCount = (res.unassignedTickets || []).concat(res.myClaimedTickets || []).reduce((sum, t) => sum + (t.unreadStaffCount || 0), 0);
+
+      // Check if new unassigned ticket arrived or unread message count increased
+      const isInitialRun = lastKnownUnassignedCount === -1;
+      const hasNewIncoming = !isInitialRun && (unassigned > lastKnownUnassignedCount || unreadCount > lastKnownUnreadMsgCount);
+
+      if (hasNewIncoming) {
+        playSupportChime();
+
+        // Animate Floating Messenger Bubble
+        const badge = document.getElementById('floatingMessengerUnreadBadge');
+        if (badge) {
+          badge.innerText = unassigned > 0 ? unassigned : unreadCount;
+          badge.classList.remove('hidden');
+        }
+
+        // Set latest ticket for floating drawer
+        const latestTicket = (res.unassignedTickets && res.unassignedTickets[0]) || (res.myClaimedTickets && res.myClaimedTickets[0]);
+        if (latestTicket) {
+          updateFloatingMessengerTicket(latestTicket, [{
+            sender: 'user',
+            text: latestTicket.lastMessageText || 'New support message received',
+            createdAt: latestTicket.lastMessageAt || new Date()
+          }]);
+        }
+      }
+
+      lastKnownUnassignedCount = unassigned;
+      lastKnownUnreadMsgCount = unreadCount;
+
+      // If Support Desk Tab is currently active, render it
+      if (currentActiveTab === 'support') {
+        rawQueueData = res;
+        const unassignedBadge = document.getElementById('badgeUnassignedCount');
+        const myChatsBadge = document.getElementById('badgeMyChatsCount');
+        const ownerBadge = document.getElementById('badgeOwnerChatsCount');
+        if (unassignedBadge) unassignedBadge.innerText = unassigned;
+        if (myChatsBadge) myChatsBadge.innerText = res.stats?.myChatsCount || 0;
+        if (ownerBadge) ownerBadge.innerText = res.stats?.ownerChatsCount || 0;
+
+        renderSupportDeskTabs();
+        renderQueueThreads();
+      }
+    }
+  } catch (e) {
+    // Silent catch
+  }
+}
+
 // Auto-poll Carrier health every 60s
 setInterval(fetchCarrierHealth, 60000);
 setTimeout(fetchCarrierHealth, 1000);
 setTimeout(fetchFinanceMargins, 1500);
 
-// Auto-poll live support chat messages every 3s
-setInterval(() => {
-  if (currentActiveTab === 'support' && ADMIN_TOKEN) {
-    loadSupportQueue();
-  }
-}, 3000);
+// Global Auto-poll live support chat messages every 3.5s
+setInterval(pollSupportAlertsAndQueue, 3500);
+setTimeout(initStaffNotifBell, 500);
+setTimeout(pollSupportAlertsAndQueue, 1200);
 
 </script>
 
@@ -17127,6 +17393,70 @@ setInterval(() => {
         </div>
       </form>
     </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- FLOATING MESSENGER / CHAT HEAD (FB STYLE)  -->
+  <!-- ========================================== -->
+  <div id="floatingMessengerContainer" class="fixed bottom-5 right-5 z-50 flex flex-col items-end">
+    <!-- Floating Drawer / Quick Reply Window -->
+    <div id="floatingMessengerDrawer" class="hidden mb-3 w-[92vw] sm:w-[380px] bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all transform origin-bottom-right duration-200">
+      <!-- Header -->
+      <div class="p-3.5 bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700/60 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div id="fmAvatar" class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white shadow-md text-sm">
+            U
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <h4 id="fmUserName" class="text-xs font-bold text-white truncate max-w-[140px]">Customer Chat</h4>
+              <span id="fmStatusBadge" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">QUEUE</span>
+            </div>
+            <p id="fmUserSub" class="text-[10px] text-slate-400 truncate max-w-[160px]">Support Ticket Active</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button type="button" onclick="goToFullSupportDeskFromFloating()" title="Open in Full Support Desk" class="p-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 text-xs transition-all">
+            <i class="fa-solid fa-up-right-from-square"></i>
+          </button>
+          <button type="button" onclick="toggleFloatingMessengerDrawer(false)" title="Minimize" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-xs transition-all">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Messages Body -->
+      <div id="fmMessagesList" class="p-3.5 space-y-2.5 max-h-56 min-h-[140px] overflow-y-auto bg-slate-950/40 text-xs custom-scrollbar">
+        <div class="text-center py-6 text-slate-500 text-[11px]">
+          <i class="fa-solid fa-comments text-xl mb-1 text-slate-600 block"></i>
+          No message selected yet
+        </div>
+      </div>
+
+      <!-- Quick Canned Pills -->
+      <div class="px-3 py-1.5 bg-slate-900 border-t border-slate-800/80 flex items-center gap-1.5 overflow-x-auto custom-scrollbar whitespace-nowrap">
+        <button type="button" onclick="sendQuickFloatingReply('Hello! How can I assist you today?')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-indigo-600/30 text-indigo-300 text-[10px] font-medium border border-indigo-500/20 transition-all">👋 Greeting</button>
+        <button type="button" onclick="sendQuickFloatingReply('Looking into this for you right now, please give me a moment!')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-indigo-600/30 text-indigo-300 text-[10px] font-medium border border-indigo-500/20 transition-all">⏳ Checking</button>
+        <button type="button" onclick="sendQuickFloatingReply('Your eSIM profile is active and verified. Please restart your device to connect.')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-indigo-600/30 text-indigo-300 text-[10px] font-medium border border-indigo-500/20 transition-all">📶 eSIM Active</button>
+      </div>
+
+      <!-- Input Form -->
+      <form onsubmit="handleFloatingReplySubmit(event)" class="p-2.5 bg-slate-900 border-t border-slate-800 flex items-center gap-2">
+        <input type="text" id="fmReplyInput" placeholder="Quick reply to customer..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+        <button type="submit" class="p-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/20 transition-all">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Floating Chat Head / Bubble Button -->
+    <button id="floatingMessengerBubble" onclick="toggleFloatingMessengerDrawer()" title="Support Messenger (Quick Desk)" class="relative w-14 h-14 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:scale-105 active:scale-95 shadow-xl shadow-indigo-500/30 flex items-center justify-center text-white text-xl transition-all cursor-pointer group border-2 border-indigo-400/40">
+      <i class="fa-brands fa-facebook-messenger group-hover:rotate-12 transition-transform"></i>
+      <!-- Unread/Queue Badge -->
+      <span id="floatingMessengerUnreadBadge" class="hidden absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-rose-500 border-2 border-slate-950 text-white font-black text-[10px] leading-tight min-w-[20px] text-center shadow-lg animate-bounce">
+        0
+      </span>
+    </button>
   </div>
 </body>
 </html>

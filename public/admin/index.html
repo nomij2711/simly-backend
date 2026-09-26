@@ -16173,9 +16173,8 @@ function exportData(type) {
 // 🔔 STAFF SOUND NOTIFICATIONS & FLOATING MESSENGER CHAT HEAD CONTROLLER
 // =========================================================================
 let staffRingerEnabled = localStorage.getItem('simlyx_staff_ringer') !== 'OFF';
-let audioCtx = null;
-let lastKnownUnassignedCount = -1;
-let lastKnownUnreadMsgCount = -1;
+let floatingLastKnownUnassignedCount = -1;
+let floatingLastKnownUnreadMsgCount = -1;
 let activeFloatingTicket = null;
 
 function initStaffNotifBell() {
@@ -16385,8 +16384,8 @@ async function pollSupportAlertsAndQueue() {
       const unreadCount = (res.unassignedTickets || []).concat(res.myClaimedTickets || []).reduce((sum, t) => sum + (t.unreadStaffCount || 0), 0);
 
       // Check if new unassigned ticket arrived or unread message count increased
-      const isInitialRun = lastKnownUnassignedCount === -1;
-      const hasNewIncoming = !isInitialRun && (unassigned > lastKnownUnassignedCount || unreadCount > lastKnownUnreadMsgCount);
+      const isInitialRun = floatingLastKnownUnassignedCount === -1;
+      const hasNewIncoming = !isInitialRun && (unassigned > floatingLastKnownUnassignedCount || unreadCount > floatingLastKnownUnreadMsgCount);
 
       if (hasNewIncoming) {
         playSupportChime();
@@ -16409,8 +16408,8 @@ async function pollSupportAlertsAndQueue() {
         }
       }
 
-      lastKnownUnassignedCount = unassigned;
-      lastKnownUnreadMsgCount = unreadCount;
+      floatingLastKnownUnassignedCount = unassigned;
+      floatingLastKnownUnreadMsgCount = unreadCount;
 
       // If Support Desk Tab is currently active, render it
       if (currentActiveTab === 'support') {

@@ -5182,6 +5182,10 @@
     let isFirstLiveSyncRun = true;
     let lastRenderedMessageHash = '';
 
+    let isSyncingSupport = false;
+    let isSyncingUsers = false;
+    let isSyncingOverview = false;
+
     function startRealTimeLiveSyncEngine() {
       if (liveSyncTimer) clearInterval(liveSyncTimer);
       isFirstLiveSyncRun = true;
@@ -5196,16 +5200,21 @@
 
         try {
           // 1. High-Frequency: Support queue and live chats
-          await pollSupportQueueLive();
-
-          // 2. Medium-Frequency: Users CRM (every 5 seconds)
-          if (liveSyncCycleCount % 2 === 0) {
-            await pollUsersLive();
+          if (!isSyncingSupport) {
+            isSyncingSupport = true;
+            pollSupportQueueLive().finally(() => { isSyncingSupport = false; });
           }
 
-          // 3. Normal-Frequency: Dashboard overview (every 10 seconds)
-          if (liveSyncCycleCount % 4 === 0) {
-            await pollOverviewLive();
+          // 2. Medium-Frequency: Users CRM (every 10 seconds and ONLY if on users tab)
+          if (liveSyncCycleCount % 4 === 0 && !isSyncingUsers && currentActiveTab === 'users') {
+            isSyncingUsers = true;
+            pollUsersLive().finally(() => { isSyncingUsers = false; });
+          }
+
+          // 3. Normal-Frequency: Dashboard overview (every 15 seconds and ONLY if on overview tab)
+          if (liveSyncCycleCount % 6 === 0 && !isSyncingOverview && currentActiveTab === 'overview') {
+            isSyncingOverview = true;
+            pollOverviewLive().finally(() => { isSyncingOverview = false; });
           }
         } catch (e) {
           console.warn('Live sync poller error:', e);
@@ -11292,6 +11301,11 @@
     let csatSearchTimeout = null;
 
     async function loadSupportQueue() {
+      // Instant display if queue data already in memory
+      if (rawQueueData) {
+        renderSupportDeskTabs();
+        renderQueueThreads();
+      }
       try {
         const [res, csatRes] = await Promise.all([
           adminFetch('/api/admin/support/queue'),

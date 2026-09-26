@@ -4866,36 +4866,32 @@
       }
 
       // Role-Based Tab Visibility Filter
-      const allTabBtns = {
-        overview: document.getElementById('tab-btn-overview'),
-        users: document.getElementById('tab-btn-users'),
-        numbers: document.getElementById('tab-btn-numbers'),
-        cdr: document.getElementById('tab-btn-cdr'),
-        transactions: document.getElementById('tab-btn-transactions'),
-        support: document.getElementById('tab-btn-support'),
-        announcements: document.getElementById('tab-btn-announcements'),
-        pricing: document.getElementById('tab-btn-pricing'),
-        team: document.getElementById('tab-btn-team'),
-        audit: document.getElementById('tab-btn-audit'),
-        blacklist: document.getElementById('tab-btn-blacklist'),
-        config: document.getElementById('tab-btn-config')
-      };
+      const allNavBtns = document.querySelectorAll('#adminSidebar nav button.nav-tab-btn, #adminSidebar nav > div');
 
       // Reset all to visible first
-      Object.values(allTabBtns).forEach(btn => { if (btn) btn.classList.remove('hidden'); });
+      allNavBtns.forEach(el => el.classList.remove('hidden'));
 
       if (staff.role === 'support_agent' || staff.role === 'deposit_supporter') {
-        // STRICT REQUIREMENT: ONLY 2 BUTTONS VISIBLE (Users CRM and Support Desk)
-        ['overview', 'numbers', 'cdr', 'transactions', 'announcements', 'pricing', 'team', 'audit', 'blacklist', 'config'].forEach(t => {
-          if (allTabBtns[t]) allTabBtns[t].classList.add('hidden');
+        // STRICT REQUIREMENT: ONLY 2 BUTTONS VISIBLE FOR SUPPORT AGENT (Users CRM and Support Desk)
+        const allowedIds = ['tab-btn-users', 'tab-btn-support'];
+        allNavBtns.forEach(el => {
+          if (!allowedIds.includes(el.id)) {
+            el.classList.add('hidden');
+          }
         });
+        // Default agent to support desk tab if current tab is not allowed
+        if (!['users', 'support'].includes(currentActiveTab)) {
+          switchTab('support');
+        }
       } else if (staff.role === 'operations_manager') {
-        ['overview', 'transactions', 'pricing', 'team', 'audit', 'blacklist', 'config'].forEach(t => {
-          if (allTabBtns[t]) allTabBtns[t].classList.add('hidden');
+        const hideIds = ['tab-btn-overview', 'tab-btn-transactions', 'tab-btn-pricing', 'tab-btn-carrier-TWILIO', 'tab-btn-carrier-TELNYX', 'tab-btn-carrier-DIDWW', 'sidebarDynamicCarriersList', 'tab-btn-carriers', 'tab-btn-team', 'tab-btn-audit', 'tab-btn-blacklist', 'tab-btn-config'];
+        allNavBtns.forEach(el => {
+          if (hideIds.includes(el.id)) el.classList.add('hidden');
         });
       } else if (staff.role === 'finance_manager') {
-        ['numbers', 'cdr', 'support', 'announcements', 'pricing', 'team', 'audit', 'blacklist', 'config'].forEach(t => {
-          if (allTabBtns[t]) allTabBtns[t].classList.add('hidden');
+        const hideIds = ['tab-btn-numbers', 'tab-btn-cdr', 'tab-btn-support', 'tab-btn-announcements', 'tab-btn-carrier-TWILIO', 'tab-btn-carrier-TELNYX', 'tab-btn-carrier-DIDWW', 'sidebarDynamicCarriersList', 'tab-btn-carriers', 'tab-btn-team', 'tab-btn-audit', 'tab-btn-blacklist', 'tab-btn-config'];
+        allNavBtns.forEach(el => {
+          if (hideIds.includes(el.id)) el.classList.add('hidden');
         });
       }
     }
@@ -5215,6 +5211,7 @@
 
       const newUnassigned = res.stats?.unassignedCount || 0;
       const myChats = res.stats?.myChatsCount || 0;
+      const unreadCount = (res.unassignedTickets || []).concat(res.myClaimedTickets || []).concat(res.unassigned || []).concat(res.myChats || []).reduce((sum, t) => sum + (t.unreadStaffCount || 0), 0);
 
       // Update Sidebar & Desk Badges
       const sidebarSupportBadge = document.getElementById('sidebarSupportBadge');
@@ -5229,21 +5226,47 @@
 
       const unassignedBadge = document.getElementById('badgeUnassignedCount');
       const myChatsBadge = document.getElementById('badgeMyChatsCount');
+      const ownerBadge = document.getElementById('badgeOwnerChatsCount');
       if (unassignedBadge) unassignedBadge.innerText = newUnassigned;
       if (myChatsBadge) myChatsBadge.innerText = myChats;
+      if (ownerBadge) ownerBadge.innerText = res.stats?.ownerChatsCount || 0;
 
-      // Detect incoming unassigned ticket from user
-      if (!isFirstLiveSyncRun && lastKnownUnassignedCount !== null && newUnassigned > lastKnownUnassignedCount) {
-        const diff = newUnassigned - lastKnownUnassignedCount;
-        playNotificationChime('high');
+      // Real-time Sound Chime & Floating Messenger Bubble Alert
+      const isInitialRun = floatingLastKnownUnassignedCount === -1;
+      const hasNewIncoming = !isInitialRun && (newUnassigned > floatingLastKnownUnassignedCount || unreadCount > floatingLastKnownUnreadMsgCount);
+
+      if (hasNewIncoming) {
+        playSupportChime();
+
+        // Animate Floating Messenger Bubble
+        const badge = document.getElementById('floatingMessengerUnreadBadge');
+        if (badge) {
+          badge.innerText = newUnassigned > 0 ? newUnassigned : unreadCount;
+          badge.classList.remove('hidden');
+        }
+
+        // Update latest ticket in floating drawer
+        const latestTicket = (res.unassigned && res.unassigned[0]) || (res.unassignedTickets && res.unassignedTickets[0]) || (res.myChats && res.myChats[0]) || (res.myClaimedTickets && res.myClaimedTickets[0]);
+        if (latestTicket) {
+          updateFloatingMessengerTicket(latestTicket, [{
+            sender: 'user',
+            text: latestTicket.lastMessageText || 'New customer message received',
+            createdAt: latestTicket.lastMessageAt || new Date()
+          }]);
+        }
+
         showLiveToast(
-          '🔔 New Customer in Support Queue!',
-          `${diff} customer${diff > 1 ? 's are' : ' is'} waiting for assistance.`,
+          '🔔 New Customer Support Message!',
+          `${newUnassigned} customer${newUnassigned > 1 ? 's are' : ' is'} waiting in queue.`,
           'headset',
           'amber',
           () => switchTab('support')
         );
       }
+
+      floatingLastKnownUnassignedCount = newUnassigned;
+      floatingLastKnownUnreadMsgCount = unreadCount;
+      lastKnownUnassignedCount = newUnassigned;
 
       // Detect incoming user messages in currently open chat
       if (activeSupportUserId) {
@@ -5256,7 +5279,7 @@
           if (!isFirstLiveSyncRun && lastKnownActiveChatMsgCount > 0 && msgCount > lastKnownActiveChatMsgCount) {
             const lastMsg = freshTicket.messages[freshTicket.messages.length - 1];
             if (lastMsg && lastMsg.sender === 'user') {
-              playNotificationChime('high');
+              playSupportChime();
               showLiveToast(
                 `💬 ${freshTicket.userName || 'Customer'}`,
                 lastMsg.text || 'Sent a new message',
@@ -5275,9 +5298,9 @@
       }
 
       rawQueueData = res;
-      lastKnownUnassignedCount = newUnassigned;
 
       if (currentActiveTab === 'support') {
+        renderSupportDeskTabs();
         renderQueueThreads();
       }
 
@@ -5285,7 +5308,9 @@
     }
 
     async function pollUsersLive() {
-      // Background sync users count for sidebar & CRM tab
+      // PERFORMANCE OPTIMIZATION: Only poll users if Users CRM tab is active
+      if (currentActiveTab !== 'users' && !isFirstLiveSyncRun) return;
+
       const searchInput = document.getElementById('userSearchInput');
       const isSearchFocused = searchInput && document.activeElement === searchInput;
       const isTyping = searchInput && searchInput.value.trim().length > 0;
@@ -16213,6 +16238,23 @@ function updateStaffRingerUi() {
 }
 
 // 🔊 Crisp Dual-Tone Support Chime (Web Audio API - 100% Cross-Browser / Mobile)
+function unlockMobileAudioContext() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      if (!audioCtx) {
+        audioCtx = new AudioContextClass();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+  } catch (e) {}
+}
+window.addEventListener('touchstart', unlockMobileAudioContext, { passive: true });
+window.addEventListener('touchend', unlockMobileAudioContext, { passive: true });
+window.addEventListener('click', unlockMobileAudioContext, { passive: true });
+
 function playSupportChime() {
   try {
     if (!staffRingerEnabled) return;
@@ -16230,7 +16272,7 @@ function playSupportChime() {
     const gain1 = audioCtx.createGain();
     osc1.type = 'sine';
     osc1.frequency.setValueAtTime(880, now);
-    gain1.gain.setValueAtTime(0.25, now);
+    gain1.gain.setValueAtTime(0.45, now);
     gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
     osc1.connect(gain1);
     gain1.connect(audioCtx.destination);
@@ -16242,7 +16284,7 @@ function playSupportChime() {
     const gain2 = audioCtx.createGain();
     osc2.type = 'sine';
     osc2.frequency.setValueAtTime(1318.5, now + 0.12);
-    gain2.gain.setValueAtTime(0.3, now + 0.12);
+    gain2.gain.setValueAtTime(0.55, now + 0.12);
     gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
     osc2.connect(gain2);
     gain2.connect(audioCtx.destination);
@@ -16250,7 +16292,7 @@ function playSupportChime() {
     osc2.stop(now + 0.65);
 
     if (navigator.vibrate) {
-      navigator.vibrate([200, 100, 200]);
+      navigator.vibrate([250, 100, 250]);
     }
   } catch (err) {
     console.warn('Audio chime notice:', err.message);
@@ -16435,10 +16477,8 @@ setInterval(fetchCarrierHealth, 60000);
 setTimeout(fetchCarrierHealth, 1000);
 setTimeout(fetchFinanceMargins, 1500);
 
-// Global Auto-poll live support chat messages every 3.5s
-setInterval(pollSupportAlertsAndQueue, 3500);
-setTimeout(initStaffNotifBell, 500);
-setTimeout(pollSupportAlertsAndQueue, 1200);
+// Initialize Staff Ringer Preference
+setTimeout(initStaffNotifBell, 400);
 
 </script>
 

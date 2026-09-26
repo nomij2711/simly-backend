@@ -8206,10 +8206,18 @@ app.get('/api/admin/support/queue', requireStaffPermission('can_handle_support')
     const currentStaffId = req.staff.id;
     const currentStaffName = req.staff.name;
 
-    // 1. Fetch messages grouped by user
-    const messages = await prisma.supportMessage.findMany({
-      orderBy: { createdAt: 'desc' }
+    // 1. Fetch tickets directly sorted by lastMessageAt
+    const existingTickets = await prisma.supportTicket.findMany({
+      orderBy: { lastMessageAt: 'desc' }
     });
+
+    // 2. Fetch only recent messages for active tickets (limit to last 250 messages instead of loading the entire DB)
+    const activeUserIds = existingTickets.map(t => t.userId);
+    const messages = activeUserIds.length > 0 ? await prisma.supportMessage.findMany({
+      where: { userId: { in: activeUserIds } },
+      orderBy: { createdAt: 'asc' },
+      take: 250
+    }) : [];
 
     const userMessagesMap = {};
     for (const m of messages) {
@@ -8217,13 +8225,10 @@ app.get('/api/admin/support/queue', requireStaffPermission('can_handle_support')
       userMessagesMap[m.userId].push(m);
     }
 
-    // 2. Fetch existing tickets
-    const existingTickets = await prisma.supportTicket.findMany();
-    existingTickets.sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
-
-    // 3. Fetch all staff members (including deactivated/access removed ones)
+    // 3. Fetch active staff list
     const allStaff = await prisma.staffUser.findMany({
-      orderBy: { createdAt: 'asc' }
+      where: { isActive: true },
+      select: { id: true, name: true, chatDisplayName: true, role: true, isOnline: true }
     });
 
     // 4. Categorize & Filter

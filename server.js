@@ -3006,6 +3006,19 @@ async function evaluateInboundShieldGate(rawPhoneNumber, eventType = 'sms', carr
       return { allowed: false, reason: 'OWNER_USER_NOT_FOUND', action: 'REJECT' };
     }
 
+    // 🔒 BANNED / RESTRICTED ACCOUNT GATE (Zero wholesale carrier cost)
+    if (ownerUser.isBanned || ownerUser.isDeleted || !ownerUser.isVerified) {
+      console.warn(`🚫 [INBOUND SHIELD BLOCKED] Number ${cleanPhone} owner (${ownerUser.email}) is BANNED/RESTRICTED. Inbound rejected.`);
+      return {
+        allowed: false,
+        reason: 'USER_ACCOUNT_BANNED',
+        isBanned: true,
+        action: 'REJECT',
+        ownerUser,
+        lineOwner
+      };
+    }
+
     // 4. Live Telecom Margin Evaluation
     const pnl = await calculateUserTelecomPnL(ownerUser);
     const currentMargin = pnl.marginPercent;

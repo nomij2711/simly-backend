@@ -4438,6 +4438,7 @@ app.post(['/api/webhooks/oxapay', '/api/payments/oxapay/confirm-test'], async (r
     console.error('[OXAPAY WEBHOOK ERROR]', error);
     res.status(500).json({ success: false, error: error.message });
   }
+});
 
 // 13.1 Endpoint: Lookup User for Wallet Balance Transfer
 app.post('/api/wallet/transfer-lookup', async (req, res) => {

@@ -3974,19 +3974,32 @@ app.post('/api/payments/stripe/create-session', async (req, res) => {
       });
     }
 
+    const user = await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
+
     const stripeSecret = process.env.STRIPE_SECRET_KEY || '';
     const params = new URLSearchParams();
     params.append('payment_method_types[0]', 'card');
     params.append('line_items[0][price_data][currency]', 'usd');
     params.append('line_items[0][price_data][product_data][name]', `SimlyX Wallet Top-Up ($${numAmount.toFixed(2)})`);
-    params.append('line_items[0][price_data][product_data][description]', 'Instant credits for international calls and virtual lines');
+    params.append('line_items[0][price_data][product_data][description]', `Instant wallet credits for ${user?.email || user?.name || userId}`);
     params.append('line_items[0][price_data][unit_amount]', amountInCents.toString());
     params.append('line_items[0][quantity]', '1');
     params.append('mode', 'payment');
+    params.append('client_reference_id', userId);
+    if (user?.email) {
+      params.append('customer_email', user.email);
+    }
     params.append('success_url', 'https://simlyx.com/payment-success?session_id={CHECKOUT_SESSION_ID}');
     params.append('cancel_url', 'https://simlyx.com/payment-cancel');
     params.append('metadata[userId]', userId);
+    params.append('metadata[userEmail]', user?.email || '');
+    params.append('metadata[userName]', user?.name || '');
     params.append('metadata[amount]', numAmount.toString());
+    params.append('payment_intent_data[metadata][userId]', userId);
+    params.append('payment_intent_data[metadata][userEmail]', user?.email || '');
+    params.append('payment_intent_data[metadata][userName]', user?.name || '');
+    params.append('payment_intent_data[metadata][amount]', numAmount.toString());
+    params.append('payment_intent_data[description]', `SimlyX Top-Up ($${numAmount.toFixed(2)}) - User: ${user?.email || userId}`);
 
     const sessionRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
@@ -4120,12 +4133,17 @@ app.post('/api/payments/stripe/create-intent', async (req, res) => {
       });
     }
 
+    const user = await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
+
     const stripeSecret = process.env.STRIPE_SECRET_KEY || '';
     const params = new URLSearchParams();
     params.append('amount', amountInCents.toString());
     params.append('currency', 'usd');
-    params.append('description', `SimlyX Wallet Top-Up ($${numAmount.toFixed(2)})`);
+    params.append('description', `SimlyX Wallet Top-Up ($${numAmount.toFixed(2)}) - User: ${user?.email || userId}`);
     params.append('metadata[userId]', userId);
+    params.append('metadata[userEmail]', user?.email || '');
+    params.append('metadata[userName]', user?.name || '');
+    params.append('metadata[amount]', numAmount.toString());
     params.append('automatic_payment_methods[enabled]', 'true');
 
     const stripeRes = await fetch('https://api.stripe.com/v1/payment_intents', {

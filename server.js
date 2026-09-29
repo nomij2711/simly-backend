@@ -4342,6 +4342,9 @@ app.post(['/api/webhooks/stripe', '/api/payments/stripe/webhook'], async (req, r
   }
 });
 
+// In-memory store for pending crypto invoices
+const oxapayPendingInvoices = new Map(); // orderId / trackId -> { userId, amount, createdAt }
+
 // 6. Create OxaPay Crypto Invoice (USDT, BTC, LTC)
 app.post('/api/payments/oxapay/create-invoice', async (req, res) => {
   try {
@@ -4352,7 +4355,9 @@ app.post('/api/payments/oxapay/create-invoice', async (req, res) => {
 
     const numAmount = parseFloat(amount);
     const merchantKey = getOxapayMerchant();
-    const orderId = `simly_topup_${userId}_${Date.now()}`;
+    
+    // OxaPay strictly requires orderId <= 32 chars
+    const orderId = 'sx_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7);
 
     const invoicePayload = {
       merchant: merchantKey,
@@ -4382,6 +4387,13 @@ app.post('/api/payments/oxapay/create-invoice', async (req, res) => {
       });
     }
 
+    // Save pending invoice mapping for webhook resolution
+    const invoiceRecord = { userId, amount: numAmount, orderId, trackId: oxaResult.trackId, createdAt: Date.now() };
+    oxapayPendingInvoices.set(orderId, invoiceRecord);
+    if (oxaResult.trackId) {
+      oxapayPendingInvoices.set(String(oxaResult.trackId), invoiceRecord);
+    }
+
     res.json({
       success: true,
       amount: numAmount,
@@ -4399,13 +4411,26 @@ app.post('/api/payments/oxapay/create-invoice', async (req, res) => {
 app.post(['/api/webhooks/oxapay', '/api/payments/oxapay/confirm-test'], async (req, res) => {
   try {
     const { orderId, amount, status, trackId, userId } = req.body;
-    const targetUserId = userId || (orderId ? orderId.split('_')[2] : null);
+    const pending = oxapayPendingInvoices.get(orderId) || (trackId ? oxapayPendingInvoices.get(String(trackId)) : null);
+    const targetUserId = userId || pending?.userId || (orderId ? orderId.split('_')[2] : null);
 
     if (!targetUserId) {
-      return res.status(400).json({ success: false, error: 'Target user ID could not be resolved from orderId.' });
+      return res.status(400).json({ success: false, error: 'Target user ID could not be resolved.' });
     }
 
-    const numAmount = parseFloat(amount || 10.0);
+    // Idempotency check: prevent duplicate crediting
+    const trackRef = trackId ? String(trackId) : (orderId || '');
+    if (trackRef) {
+      const existingTx = await prisma.transaction.findFirst({
+        where: { description: { contains: trackRef } }
+      });
+      if (existingTx) {
+        const user = await prisma.user.findUnique({ where: { id: targetUserId } });
+        return res.json({ success: true, alreadyProcessed: true, newBalance: user?.walletBalance ?? 0.0 });
+      }
+    }
+
+    const numAmount = parseFloat(amount || pending?.amount || 10.0);
 
     const user = await prisma.user.update({
       where: { id: targetUserId },
@@ -4417,7 +4442,7 @@ app.post(['/api/webhooks/oxapay', '/api/payments/oxapay/confirm-test'], async (r
         userId: user.id,
         type: 'crypto_deposit',
         amount: numAmount,
-        description: `OxaPay Crypto Deposit ($${numAmount.toFixed(2)} USDT) [Track: ${trackId || 'OXA'}]`
+        description: `OxaPay Crypto Deposit ($${numAmount.toFixed(2)} USDT) [Track: ${trackRef || 'OXA'}]`
       }
     });
 

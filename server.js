@@ -72,8 +72,48 @@ app.get(['/blog/how-2fa-sms-verification-works-security-breakdown', '/blog/2fa-s
   res.sendFile(path.join(__dirname, 'public', 'blog', '2fa-sms-security.html'));
 });
 
-app.get(['/blog/usa-vs-uk-virtual-numbers-comparison', '/blog/usa-vs-uk', '/blog/us-vs-uk-virtual-number'], (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'blog', 'usa-vs-uk.html'));
+// Payment Success & Cancel Pages
+app.get(['/payment-success', '/payment/success', '/topup-success'], async (req, res) => {
+  const sessionId = req.query.session_id;
+  if (sessionId && sessionId.startsWith('cs_')) {
+    try {
+      const stripeSecret = getStripeSecret();
+      const sessionRes = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
+        headers: { 'Authorization': 'Bearer ' + stripeSecret }
+      });
+      const sessionData = await sessionRes.json();
+      if (sessionData && sessionData.payment_status === 'paid') {
+        const userId = sessionData.client_reference_id || sessionData.metadata?.userId;
+        const topupAmount = sessionData.amount_total ? (sessionData.amount_total / 100) : parseFloat(sessionData.metadata?.amount || '10.0');
+        if (userId) {
+          const existingTx = await prisma.transaction.findFirst({
+            where: { description: { contains: sessionData.id } }
+          });
+          if (!existingTx) {
+            const user = await prisma.user.update({
+              where: { id: userId },
+              data: { walletBalance: { increment: topupAmount } }
+            });
+            await prisma.transaction.create({
+              data: {
+                userId: user.id,
+                type: 'stripe_deposit',
+                amount: topupAmount,
+                description: `Stripe Card Deposit ($${topupAmount.toFixed(2)}) [${sessionData.id}]`
+              }
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[PAYMENT SUCCESS AUTO-SYNC ERROR]', e);
+    }
+  }
+  res.sendFile(path.join(__dirname, 'public', 'payment-success.html'));
+});
+
+app.get(['/payment-cancel', '/payment/cancel', '/topup-cancel'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'payment-cancel.html'));
 });
 
 // Helper to normalize phone numbers received from query params or bodies

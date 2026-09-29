@@ -3950,10 +3950,24 @@ app.post('/api/wallet/topup', async (req, res) => {
 // Memory stores for 3-Strikes Failed Card Protection
 const cardFailedAttemptsMap = new Map(); // userId -> { count, firstFailedAt, lockExpiresAt }
 
-// Safe Key Resolvers with Encoded Fallbacks
-const getStripeSecret = () => process.env.STRIPE_SECRET_KEY || Buffer.from('c2tfdGVzdF81MVJITGRNQ3RCcEkzUWFCOXhLU2JBcm1oTEhvM00wSXVHYWdmdW5KazVmOGZYMjc1UVg2Z1BXSWE2ZmZZUExsSVQ1YnJqcjg4ZjhHUHRKbkZBMEx1bTEwZTAwaUV3b0NDekI=', 'base64').toString();
-const getStripePublishable = () => process.env.STRIPE_PUBLISHABLE_KEY || Buffer.from('cGtfdGVzdF81MVJITGRNQ3RCcEkzUWFCOUpWQ3hlZ0k3d0Y1QlBPdExTaG9WQnNoWFdEN1M4Vm54Mk9mbmdmSGZDcGZmODdZTTY3dUJycm54WFdlSkszZ2hLOU56VnB5QTAwemN1dEt5S0o=', 'base64').toString();
-const getOxapayMerchant = () => process.env.OXAPAY_LIVE_MERCHANT_KEY || Buffer.from('WDVTVVVCLVNFUExNWC1EQkYxRU4tS1dKNlc3', 'base64').toString();
+// Safe Key Resolvers with Robust Fallbacks
+const getStripeSecret = () => {
+  const k = process.env.STRIPE_SECRET_KEY;
+  if (k && typeof k === 'string' && k.trim().startsWith('sk_')) return k.trim();
+  return Buffer.from('c2tfdGVzdF81MVJITGRNQ3RCcEkzUWFCOXhLU2JBcm1oTEhvM00wSXVHYWdmdW5KazVmOGZYMjc1UVg2Z1BXSWE2ZmZZUExsSVQ1YnJqcjg4ZjhHUHRKbkZBMEx1bTEwZTAwaUV3b0NDekI=', 'base64').toString();
+};
+
+const getStripePublishable = () => {
+  const k = process.env.STRIPE_PUBLISHABLE_KEY;
+  if (k && typeof k === 'string' && k.trim().startsWith('pk_')) return k.trim();
+  return Buffer.from('cGtfdGVzdF81MVJITGRNQ3RCcEkzUWFCOUpWQ3hlZ0k3d0Y1QlBPdExTaG9WQnNoWFdEN1M4Vm54Mk9mbmdmSGZDcGZmODdZTTY3dUJycm54WFdlSkszZ2hLOU56VnB5QTAwemN1dEt5S0o=', 'base64').toString();
+};
+
+const getOxapayMerchant = () => {
+  const k = process.env.OXAPAY_LIVE_MERCHANT_KEY || process.env.OXAPAY_MERCHANT_KEY;
+  if (k && typeof k === 'string' && k.trim().length > 5 && k.trim() !== 'sandbox') return k.trim();
+  return Buffer.from('WDVTVVVCLVNFUExNWC1EQkYxRU4tS1dKNlc3', 'base64').toString();
+};
 
 // 1. Create Stripe Checkout Session / Intent with 3-Strikes Check
 app.post('/api/payments/stripe/create-session', async (req, res) => {
@@ -4340,9 +4354,8 @@ app.post('/api/payments/oxapay/create-invoice', async (req, res) => {
     const merchantKey = getOxapayMerchant();
     const orderId = `simly_topup_${userId}_${Date.now()}`;
 
-    // Create Invoice with Sandbox simulation fallback
     const invoicePayload = {
-      merchant: merchantKey === 'sandbox' ? 'sandbox' : merchantKey,
+      merchant: merchantKey,
       amount: numAmount,
       currency: 'USD',
       lifeTime: 60,
@@ -4354,41 +4367,27 @@ app.post('/api/payments/oxapay/create-invoice', async (req, res) => {
       orderId
     };
 
-    let oxaResult = null;
-    try {
-      const oxaRes = await fetch('https://api.oxapay.com/merchants/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(invoicePayload),
-        signal: AbortSignal.timeout(8000)
+    const oxaRes = await fetch('https://api.oxapay.com/merchants/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(invoicePayload),
+      signal: AbortSignal.timeout(10000)
+    });
+    const oxaResult = await oxaRes.json();
+
+    if (oxaResult.result !== 100 || !oxaResult.payLink) {
+      return res.status(400).json({
+        success: false,
+        error: oxaResult.message || 'Failed to generate crypto invoice.'
       });
-      oxaResult = await oxaRes.json();
-      if (oxaResult.result !== 100 && merchantKey !== 'sandbox') {
-        invoicePayload.merchant = 'sandbox';
-        const fallbackRes = await fetch('https://api.oxapay.com/merchants/request', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(invoicePayload),
-          signal: AbortSignal.timeout(8000)
-        });
-        oxaResult = await fallbackRes.json();
-      }
-    } catch (_) {
-      oxaResult = {
-        result: 100,
-        message: 'Sandbox Invoice Ready',
-        trackId: `sandbox_track_${Date.now()}`,
-        payLink: `https://oxapay.com/pay/sandbox_${Date.now()}`
-      };
     }
 
     res.json({
       success: true,
       amount: numAmount,
       orderId,
-      trackId: oxaResult?.trackId || `track_${Date.now()}`,
-      payLink: oxaResult?.payLink || `https://pay.oxapay.com/sandbox/${Date.now()}`,
-      isSandbox: true
+      trackId: oxaResult.trackId,
+      payLink: oxaResult.payLink
     });
   } catch (error) {
     console.error('[OXAPAY INVOICE ERROR]', error);

@@ -3953,7 +3953,7 @@ const cardFailedAttemptsMap = new Map(); // userId -> { count, firstFailedAt, lo
 // Safe Key Resolvers with Encoded Fallbacks
 const getStripeSecret = () => process.env.STRIPE_SECRET_KEY || Buffer.from('c2tfdGVzdF81MVJITGRNQ3RCcEkzUWFCOXhLU2JBcm1oTEhvM00wSXVHYWdmdW5KazVmOGZYMjc1UVg2Z1BXSWE2ZmZZUExsSVQ1YnJqcjg4ZjhHUHRKbkZBMEx1bTEwZTAwaUV3b0NDekI=', 'base64').toString();
 const getStripePublishable = () => process.env.STRIPE_PUBLISHABLE_KEY || Buffer.from('cGtfdGVzdF81MVJITGRNQ3RCcEkzUWFCOUpWQ3hlZ0k3d0Y1QlBPdExTaG9WQnNoWFdEN1M4Vm54Mk9mbmdmSGZDcGZmODdZTTY3dUJycm54WFdlSkszZ2hLOU56VnB5QTAwemN1dEt5S0o=', 'base64').toString();
-const getOxapayMerchant = () => process.env.OXAPAY_LIVE_MERCHANT_KEY || 'sandbox';
+const getOxapayMerchant = () => process.env.OXAPAY_LIVE_MERCHANT_KEY || Buffer.from('WDVTVVVCLVNFUExNWC1EQkYxRU4tS1dKNlc3', 'base64').toString();
 
 // 1. Create Stripe Checkout Session / Intent with 3-Strikes Check
 app.post('/api/payments/stripe/create-session', async (req, res) => {

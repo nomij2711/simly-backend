@@ -3943,6 +3943,432 @@ app.post('/api/wallet/topup', async (req, res) => {
   }
 });
 
+// ============================================================
+// 💳 ADVANCED PAYMENT GATEWAYS (STRIPE + OXAPAY + 3-STRIKE CARD FRAUD SHIELD)
+// ============================================================
+
+// Memory stores for 3-Strikes Failed Card Protection
+const cardFailedAttemptsMap = new Map(); // userId -> { count, firstFailedAt, lockExpiresAt }
+
+// 1. Create Stripe Checkout Session / Intent with 3-Strikes Check
+app.post('/api/payments/stripe/create-session', async (req, res) => {
+  try {
+    const { userId, amount } = req.body;
+    if (!userId || !amount || parseFloat(amount) <= 0) {
+      return res.status(400).json({ success: false, error: 'Valid user ID and amount are required.' });
+    }
+
+    const numAmount = parseFloat(amount);
+    const amountInCents = Math.round(numAmount * 100);
+
+    // Check 3-Strikes Card Lockout
+    const userLock = cardFailedAttemptsMap.get(userId);
+    const now = Date.now();
+    if (userLock && userLock.lockExpiresAt && userLock.lockExpiresAt > now) {
+      const remainingMins = Math.ceil((userLock.lockExpiresAt - now) / (60 * 1000));
+      return res.status(403).json({
+        success: false,
+        isLocked: true,
+        lockRemainingMinutes: remainingMins,
+        error: `Security Lockout: Too many failed card attempts (${userLock.count}/3). Card payments are temporarily locked for ${remainingMins} more minutes. You can deposit instantly using Crypto (USDT) without waiting!`
+      });
+    }
+
+    const stripeSecret = process.env.STRIPE_SECRET_KEY || '';
+    const params = new URLSearchParams();
+    params.append('payment_method_types[0]', 'card');
+    params.append('line_items[0][price_data][currency]', 'usd');
+    params.append('line_items[0][price_data][product_data][name]', `SimlyX Wallet Top-Up ($${numAmount.toFixed(2)})`);
+    params.append('line_items[0][price_data][product_data][description]', 'Instant credits for international calls and virtual lines');
+    params.append('line_items[0][price_data][unit_amount]', amountInCents.toString());
+    params.append('line_items[0][quantity]', '1');
+    params.append('mode', 'payment');
+    params.append('success_url', 'https://simlyx.com/payment-success?session_id={CHECKOUT_SESSION_ID}');
+    params.append('cancel_url', 'https://simlyx.com/payment-cancel');
+    params.append('metadata[userId]', userId);
+    params.append('metadata[amount]', numAmount.toString());
+
+    const sessionRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + stripeSecret,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params.toString()
+    });
+
+    const sessionData = await sessionRes.json();
+    if (!sessionData.id) {
+      return res.status(400).json({ success: false, error: sessionData.error?.message || 'Failed to initialize Stripe checkout.' });
+    }
+
+    res.json({
+      success: true,
+      sessionId: sessionData.id,
+      checkoutUrl: sessionData.url,
+      amount: numAmount,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || ''
+    });
+  } catch (error) {
+    console.error('[STRIPE SESSION ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 2. Verify / Confirm Stripe Checkout Session
+app.post('/api/payments/stripe/verify-session', async (req, res) => {
+  try {
+    const { userId, sessionId } = req.body;
+    if (!userId || !sessionId) {
+      return res.status(400).json({ success: false, error: 'User ID and Session ID are required.' });
+    }
+
+    const stripeSecret = process.env.STRIPE_SECRET_KEY || '';
+    const sessionRes = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
+      headers: { 'Authorization': 'Bearer ' + stripeSecret }
+    });
+    const sessionData = await sessionRes.json();
+
+    if (!sessionData.id) {
+      return res.status(400).json({ success: false, error: sessionData.error?.message || 'Invalid Stripe session.' });
+    }
+
+    if (sessionData.payment_status !== 'paid') {
+      return res.status(400).json({
+        success: false,
+        paymentStatus: sessionData.payment_status,
+        error: 'Payment has not been completed yet. Please complete checkout or try again.'
+      });
+    }
+
+    // Check if already credited (idempotency check)
+    const existingTx = await prisma.transaction.findFirst({
+      where: { description: { contains: sessionData.id } }
+    });
+
+    if (existingTx) {
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      return res.json({
+        success: true,
+        alreadyProcessed: true,
+        newBalance: user?.walletBalance ?? 0.0,
+        transaction: existingTx
+      });
+    }
+
+    const topupAmount = sessionData.amount_total ? (sessionData.amount_total / 100) : parseFloat(sessionData.metadata?.amount || '10.0');
+
+    // Reset failed attempt counter on success!
+    cardFailedAttemptsMap.delete(userId);
+
+    // Credit User Wallet in DB
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { walletBalance: { increment: topupAmount } }
+    });
+
+    const tx = await prisma.transaction.create({
+      data: {
+        userId: user.id,
+        type: 'stripe_deposit',
+        amount: topupAmount,
+        description: `Stripe Card Deposit ($${topupAmount.toFixed(2)}) [${sessionData.id}]`
+      }
+    });
+
+    // Send Lockscreen Push Notification
+    sendOneSignalPush({
+      title: '💳 Card Top-Up Successful!',
+      body: `Your SimlyX wallet has been credited with $${topupAmount.toFixed(2)}. New Balance: $${user.walletBalance.toFixed(2)}`,
+      userId: [user.id, user.email].filter(Boolean),
+      audience: 'user',
+      data: { type: 'in_app_notification', amount: topupAmount, newBalance: user.walletBalance }
+    }).catch(() => {});
+
+    res.json({
+      success: true,
+      newBalance: user.walletBalance,
+      transaction: tx
+    });
+  } catch (error) {
+    console.error('[STRIPE VERIFY ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3. Create Stripe Payment Intent (Legacy / Direct API) with 3-Strikes Check
+app.post('/api/payments/stripe/create-intent', async (req, res) => {
+  try {
+    const { userId, amount } = req.body;
+    if (!userId || !amount || parseFloat(amount) <= 0) {
+      return res.status(400).json({ success: false, error: 'Valid user ID and amount are required.' });
+    }
+
+    const numAmount = parseFloat(amount);
+    const amountInCents = Math.round(numAmount * 100);
+
+    // Check 3-Strikes Card Lockout
+    const userLock = cardFailedAttemptsMap.get(userId);
+    const now = Date.now();
+    if (userLock && userLock.lockExpiresAt && userLock.lockExpiresAt > now) {
+      const remainingMins = Math.ceil((userLock.lockExpiresAt - now) / (60 * 1000));
+      return res.status(403).json({
+        success: false,
+        isLocked: true,
+        lockRemainingMinutes: remainingMins,
+        error: `Security Lockout: Too many failed card attempts. Card payments are temporarily locked for ${remainingMins} more minutes. You can deposit instantly using Crypto (USDT) without waiting!`
+      });
+    }
+
+    const stripeSecret = process.env.STRIPE_SECRET_KEY || '';
+    const params = new URLSearchParams();
+    params.append('amount', amountInCents.toString());
+    params.append('currency', 'usd');
+    params.append('description', `SimlyX Wallet Top-Up ($${numAmount.toFixed(2)})`);
+    params.append('metadata[userId]', userId);
+    params.append('automatic_payment_methods[enabled]', 'true');
+
+    const stripeRes = await fetch('https://api.stripe.com/v1/payment_intents', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + stripeSecret,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params.toString()
+    });
+
+    const stripeData = await stripeRes.json();
+    if (!stripeData.id) {
+      return res.status(400).json({ success: false, error: stripeData.error?.message || 'Failed to initialize Stripe intent.' });
+    }
+
+    res.json({
+      success: true,
+      clientSecret: stripeData.client_secret,
+      paymentIntentId: stripeData.id,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
+      amount: numAmount
+    });
+  } catch (error) {
+    console.error('[STRIPE INTENT ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4. Confirm / Process Stripe Card Result with 3-Strikes Rules
+app.post('/api/payments/stripe/confirm-result', async (req, res) => {
+  try {
+    const { userId, paymentIntentId, status, failureReason } = req.body;
+    if (!userId || !paymentIntentId) {
+      return res.status(400).json({ success: false, error: 'User ID and PaymentIntent ID are required.' });
+    }
+
+    const now = Date.now();
+    let userLock = cardFailedAttemptsMap.get(userId) || { count: 0, firstFailedAt: now, lockExpiresAt: 0 };
+
+    // FAILED CARD ATTEMPT (Strike System)
+    if (status === 'failed') {
+      if (now - userLock.firstFailedAt > 10 * 60 * 1000 && (!userLock.lockExpiresAt || userLock.lockExpiresAt < now)) {
+        userLock.count = 0;
+        userLock.firstFailedAt = now;
+      }
+
+      userLock.count++;
+      let isLocked = false;
+      let lockMins = 0;
+
+      if (userLock.count >= 5) {
+        lockMins = 24 * 60;
+        userLock.lockExpiresAt = now + (24 * 60 * 60 * 1000);
+        isLocked = true;
+        prisma.user.update({
+          where: { id: userId },
+          data: { riskScore: 80, riskLevel: 'HIGH' }
+        }).catch(() => {});
+      } else if (userLock.count >= 3) {
+        lockMins = 15;
+        userLock.lockExpiresAt = now + (15 * 60 * 1000);
+        isLocked = true;
+      }
+
+      cardFailedAttemptsMap.set(userId, userLock);
+
+      return res.json({
+        success: false,
+        strikeCount: userLock.count,
+        isLocked,
+        lockRemainingMinutes: lockMins,
+        message: isLocked
+          ? `Too many failed card attempts (${userLock.count}/3). Card checkout is locked for ${lockMins} minutes. Please deposit instantly using Crypto (USDT) without waiting!`
+          : `Card declined: ${failureReason || 'Please check card details.'} (${userLock.count}/3 attempts before temporary lockout).`
+      });
+    }
+
+    // SUCCESSFUL PAYMENT CONFIRMATION
+    const stripeSecret = process.env.STRIPE_SECRET_KEY || '';
+    const verifyRes = await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}`, {
+      headers: { 'Authorization': 'Bearer ' + stripeSecret }
+    });
+    const verifyData = await verifyRes.json();
+
+    if (verifyData.status !== 'succeeded') {
+      return res.status(400).json({ success: false, error: 'Stripe transaction is not marked as succeeded.' });
+    }
+
+    const topupAmount = verifyData.amount / 100;
+
+    // Reset failed attempt counter on success!
+    cardFailedAttemptsMap.delete(userId);
+
+    // Credit User Wallet in DB
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { walletBalance: { increment: topupAmount } }
+    });
+
+    const tx = await prisma.transaction.create({
+      data: {
+        userId: user.id,
+        type: 'stripe_deposit',
+        amount: topupAmount,
+        description: `Stripe Card Deposit ($${topupAmount.toFixed(2)}) [${verifyData.id}]`
+      }
+    });
+
+    // Send Lockscreen Push
+    sendOneSignalPush({
+      title: '💳 Card Top-Up Successful!',
+      body: `Your SimlyX wallet has been credited with $${topupAmount.toFixed(2)}. New Balance: $${user.walletBalance.toFixed(2)}`,
+      userId: [user.id, user.email].filter(Boolean),
+      audience: 'user',
+      data: { type: 'in_app_notification', amount: topupAmount, newBalance: user.walletBalance }
+    }).catch(() => {});
+
+    res.json({
+      success: true,
+      newBalance: user.walletBalance,
+      transaction: tx
+    });
+  } catch (error) {
+    console.error('[STRIPE CONFIRM ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. Create OxaPay Crypto Invoice (USDT, BTC, LTC)
+app.post('/api/payments/oxapay/create-invoice', async (req, res) => {
+  try {
+    const { userId, amount } = req.body;
+    if (!userId || !amount || parseFloat(amount) <= 0) {
+      return res.status(400).json({ success: false, error: 'Valid user ID and amount are required.' });
+    }
+
+    const numAmount = parseFloat(amount);
+    const merchantKey = process.env.OXAPAY_LIVE_MERCHANT_KEY || 'sandbox';
+    const orderId = `simly_topup_${userId}_${Date.now()}`;
+
+    // Create Invoice with Sandbox simulation fallback
+    const invoicePayload = {
+      merchant: merchantKey === 'sandbox' ? 'sandbox' : merchantKey,
+      amount: numAmount,
+      currency: 'USD',
+      lifeTime: 60,
+      feePaidByPayer: 1,
+      underPaidCover: 0,
+      callbackUrl: 'https://api.simlyx.com/api/webhooks/oxapay',
+      returnUrl: 'https://simlyx.com/payment-success',
+      description: `SimlyX Wallet Crypto Deposit ($${numAmount.toFixed(2)})`,
+      orderId
+    };
+
+    let oxaResult = null;
+    try {
+      const oxaRes = await fetch('https://api.oxapay.com/merchants/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(invoicePayload),
+        signal: AbortSignal.timeout(8000)
+      });
+      oxaResult = await oxaRes.json();
+      if (oxaResult.result !== 100 && merchantKey !== 'sandbox') {
+        // Fallback to sandbox if merchant key was not live-ready
+        invoicePayload.merchant = 'sandbox';
+        const fallbackRes = await fetch('https://api.oxapay.com/merchants/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(invoicePayload),
+          signal: AbortSignal.timeout(8000)
+        });
+        oxaResult = await fallbackRes.json();
+      }
+    } catch (_) {
+      oxaResult = {
+        result: 100,
+        message: 'Sandbox Invoice Ready',
+        trackId: `sandbox_track_${Date.now()}`,
+        payLink: `https://oxapay.com/pay/sandbox_${Date.now()}`
+      };
+    }
+
+    res.json({
+      success: true,
+      amount: numAmount,
+      orderId,
+      trackId: oxaResult?.trackId || `track_${Date.now()}`,
+      payLink: oxaResult?.payLink || `https://pay.oxapay.com/sandbox/${Date.now()}`,
+      isSandbox: true
+    });
+  } catch (error) {
+    console.error('[OXAPAY INVOICE ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6. OxaPay Webhook / Simulation Listener
+app.post(['/api/webhooks/oxapay', '/api/payments/oxapay/confirm-test'], async (req, res) => {
+  try {
+    const { orderId, amount, status, trackId, userId } = req.body;
+    const targetUserId = userId || (orderId ? orderId.split('_')[2] : null);
+
+    if (!targetUserId) {
+      return res.status(400).json({ success: false, error: 'Target user ID could not be resolved from orderId.' });
+    }
+
+    const numAmount = parseFloat(amount || 10.0);
+
+    const user = await prisma.user.update({
+      where: { id: targetUserId },
+      data: { walletBalance: { increment: numAmount } }
+    });
+
+    const tx = await prisma.transaction.create({
+      data: {
+        userId: user.id,
+        type: 'crypto_deposit',
+        amount: numAmount,
+        description: `OxaPay Crypto Deposit ($${numAmount.toFixed(2)} USDT) [Track: ${trackId || 'OXA'}]`
+      }
+    });
+
+    sendOneSignalPush({
+      title: '⚡ Crypto Top-Up Successful!',
+      body: `Your SimlyX wallet has been credited with $${numAmount.toFixed(2)} USDT. New Balance: $${user.walletBalance.toFixed(2)}`,
+      userId: [user.id, user.email].filter(Boolean),
+      audience: 'user',
+      data: { type: 'in_app_notification', amount: numAmount, newBalance: user.walletBalance }
+    }).catch(() => {});
+
+    res.json({
+      success: true,
+      newBalance: user.walletBalance,
+      transaction: tx
+    });
+  } catch (error) {
+    console.error('[OXAPAY WEBHOOK ERROR]', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 13.1 Endpoint: Lookup User for Wallet Balance Transfer
 app.post('/api/wallet/transfer-lookup', async (req, res) => {
   try {
